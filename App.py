@@ -60,8 +60,21 @@ if st.session_state.usuario_logado is None:
             else: st.warning("Verifique os campos!")
 else:
     user_atual = st.session_state.usuario_logado
+    
+    # Buscar contagem de seguidores em tempo real para a barra lateral
+    total_seg = 0
+    try:
+        res_seg = supabase.table("seguidores").select("*", count="exact").eq("id_seguido", user_atual["id"]).execute()
+        if hasattr(res_seg, "count") and res_seg.count is not None:
+            total_seg = res_seg.count
+        else:
+            total_seg = len(res_seg.data) if res_seg.data else 0
+    except: pass
+
     st.sidebar.image(user_atual.get("url_foto_perfil") or FOTO_PADRAO, width=90)
     st.sidebar.write(f"Usuário: **{user_atual['username']}**")
+    st.sidebar.write(f"👥 **{total_seg}** seguidores")
+    
     if st.sidebar.button("Sair 🚪", use_container_width=True):
         st.session_state.usuario_logado = None
         st.session_state.sala_ativa = None
@@ -76,12 +89,9 @@ else:
             if st.button("Publicar 🚀", use_container_width=True):
                 if url_v.strip() and titulo_v.strip():
                     link_final = url_v.strip()
-                    
-                    # Correção automática de links Shorts (converte /shorts/ para watch?v=)
                     if "youtube.com/shorts/" in link_final:
                         link_final = link_final.replace("youtube.com/shorts/", "youtube.com/watch?v=")
                     elif "youtu.be/" in link_final and "shorts" in link_final:
-                        # Trata links móveis compartilhados de shorts
                         link_final = link_final.replace("youtu.be/", "youtube.com/watch?v=")
 
                     try:
@@ -95,30 +105,66 @@ else:
                         st.success("Postado com sucesso!")
                         st.rerun()
                     except Exception as e: st.error(f"Erro ao salvar no feed: {e}")
-                else: w = st.warning("Preencha todos os campos!")
+                else: st.warning("Preencha todos os campos!")
         try:
             dados = supabase.table("feed_videos").select("*").execute()
             if dados.data:
                 for v in reversed(dados.data):
                     autor = v.get('username_autor', 'Membro')
                     img_autor = v.get('avatar_autor') or FOTO_PADRAO
-
-                    # Correção para os vídeos antigos que já foram salvos errados no banco
                     video_url = v["url_video"]
                     if "shorts/" in video_url:
                         video_url = video_url.replace("shorts/", "watch?v=")
 
-                    col_img, col_txt = st.columns([1, 6])
-                    with col_img: st.image(img_autor, width=40)
-                    with col_txt: st.markdown(f"**@{autor}**")
+                    # Layout do Cabeçalho do Post (Foto, Nome e Botão Seguir)
+                    col_img, col_txt, col_btn_seg = st.columns([1, 4, 2])
+                    with col_img: 
+                        st.image(img_autor, width=40)
+                    with col_txt: 
+                        st.markdown(f"**@{autor}**")
+                    
+                    with col_btn_seg:
+                        # Lógica de Seguir (Não pode seguir a si mesmo)
+                        if autor != user_atual["username"]:
+                            try:
+                                # Achar o ID do autor do post
+                                b_autor = supabase.table("perfis_usuarios").select("id").eq("username", autor).execute()
+                                if b_autor.data:
+                                    id_autor = b_autor.data[0]["id"]
+                                    # Verificar se já segue
+                                    ja_segue = supabase.table("seguidores").select("*").eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor).execute()
+                                    
+                                    if ja_segue.data:
+                                        if st.button("Seguindo ✓", key=f"unfol_{v['id']}", use_container_width=True):
+                                            supabase.table("seguidores").delete().eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor).execute()
+                                            st.rerun()
+                                    else:
+                                        if st.button("Seguir ➕", key=f"fol_{v['id']}", use_container_width=True, type="primary"):
+                                            supabase.table("seguidores").insert({"id_seguidor", user_atual["id"], "id_seguido", id_autor}).execute()
+                                            st.rerun()
+                            except: pass
+
                     st.caption(v["titulo"])
                     st.video(video_url)
+                    
+                    # Botões de Ação (Curtir e Excluir)
+                    col_lk, col_del = st.columns([1, 1])
                     likes = v.get("curtidas", 0)
-                    if st.button(f"❤️ {likes} Curtidas", key=f"lk_{v['id']}"):
-                        supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("id", v["id"]).execute()
-                        st.rerun()
+                    with col_lk:
+                        if st.button(f"❤️ {likes} Curtidas", key=f"lk_{v['id']}"):
+                            supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("id", v["id"]).execute()
+                            st.rerun()
+                    
+                    # SEGURANÇA: Só o dono do vídeo vê o botão de apagar!
+                    with col_del:
+                        if autor == user_atual["username"]:
+                            if st.button("Excluir Vídeo 🗑️", key=f"del_{v['id']}", help="Clique para deletar permanentemente"):
+                                supabase.table("feed_videos").delete().eq("id", v["id"]).execute()
+                                st.success("Vídeo removido!")
+                                st.rerun()
+                                
                     st.markdown("---")
-        except: st.error("Erro ao carregar o feed.")
+        except Exception as e: st.error(f"Erro ao carregar o feed: {e}")
 
     with aba_chat:
         if st.session_state.sala_ativa is not None:
@@ -213,4 +259,4 @@ else:
                                 st.success("Enviado!")
                         else: st.error("Não encontrado.")
                     except: st.error("Erro.")
-                        
+                                  
