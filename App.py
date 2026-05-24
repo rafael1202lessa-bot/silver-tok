@@ -111,14 +111,12 @@ else:
                 
             st.markdown("---")
             try:
-                # Buscar dados do perfil do usuário visitado
                 dados_perf = supabase.table("perfis_usuarios").select("*").eq("username", autor_vis).execute()
                 if dados_perf.data:
                     p_info = dados_perf.data[0]
                     id_autor_vis = p_info["id"]
                     img_autor_vis = p_info.get("url_foto_perfil") or FOTO_PADRAO
                     
-                    # Contagem de seguidores do visitado
                     c_seg_v = supabase.table("seguidores").select("*", count="exact").eq("id_seguido", id_autor_vis).execute()
                     qtd_seg_v = c_seg_v.count if (hasattr(c_seg_v, "count") and c_seg_v.count is not None) else len(c_seg_v.data)
                     
@@ -134,7 +132,6 @@ else:
                         st.subheader(f"@{autor_vis}{selo_v}")
                         st.write(f"👥 **{qtd_seg_v}** seguidores")
                         
-                        # Botão Seguir dentro do Perfil
                         if autor_vis != user_atual["username"]:
                             ja_segue_v = supabase.table("seguidores").select("*").eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor_vis).execute()
                             if ja_segue_v.data:
@@ -143,7 +140,7 @@ else:
                                     st.rerun()
                             else:
                                 if st.button("Seguir ➕", key="btn_fol_perfil", use_container_width=True, type="primary"):
-                                    supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor_vis}).execute()
+                                    supabase.table("seguidores").insert({"id_seguidor", user_atual["id"], "id_seguido": id_autor_vis}).execute()
                                     st.rerun()
                                     
                     st.markdown("### 🎬 Vídeos Publicados")
@@ -165,7 +162,6 @@ else:
             # TELA DO FEED PRINCIPAL
             st.title("📺 Feed de Edits")
             
-            # Opções de publicação estendidas (Link ou Ficheiro Local)
             with st.expander("➕ Publicar Novo Vídeo / Edit"):
                 tipo_pub = st.radio("Escolha o método de envio:", ["Enviar Arquivo de Vídeo (Do Aparelho)", "Inserir Link (YouTube)"])
                 titulo_v = st.text_input("Legenda do Vídeo:", placeholder="Ex: Edit de Bleach! 🔥", key="legenda_video")
@@ -199,7 +195,7 @@ else:
                     if st.button("Fazer Upload e Publicar 🎥", use_container_width=True):
                         if file_v and titulo_v.strip():
                             try:
-                                with st.spinner("Enviando vídeo para o servidor... Aguarde."):
+                                with st.spinner("Enviando vídeo..."):
                                     nome_video_bucket = f"videos/{uuid.uuid4()}.mp4"
                                     supabase.storage.from_("videos_feed").upload(nome_video_bucket, file_v.read())
                                     url_video_final = supabase.storage.from_("videos_feed").get_public_url(nome_video_bucket)
@@ -248,23 +244,120 @@ else:
                         except:
                             pass
 
-                        col_img, col_txt, col_btn_seg = st.columns([1, 4, 2])
-                        with col_img:
-                            # Clicar na imagem abre o Perfil
-                            if st.button("👤", key=f"img_btn_{chave_componente}"):
+                        # NOVA ESTRUTURA: Foto real à esquerda, nome no meio, botões de ação à direita
+                        col_foto, col_nome, col_perfil_btn, col_seguir_btn = st.columns([1, 3, 2, 2])
+                        
+                        with col_foto:
+                            st.image(img_autor, width=45) # Mostra a foto real do usuário
+                        
+                        with col_nome:
+                            st.markdown(f"**@{autor}**{selo_verificado}") # Nome dele
+                        
+                        with col_perfil_btn:
+                            # Botão dedicado para abrir o perfil do outro lado
+                            if st.button("Ver Perfil 👤", key=f"go_perf_{chave_componente}", use_container_width=True):
                                 st.session_state.perfil_visitado = autor
                                 st.rerun()
-                        with col_txt:
-                            # Clicar no texto do nome também abre o Perfil
-                            if st.button(f"@{autor}{selo_verificado}", key=f"txt_btn_{chave_componente}"):
-                                st.session_state.perfil_visitado = autor
-                                st.rerun()
-                        with col_btn_seg:
+                                
+                        with col_seguir_btn:
                             if autor != user_atual["username"] and id_autor is not None:
                                 try:
                                     ja_segue = supabase.table("seguidores").select("*").eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor).execute()
                                     if ja_segue.data:
-                                        if st.button("Seguindo ✓", key=f"unfol_{chave_componente}", use_container_width=True):
+                                        if st.button("Seguindo", key=f"unfol_{chave_componente}", use_container_width=True):
+                                            supabase.table("seguidores").delete().eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor).execute()
+                                            st.rerun()
+                                    else:
+                                        if st.button("Seguir ➕", key=f"fol_{chave_componente}", use_container_width=True, type="primary"):
+                                            supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor}).execute()
+                                            st.rerun()
+                                except:
+                                    pass
+
+                        st.caption(v["titulo"])
+                        st.video(video_url)
+                        
+                        col_lk, col_del = st.columns([1, 1])
+                        likes = v.get("curtidas", 0)
+                        with col_lk:
+                            if st.button(f"❤️ {likes} Curtidas", key=f"lk_{chave_componente}"):
+                                try:
+                                    supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("url_video", video_url).execute()
+                                except:
+                                    if "id" in v:
+                                        supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("id", v["id"]).execute()
+                                st.rerun()
+                        with col_del:
+                            if autor == user_atual["username"]:
+                                if st.button("Excluir Vídeo 🗑️", key=f"del_{chave_componente}"):
+                                    try:
+                                        supabase.table("feed_videos").delete().eq("url_video", video_url).execute()
+                                    except:
+                                        if "id" in v:
+                                            supabase.table("feed_videos").delete().eq("id", v["id"]).execute()
+                                    st.success("Vídeo removido!")
+                                    st.rerun()
+
+                        total_coment = 0
+                        lista_comentarios = []
+                        try:
+                            res_c = supabase.table("comentarios_videos").select("*").eq("id_video", str(video_url)).execute()
+                            if res_c.data:
+                                lista_comentarios = res_c.data
+                                total_coment = len(res_c.data)
+                        except:
+                            pass
+
+                        with st.expander(f"💬 Comentários ({total_coment})"):
+                            novo_coment = st.text_input("Escreva um comentário...", key=f"in_cm_{chave_componente}", placeholder="O que achou desse edit?")
+                            if st.button("Comentar 🚀", key=f"btn_cm_{chave_componente}"):
+                                if novo_coment.strip():
+                                    try:
+                                        supabase.table("comentarios_videos").insert({
+                                            "id_video": str(video_url),
+                                            "username_autor": user_atual["username"],
+                                            "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
+                                            "comentario": novo_coment.strip()
+                                        }).execute()
+                                        st.success("Comentário publicado!")
+                                        st.rerun()
+                                    except Exception as err:
+                                        st.error(f"Erro de envio. Verifique as políticas.")
+
+                            st.markdown("---")
+                            if lista_comentarios:
+                                for idx_c, c in enumerate(reversed(lista_comentarios)):
+                                    autor_c = c['username_autor']
+                                    selo_comentario = ""
+                                    try:
+                                        b_aut_c = supabase.table("perfis_usuarios").select("id").eq("username", autor_c).execute()
+                                        if b_aut_c.data:
+                                            id_aut_c = b_aut_c.data[0]["id"]
+                                            c_seg_c = supabase.table("seguidores").select("*", count="exact").eq("id_seguido", id_aut_c).execute()
+                                            qtd_seg_c = c_seg_c.count if (hasattr(c_seg_c, "count") and c_seg_c.count is not None) else len(c_seg_c.data)
+                                            if autor_c == NOME_DEVELOPER:
+                                                selo_comentario = " 👑`DEV`"
+                                            elif qtd_seg_c >= 1000:
+                                                selo_comentario = " ✔️"
+                                    except:
+                                        pass
+
+                                    c_col1, c_col2 = st.columns([1, 6])
+                                    with c_col1:
+                                        st.markdown(f"**@{autor}**{selo_verificado}") # Nome dele
+                        
+                        with col_perfil_btn:
+                            # Botão dedicado para abrir o perfil do outro lado
+                            if st.button("Ver Perfil 👤", key=f"go_perf_{chave_componente}", use_container_width=True):
+                                st.session_state.perfil_visitado = autor
+                                st.rerun()
+                                
+                        with col_seguir_btn:
+                            if autor != user_atual["username"] and id_autor is not None:
+                                try:
+                                    ja_segue = supabase.table("seguidores").select("*").eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor).execute()
+                                    if ja_segue.data:
+                                        if st.button("Seguindo", key=f"unfol_{chave_componente}", use_container_width=True):
                                             supabase.table("seguidores").delete().eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor).execute()
                                             st.rerun()
                                     else:
@@ -389,7 +482,7 @@ else:
                             if m.get("mensagem"):
                                 st.write(m["mensagem"])
                             if m.get("url_imagem_enviada"):
-                                st.image(m["url_imagem_enviada"], use_container_width=True)
+                                m.image(m["url_imagem_enviada"], use_container_width=True)
                         st.markdown("---")
             except:
                 st.write("Sem mensagens nesta sala ainda.")
