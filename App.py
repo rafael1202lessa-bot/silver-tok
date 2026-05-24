@@ -101,7 +101,6 @@ else:
     aba_feed, aba_chat = st.tabs(["📺 Silver Tok (Feed)", "💬 Chat-Exv"])
     
     with aba_feed:
-        # TELA DE PERFIL VISITADO (Estilo TikTok)
         if st.session_state.perfil_visitado is not None:
             autor_vis = st.session_state.perfil_visitado
             
@@ -140,7 +139,7 @@ else:
                                     st.rerun()
                             else:
                                 if st.button("Seguir ➕", key="btn_fol_perfil", use_container_width=True, type="primary"):
-                                    supabase.table("seguidores").insert({"id_seguidor", user_atual["id"], "id_seguido": id_autor_vis}).execute()
+                                    supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor_vis}).execute()
                                     st.rerun()
                                     
                     st.markdown("### 🎬 Vídeos Publicados")
@@ -159,7 +158,6 @@ else:
                 st.error(f"Erro ao carregar perfil: {err_p}")
                 
         else:
-            # TELA DO FEED PRINCIPAL
             st.title("📺 Feed de Edits")
             
             with st.expander("➕ Publicar Novo Vídeo / Edit"):
@@ -215,7 +213,6 @@ else:
                         else:
                             st.warning("Selecione um ficheiro de vídeo e digite uma legenda!")
 
-            # Listagem de vídeos no Feed
             try:
                 dados = supabase.table("feed_videos").select("*").execute()
                 if dados.data:
@@ -244,21 +241,15 @@ else:
                         except:
                             pass
 
-                        # NOVA ESTRUTURA: Foto real à esquerda, nome no meio, botões de ação à direita
                         col_foto, col_nome, col_perfil_btn, col_seguir_btn = st.columns([1, 3, 2, 2])
-                        
                         with col_foto:
-                            st.image(img_autor, width=45) # Mostra a foto real do usuário
-                        
+                            st.image(img_autor, width=45)
                         with col_nome:
-                            st.markdown(f"**@{autor}**{selo_verificado}") # Nome dele
-                        
+                            st.markdown(f"**@{autor}**{selo_verificado}")
                         with col_perfil_btn:
-                            # Botão dedicado para abrir o perfil do outro lado
                             if st.button("Ver Perfil 👤", key=f"go_perf_{chave_componente}", use_container_width=True):
                                 st.session_state.perfil_visitado = autor
                                 st.rerun()
-                                
                         with col_seguir_btn:
                             if autor != user_atual["username"] and id_autor is not None:
                                 try:
@@ -322,100 +313,7 @@ else:
                                         st.success("Comentário publicado!")
                                         st.rerun()
                                     except Exception as err:
-                                        st.error(f"Erro de envio. Verifique as políticas.")
-
-                            st.markdown("---")
-                            if lista_comentarios:
-                                for idx_c, c in enumerate(reversed(lista_comentarios)):
-                                    autor_c = c['username_autor']
-                                    selo_comentario = ""
-                                    try:
-                                        b_aut_c = supabase.table("perfis_usuarios").select("id").eq("username", autor_c).execute()
-                                        if b_aut_c.data:
-                                            id_aut_c = b_aut_c.data[0]["id"]
-                                            c_seg_c = supabase.table("seguidores").select("*", count="exact").eq("id_seguido", id_aut_c).execute()
-                                            qtd_seg_c = c_seg_c.count if (hasattr(c_seg_c, "count") and c_seg_c.count is not None) else len(c_seg_c.data)
-                                            if autor_c == NOME_DEVELOPER:
-                                                selo_comentario = " 👑`DEV`"
-                                            elif qtd_seg_c >= 1000:
-                                                selo_comentario = " ✔️"
-                                    except:
-                                        pass
-
-                                    c_col1, c_col2 = st.columns([1, 6])
-                                    with c_col1:
-                                         st.markdown(f"**@{autor}**{selo_verificado}") # Nome dele
-                        
-                        with col_perfil_btn:
-                            # Botão dedicado para abrir o perfil do outro lado
-                            if st.button("Ver Perfil 👤", key=f"go_perf_{chave_componente}", use_container_width=True):
-                                st.session_state.perfil_visitado = autor
-                                st.rerun()
-                                
-                        with col_seguir_btn:
-                            if autor != user_atual["username"] and id_autor is not None:
-                                try:
-                                    ja_segue = supabase.table("seguidores").select("*").eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor).execute()
-                                    if ja_segue.data:
-                                        if st.button("Seguindo", key=f"unfol_{chave_componente}", use_container_width=True):
-                                            supabase.table("seguidores").delete().eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor).execute()
-                                            st.rerun()
-                                    else:
-                                        if st.button("Seguir ➕", key=f"fol_{chave_componente}", use_container_width=True, type="primary"):
-                                            supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor}).execute()
-                                            st.rerun()
-                                except:
-                                    pass
-
-                        st.caption(v["titulo"])
-                        st.video(video_url)
-                        
-                        col_lk, col_del = st.columns([1, 1])
-                        likes = v.get("curtidas", 0)
-                        with col_lk:
-                            if st.button(f"❤️ {likes} Curtidas", key=f"lk_{chave_componente}"):
-                                try:
-                                    supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("url_video", video_url).execute()
-                                except:
-                                    if "id" in v:
-                                        supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("id", v["id"]).execute()
-                                st.rerun()
-                        with col_del:
-                            if autor == user_atual["username"]:
-                                if st.button("Excluir Vídeo 🗑️", key=f"del_{chave_componente}"):
-                                    try:
-                                        supabase.table("feed_videos").delete().eq("url_video", video_url).execute()
-                                    except:
-                                        if "id" in v:
-                                            supabase.table("feed_videos").delete().eq("id", v["id"]).execute()
-                                    st.success("Vídeo removido!")
-                                    st.rerun()
-
-                        total_coment = 0
-                        lista_comentarios = []
-                        try:
-                            res_c = supabase.table("comentarios_videos").select("*").eq("id_video", str(video_url)).execute()
-                            if res_c.data:
-                                lista_comentarios = res_c.data
-                                total_coment = len(res_c.data)
-                        except:
-                            pass
-
-                        with st.expander(f"💬 Comentários ({total_coment})"):
-                            novo_coment = st.text_input("Escreva um comentário...", key=f"in_cm_{chave_componente}", placeholder="O que achou desse edit?")
-                            if st.button("Comentar 🚀", key=f"btn_cm_{chave_componente}"):
-                                if novo_coment.strip():
-                                    try:
-                                        supabase.table("comentarios_videos").insert({
-                                            "id_video": str(video_url),
-                                            "username_autor": user_atual["username"],
-                                            "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                                            "comentario": novo_coment.strip()
-                                        }).execute()
-                                        st.success("Comentário publicado!")
-                                        st.rerun()
-                                    except Exception as err:
-                                        st.error(f"Erro de envio. Verifique as políticas.")
+                                        st.error(f"Erro de envio.")
 
                             st.markdown("---")
                             if lista_comentarios:
@@ -443,7 +341,7 @@ else:
                                         st.write(c["comentario"])
                                     st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
                             else:
-                                st.caption("Nenhum comentário ainda. Seja o primeiro!")
+                                st.caption("Nenhum comentário ainda.")
                         st.markdown("---")
             except Exception as e:
                 st.error(f"Erro ao carregar o feed: {e}")
@@ -465,7 +363,14 @@ else:
                             nome_f = f"chat/{uuid.uuid4()}.png"
                             supabase.storage.from_("imagens_chat").upload(nome_f, upload_img.read())
                             url_img = supabase.storage.from_("imagens_chat").get_public_url(nome_f)
-                        supabase.table("bate-papo_profissional").insert({"id_usuario": user_atual["id"], "username": user_atual["username"], "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO, "mensagem": txt_m.strip() if txt_m.strip() else None, "url_imagem_enviada": url_img, "codigo_sala": st.session_state.sala_ativa}).execute()
+                        supabase.table("bate-papo_profissional").insert({
+                            "id_usuario": user_atual["id"], 
+                            "username": user_atual["username"], 
+                            "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO, 
+                            "mensagem": txt_m.strip() if txt_m.strip() else None, 
+                            "url_imagem_enviada": url_img, 
+                            "codigo_sala": st.session_state.sala_ativa
+                        }).execute()
                         st.session_state.id_upload_chat = str(uuid.uuid4())
                         st.rerun()
                     except Exception as e:
@@ -482,7 +387,7 @@ else:
                             if m.get("mensagem"):
                                 st.write(m["mensagem"])
                             if m.get("url_imagem_enviada"):
-                                m.image(m["url_imagem_enviada"], use_container_width=True)
+                                st.image(m["url_imagem_enviada"], use_container_width=True)
                         st.markdown("---")
             except:
                 st.write("Sem mensagens nesta sala ainda.")
@@ -570,4 +475,4 @@ else:
                         else:
                             st.error("Usuário não encontrado.")
                     except:
-                        st.error("Erro ao processar pedido de amizade.")
+                        st.error("Erro ao processar pedido de amizade.")    
