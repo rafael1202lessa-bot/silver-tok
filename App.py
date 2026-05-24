@@ -23,7 +23,6 @@ FOTO_PADRAO = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
 if "usuario_logado" not in st.session_state: st.session_state.usuario_logado = None
 if "sala_ativa" not in st.session_state: st.session_state.sala_ativa = None
 if "id_upload_chat" not in st.session_state: st.session_state.id_upload_chat = str(uuid.uuid4())
-if "id_upload_video" not in st.session_state: st.session_state.id_upload_video = str(uuid.uuid4())
 
 if st.session_state.usuario_logado is None:
     st.title("🎬 Silver Tok & Chat 🔐")
@@ -71,18 +70,23 @@ else:
     aba_feed, aba_chat = st.tabs(["📺 Silver Tok (Feed)", "💬 Chat-Exv"])
     with aba_feed:
         st.title("📺 Feed de Edits")
-        with st.expander("➕ Publicar Vídeo"):
-            titulo_v = st.text_input("Legenda:", placeholder="Edit top!")
-            arq_v = st.file_uploader("Vídeo (MP4):", type=["mp4"], key=st.session_state.id_upload_video)
+        with st.expander("➕ Publicar Vídeo por Link"):
+            titulo_v = st.text_input("Legenda do Vídeo:", placeholder="Ex: Edit de Bleach! 🔥")
+            url_v = st.text_input("Link do Vídeo (YouTube ou MP4 direto):", placeholder="https://www.youtube.com/watch?v=...")
             if st.button("Publicar 🚀", use_container_width=True):
-                if arq_v and titulo_v:
-                    nome_f = f"videos/{uuid.uuid4()}.mp4"
-                    supabase.storage.from_("videos_feed").upload(nome_f, arq_v.read())
-                    url_f = supabase.storage.from_("videos_feed").get_public_url(nome_f)
-                    supabase.table("feed_videos").insert({"titulo": titulo_v, "url_video": url_f, "username_autor": user_atual["username"], "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO, "curtidas": 0}).execute()
-                    st.success("Postado!")
-                    st.session_state.id_upload_video = str(uuid.uuid4())
-                    st.rerun()
+                if url_v.strip() and titulo_v.strip():
+                    try:
+                        supabase.table("feed_videos").insert({
+                            "titulo": titulo_v.strip(),
+                            "url_video": url_v.strip(),
+                            "username_autor": user_atual["username"],
+                            "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
+                            "curtidas": 0
+                        }).execute()
+                        st.success("Postado com sucesso!")
+                        st.rerun()
+                    except Exception as e: st.error(f"Erro ao salvar no feed: {e}")
+                else: st.warning("Preencha todos os campos!")
         try:
             dados = supabase.table("feed_videos").select("*").execute()
             if dados.data:
@@ -192,4 +196,4 @@ else:
                                 st.success("Enviado!")
                         else: st.error("Não encontrado.")
                     except: st.error("Erro.")
-                                                   
+                    
