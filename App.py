@@ -139,8 +139,9 @@ else:
                                     supabase.table("seguidores").delete().eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor_vis).execute()
                                     st.rerun()
                             else:
+                                # Corrigido de ',' para ':' aqui
                                 if st.button("Seguir ➕", key="btn_fol_perfil", use_container_width=True, type="primary"):
-                                    supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido", id_autor_vis}).execute()
+                                    supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor_vis}).execute()
                                     st.rerun()
                                     
                     st.markdown("### 🎬 Publicações")
@@ -164,7 +165,7 @@ else:
         else:
             st.title("📺 Feed de Edits")
             
-            # --- NOVO SISTEMA DE BUSCA NO FEED ---
+            # --- SISTEMA DE BUSCA NO FEED ---
             st.markdown("### 🔍 Procurar Posts")
             col_b1, col_b2 = st.columns([3, 1])
             with col_b1:
@@ -172,7 +173,7 @@ else:
             with col_b2:
                 filtro_midia = st.selectbox("Tipo:", ["Todos", "Vídeos", "Fotos"])
 
-            # --- SEÇÃO DE PUBLICAÇÃO EXPANDIDA ---
+            # --- SEÇÃO DE PUBLICAÇÃO ---
             with st.expander("➕ Publicar Novo Conteúdo"):
                 tipo_pub = st.radio("Escolha o método de envio:", ["Enviar Arquivo de Vídeo (Do Aparelho)", "Inserir Link (YouTube)", "Postar Foto 📸"])
                 titulo_v = st.text_input("Legenda do Post:", placeholder="Ex: Edit de Bleach! 🔥", key="legenda_video")
@@ -228,7 +229,6 @@ else:
                         else:
                             st.warning("Selecione um ficheiro de vídeo e digite uma legenda!")
 
-                # --- NOVA LÓGICA PARA POSTAR FOTO ---
                 elif tipo_pub == "Postar Foto 📸":
                     file_img = st.file_uploader("Escolha uma foto da galeria:", type=["png", "jpg", "jpeg", "webp"])
                     if st.button("Publicar Foto 🖼️", use_container_width=True):
@@ -256,7 +256,6 @@ else:
                             st.warning("Selecione uma foto e digite uma legenda!")
 
             try:
-                # Carrega posts aplicando filtros de busca dinâmicos
                 query_feed = supabase.table("feed_videos").select("*")
                 if termo_pesquisa:
                     query_feed = query_feed.ilike("titulo", f"%{termo_pesquisa}%")
@@ -312,15 +311,15 @@ else:
                                             supabase.table("seguidores").delete().eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor).execute()
                                             st.rerun()
                                     else:
+                                        # Corrigido de ',' para ':' aqui também
                                         if st.button("Seguir ➕", key=f"fol_{chave_componente}", use_container_width=True, type="primary"):
-                                            supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido", id_autor}).execute()
+                                            supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor}).execute()
                                             st.rerun()
                                 except:
                                     pass
 
                         st.caption(v["titulo"])
                         
-                        # Exibição inteligente do conteúdo (Foto ou Vídeo)
                         if tipo_m == "foto" or video_url.endswith(('.png', '.jpg', '.jpeg', '.webp')):
                             st.image(video_url, use_container_width=True)
                         else:
@@ -346,12 +345,9 @@ else:
                                             supabase.table("feed_videos").delete().eq("id", v["id"]).execute()
                                     st.success("Removido!")
                                     st.rerun()
-                     total_coment = 0
-                        lista_comentarios = []
-                        try:
-                            res_c = supabase.table("comentarios_videos").select("*").eq("id_video", str(video_url)).execute()
-                            if res_c.data:
-                                lista_comentarios = res_c.data
+
+                        total_coment = 0
+                        lista_comentarios = res_c.data
                                 total_coment = len(res_c.data)
                         except:
                             pass
@@ -404,7 +400,6 @@ else:
             except Exception as e:
                 st.error(f"Erro ao carregar o feed: {e}")
 
-    # --- ABA DO BATE-PAPO PROFISSIONAL (CHAT-EXV) ---
     with aba_chat:
         if st.session_state.sala_ativa is not None:
             st.title("💬 Sala Ativa")
@@ -530,9 +525,8 @@ else:
                                 st.error("Não pode se adicionar!")
                             else:
                                 supabase.table("lista_amigos").insert({"id_usuario_envio": user_atual["id"], "id_usuario_recebe": alvo.data[0]["id"], "status": "pendente"}).execute()
-                                m.success("Enviado com sucesso!")
+                                st.success("Enviado com sucesso!")
                         else:
                             st.error("Usuário não encontrado.")
                     except:
                         st.error("Erro ao processar pedido de amizade.")
-    
