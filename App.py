@@ -218,7 +218,7 @@ else:
                                     st.success("Comentário publicado!")
                                     st.rerun()
                                 except Exception as err:
-                                    st.error(f"Erro ao salvar: {err}")
+                                    st.error(f"Erro de envio. Verifique as políticas da tabela 'comentarios_videos' no Supabase.")
 
                         st.markdown("---")
                         if lista_comentarios:
@@ -234,7 +234,7 @@ else:
                                         if autor_c == NOME_DEVELOPER:
                                             selo_comentario = " 👑`DEV`"
                                         elif qtd_seg_c >= 1000:
-                                            selo_verificado = " ✔️"
+                                            selo_comentario = " ✔️"
                                 except:
                                     pass
 
@@ -348,10 +348,6 @@ else:
                                     st.rerun()
                     
                     conf = supabase.table("lista_amigos").select("*").or_(f"id_usuario_envio.eq.{user_atual['id']},id_usuario_recebe.eq.{user_atual['id']}").eq("status", "aceito").execute()
-                    if conf.data:
-                        for c in conf.data:
-                            o_id = c["id_usuario_recebe"] if str(c["id_usuario_envio"]) == str(user_atual["id"]) else c["id_usuario_envio"]
-                            du = supaba.table("lista_amigos").select("*").or_(f"id_usuario_envio.eq.{user_atual['id']},id_usuario_recebe.eq.{user_atual['id']}").eq("status", "aceito").execute()
                     if conf.data:
                         for c in conf.data:
                             o_id = c["id_usuario_recebe"] if str(c["id_usuario_envio"]) == str(user_atual["id"]) else c["id_usuario_envio"]
