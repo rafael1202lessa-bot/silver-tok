@@ -172,9 +172,7 @@ else:
         else:
             exibir_logo()
             
-            # NOVIDADE: Sub-abas de conteúdo - Recentes ou em Alta
             sub_aba_feed, sub_aba_alta = st.tabs(["⏱️ Recentes", "🔥 Em Alta (Mais Curtidos)"])
-            
             termo_pesquisa = st.text_input("Buscar posts por legenda:", placeholder="Ex: Bleach, Naruto, edit...", key="busca_feed").strip()
 
             with st.expander("➕ Publicar Novo Conteúdo"):
@@ -255,7 +253,6 @@ else:
                         else:
                             st.warning("Selecione uma foto e digite uma legenda!")
 
-            # Função auxiliar para renderizar posts evitando duplicação
             def renderizar_posts(lista_posts, identificador_aba):
                 for idx, v in enumerate(lista_posts):
                     autor = v.get('username_autor', 'Membro')
@@ -265,7 +262,7 @@ else:
                     if "shorts/" in video_url:
                         video_url = video_url.replace("shorts/", "watch?v=")
 
-                    id_unico_video = v.get("id") or v.get("id_video") or hash(video_url)
+                    id_unico_video = v.get("id") or hash(video_url)
                     chave_componente = f"vid_{id_unico_video}_{idx}_{identificador_aba}"
 
                     selo_verificado = ""
@@ -300,10 +297,10 @@ else:
                                     if st.button("Seguindo", key=f"unfol_{chave_componente}", use_container_width=True):
                                         supabase.table("seguidores").delete().eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor).execute()
                                         st.rerun()
-                                hobbies: st.button("Seguir ➕", key=f"fol_{chave_componente}", use_container_width=True, type="primary")
-                                if st.button("Seguir ➕", key=f"fol_{chave_componente}", use_container_width=True, type="primary"):
-                                    supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor}).execute()
-                                    st.rerun()
+                                else:
+                                    if st.button("Seguir ➕", key=f"fol_{chave_componente}", use_container_width=True, type="primary"):
+                                        supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor}).execute()
+                                        st.rerun()
                             except:
                                 pass
 
@@ -345,7 +342,7 @@ else:
                     except:
                         pass
 
-                    with st.expander(f"💬 Comentários ({total_coment})", id=f"exp_{chave_componente}"):
+                    with st.expander(f"💬 Comentários ({total_coment})"):
                         novo_coment = st.text_input("Escreva um comentário...", key=f"in_cm_{chave_componente}", placeholder="O que você achou?")
                         if st.button("Comentar 🚀", key=f"btn_cm_{chave_componente}"):
                             if novo_coment.strip():
@@ -390,21 +387,18 @@ else:
                             st.caption("Nenhum comentário ainda.")
                     st.markdown("---")
 
-            # Executa a busca base do Feed
             try:
                 query_feed = supabase.table("feed_videos").select("*")
                 if termo_pesquisa:
                     query_feed = query_feed.ilike("titulo", f"%{termo_pesquisa}%")
                 dados = query_feed.execute()
                 
-                # Renderiza a aba de Recentes (Ordem cronológica invertida)
                 with sub_aba_feed:
                     if dados.data:
                         renderizar_posts(reversed(dados.data), "recentes")
                     else:
                         st.info("Nenhum post encontrado.")
                         
-                # Renderiza a aba de Populares (Ordenados por curtidas)
                 with sub_aba_alta:
                     if dados.data:
                         posts_ordenados = sorted(dados.data, key=lambda k: k.get('curtidas', 0), reverse=True)
@@ -428,7 +422,6 @@ else:
             with col_midia1:
                 upload_img = st.file_uploader("Enviar Imagem 📸", type=["png", "jpg", "jpeg", "gif"], key=st.session_state.id_upload_chat)
             with col_midia2:
-                # NOVIDADE: Gravador de áudio integrado nativo do navegador
                 gravar_audio = st.audio_input("Gravar Mensagem de Voz 🎙️", key=st.session_state.id_audio_chat)
                 
             if st.button("Enviar Conteúdo ✉️", use_container_width=True):
@@ -437,26 +430,23 @@ else:
                         url_img = None
                         url_aud = None
                         
-                        # Processa upload de imagem se houver
                         if upload_img:
                             nome_f = f"chat/{uuid.uuid4()}.png"
                             supabase.storage.from_("imagens_chat").upload(nome_f, upload_img.read())
                             url_img = supabase.storage.from_("imagens_chat").get_public_url(nome_f)
                             
-                        # Processa upload de áudio de voz se houver
                         if gravar_audio:
                             nome_a = f"audios/{uuid.uuid4()}.wav"
                             supabase.storage.from_("imagens_chat").upload(nome_a, gravar_audio.read())
                             url_aud = supabase.storage.from_("imagens_chat").get_public_url(nome_a)
                             
-                        # Salva tudo no banco (reaproveitando a coluna url_imagem_enviada para mídia geral ou usando lógica limpa)
                         supabase.table("bate-papo_profissional").insert({
                             "id_usuario": user_atual["id"], 
                             "username": user_atual["username"], 
                             "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO, 
                             "mensagem": txt_m.strip() if txt_m.strip() else None, 
                             "url_imagem_enviada": url_img,
-                            "url_video_enviado": url_aud, # Usando campo livre de mídia para salvar o áudio
+                            "url_video_enviado": url_aud, 
                             "codigo_sala": st.session_state.sala_ativa
                         }).execute()
                         
@@ -479,7 +469,7 @@ else:
                                 st.write(m["mensagem"])
                             if m.get("url_imagem_enviada"):
                                 st.image(m["url_imagem_enviada"], use_container_width=True)
-                            if m.get("url_video_enviado"): # Se houver áudio salvo nesse campo, renderiza o player de som
+                            if m.get("url_video_enviado"): 
                                 st.audio(m["url_video_enviado"])
                         st.markdown("---")
             except:
@@ -569,3 +559,4 @@ else:
                             st.error("Usuário não encontrado.")
                     except:
                         st.error("Erro ao processar pedido de amizade.")
+                  
