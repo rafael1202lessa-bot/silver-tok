@@ -2,7 +2,6 @@ import streamlit as st
 from supabase import create_client, Client
 import uuid
 import datetime
-import os
 
 st.set_page_config(page_title="Silver Tok v2.0", page_icon="🎬", layout="centered")
 
@@ -25,14 +24,14 @@ CHAVE_SECRETA = "ChatPrivado2026"
 FOTO_PADRAO = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
 NOME_DEVELOPER = "Rafael_oficial"
 
-# Função para exibir o logo de forma centralizada e bonita
+# Link direto da sua logo ST hospedada
+URL_LOGO_ST = "https://lh3.googleusercontent.com/d/1XlR7P3t_8p6vO1L3N4D3R_hVn6tS_g6b"
+
+# Função para exibir o logo de forma centralizada e bonita usando o link
 def exibir_logo():
-    if os.path.exists("logo.png"):
-        st.image("logo.png", use_container_width=True)
-    elif os.path.exists("3140.png"):
-        st.image("3140.png", use_container_width=True)
-    else:
-        # Caso você ainda não tenha subido o arquivo, deixa apenas o título em texto
+    try:
+        st.image(URL_LOGO_ST, use_container_width=True)
+    except:
         st.title("🎬 Silver Tok & Chat 🔐")
 
 # Inicialização do estado da sessão
@@ -46,7 +45,6 @@ if "perfil_visitado" not in st.session_state:
     st.session_state.perfil_visitado = None
 
 if st.session_state.usuario_logado is None:
-    # Exibe o logo do Luffy no topo da tela de login
     exibir_logo()
     
     aba_auth = st.tabs(["Fazer Login", "Criar Nova Conta"])
@@ -163,7 +161,7 @@ else:
                             st.caption(vid["titulo"])
                             url_midia = vid["url_video"]
                             if url_midia.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
-                                st.image(url_midia, use_container_width=True)
+                                East = st.image(url_midia, use_container_width=True)
                             else:
                                 st.video(url_midia)
                             st.markdown(f"❤️ {vid.get('curtidas', 0)} Curtidas")
@@ -176,14 +174,11 @@ else:
                 st.error(f"Erro ao carregar perfil: {err_p}")
                 
         else:
-            # Exibe o logo no topo do feed geral também!
             exibir_logo()
             
-            # --- SISTEMA DE BUSCA NO FEED ---
             st.markdown("### 🔍 Procurar Posts")
             termo_pesquisa = st.text_input("Buscar por legenda:", placeholder="Ex: Bleach, Naruto, edit...", key="busca_feed").strip()
 
-            # --- SEÇÃO DE PUBLICAÇÃO ---
             with st.expander("➕ Publicar Novo Conteúdo"):
                 tipo_pub = st.radio("Escolha o método de envio:", ["Enviar Arquivo de Vídeo (Do Aparelho)", "Inserir Link (YouTube)", "Postar Foto 📸"])
                 titulo_v = st.text_input("Legenda do Post:", placeholder="Ex: Edit de Bleach! 🔥", key="legenda_video")
@@ -314,7 +309,7 @@ else:
                                             st.rerun()
                                     else:
                                         if st.button("Seguir ➕", key=f"fol_{chave_componente}", use_container_width=True, type="primary"):
-                                            supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor}).execute()
+                                            supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido", id_autor}).execute()
                                             st.rerun()
                                 except:
                                     pass
@@ -387,7 +382,7 @@ else:
                                             if autor_c == NOME_DEVELOPER:
                                                 selo_comentario = " 👑`DEV`"
                                             elif qtd_seg_c >= 1000:
-                                                selo_comentario = " ✔️"
+                                                selo_verificado = " ✔️"
                                     except:
                                         pass
 
