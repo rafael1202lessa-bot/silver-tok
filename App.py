@@ -59,10 +59,10 @@ with abas[1]:
             try:
                 # 1. Envia o arquivo de vídeo para o Storage do Supabase
                 nome_arquivo = f"feed/{uuid.uuid4()}.mp4"
-                supabase.storage.from_("videos_tiktok").upload(nome_arquivo, arquivo_video.read(), file_options={"content-type": "video/mp4"})
+                supabase.storage.from_("Videos_tiktok").upload(nome_arquivo, arquivo_video.read(), file_options={"content-type": "video/mp4"})
                 
                 # 2. Pega o link público do vídeo que foi enviado
-                url_publica = supabase.storage.from_("videos_tiktok").get_public_url(nome_arquivo)
+                url_publica = supabase.storage.from_("Videos_tiktok").get_public_url(nome_arquivo)
                 
                 # 3. Salva o link e a legenda na tabela do banco dados
                 supabase.table("feed_videos").insert({
