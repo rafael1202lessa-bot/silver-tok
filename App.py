@@ -19,7 +19,7 @@ if supabase is None:
 
 CHAVE_SECRETA = "ChatPrivado2026"
 FOTO_PADRAO = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-NOME_DEVELOPER = "Rafael_oficial"  # Seu usuário para ganhar o verificado especial
+NOME_DEVELOPER = "Rafael_oficial"
 
 if "usuario_logado" not in st.session_state: st.session_state.usuario_logado = None
 if "sala_ativa" not in st.session_state: st.session_state.sala_ativa = None
@@ -62,19 +62,14 @@ if st.session_state.usuario_logado is None:
 else:
     user_atual = st.session_state.usuario_logado
     
-    # Buscar contagem de seguidores em tempo real para a barra lateral
     total_seg = 0
     try:
         res_seg = supabase.table("seguidores").select("*", count="exact").eq("id_seguido", user_atual["id"]).execute()
-        if hasattr(res_seg, "count") and res_seg.count is not None:
-            total_seg = res_seg.count
-        else:
-            total_seg = len(res_seg.data) if res_seg.data else 0
+        total_seg = res_seg.count if (hasattr(res_seg, "count") and res_seg.count is not None) else len(res_seg.data)
     except: pass
 
     st.sidebar.image(user_atual.get("url_foto_perfil") or FOTO_PADRAO, width=90)
     
-    # Mostrar selo especial do desenvolvedor na barra lateral também
     if user_atual["username"] == NOME_DEVELOPER:
         st.sidebar.write(f"Usuário: **{user_atual['username']}** 👑`DEV`")
     elif total_seg >= 1000:
@@ -118,48 +113,46 @@ else:
         try:
             dados = supabase.table("feed_videos").select("*").execute()
             if dados.data:
-                for v in reversed(dados.data):
+                for idx, v in enumerate(reversed(dados.data)):
                     autor = v.get('username_autor', 'Membro')
                     img_autor = v.get('avatar_autor') or FOTO_PADRAO
                     video_url = v["url_video"]
                     if "shorts/" in video_url:
                         video_url = video_url.replace("shorts/", "watch?v=")
 
-                    # Lógica em tempo real para descobrir o ID e seguidores do autor do post
+                    # Gerar uma chave única e segura independente da estrutura da tabela antiga
+                    id_unico_video = v.get("id") or v.get("id_video") or hash(video_url)
+                    chave_componente = f"vid_{id_unico_video}_{idx}"
+
                     selo_verificado = ""
                     id_autor = None
                     try:
                         b_autor = supabase.table("perfis_usuarios").select("id").eq("username", autor).execute()
                         if b_autor.data:
                             id_autor = b_autor.data[0]["id"]
-                            # Conta quantos seguidores o dono do post tem
                             c_seg = supabase.table("seguidores").select("*", count="exact").eq("id_seguido", id_autor).execute()
                             qtd_seg_autor = c_seg.count if (hasattr(c_seg, "count") and c_seg.count is not None) else len(c_seg.data)
                             
-                            # Define o tipo de verificado
                             if autor == NOME_DEVELOPER:
                                 selo_verificado = " 👑`DEV`"
                             elif qtd_seg_autor >= 1000:
                                 selo_verificado = " ✔️"
                     except: pass
 
-                    # Layout do Cabeçalho do Post (Foto, Nome com Verificado e Botão Seguir)
                     col_img, col_txt, col_btn_seg = st.columns([1, 4, 2])
-                    with col_img: 
-                        st.image(img_autor, width=40)
-                    with col_txt: 
-                        st.markdown(f"**@{autor}**{selo_verificado}")
+                    with col_img: st.image(img_autor, width=40)
+                    with col_txt: st.markdown(f"**@{autor}**{selo_verificado}")
                     
                     with col_btn_seg:
                         if autor != user_atual["username"] and id_autor is not None:
                             try:
                                 ja_segue = supabase.table("seguidores").select("*").eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor).execute()
                                 if ja_segue.data:
-                                    if st.button("Seguindo ✓", key=f"unfol_{v['id']}", use_container_width=True):
+                                    if st.button("Seguindo ✓", key=f"unfol_{chave_componente}", use_container_width=True):
                                         supabase.table("seguidores").delete().eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor).execute()
                                         st.rerun()
                                 else:
-                                    if st.button("Seguir ➕", key=f"fol_{v['id']}", use_container_width=True, type="primary"):
+                                    if st.button("Seguir ➕", key=f"fol_{chave_componente}", use_container_width=True, type="primary"):
                                         supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor}).execute()
                                         st.rerun()
                             except: pass
@@ -167,20 +160,64 @@ else:
                     st.caption(v["titulo"])
                     st.video(video_url)
                     
-                    # Botões de Ação (Curtir e Excluir)
                     col_lk, col_del = st.columns([1, 1])
                     likes = v.get("curtidas", 0)
                     with col_lk:
-                        if st.button(f"❤️ {likes} Curtidas", key=f"lk_{v['id']}"):
-                            supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("id", v["id"]).execute()
+                        if st.button(f"❤️ {likes} Curtidas", key=f"lk_{chave_componente}"):
+                            try:
+                                supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("url_video", video_url).execute()
+                            except:
+                                if "id" in v: supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("id", v["id"]).execute()
                             st.rerun()
                     
                     with col_del:
                         if autor == user_atual["username"]:
-                            if st.button("Excluir Vídeo 🗑️", key=f"del_{v['id']}", help="Clique para deletar permanentemente"):
-                                supabase.table("feed_videos").delete().eq("id", v["id"]).execute()
+                            if st.button("Excluir Vídeo 🗑️", key=f"del_{chave_componente}"):
+                                try:
+                                    supabase.table("feed_videos").delete().eq("url_video", video_url).execute()
+                                except:
+                                    if "id" in v: supabase.table("feed_videos").delete().eq("id", v["id"]).execute()
                                 st.success("Vídeo removido!")
                                 st.rerun()
+
+                    # 💬 SEÇÃO DE COMENTÁRIOS COM LINKS AUTOMÁTICOS
+                    total_coment = 0
+                    lista_comentarios = []
+                    try:
+                        res_c = supabase.table("comentarios_videos").select("*").eq("id_video", str(video_url)).execute()
+                        if res_c.data:
+                            lista_comentarios = res_c.data
+                            total_coment = len(res_c.data)
+                    except:
+                        pass
+
+                    with st.expander(f"💬 Comentários ({total_coment})"):
+                        novo_coment = st.text_input("Escreva um comentário...", key=f"in_cm_{chave_componente}", placeholder="O que achou desse edit?")
+                        if st.button("Comentar 🚀", key=f"btn_cm_{chave_componente}"):
+                            if novo_coment.strip():
+                                try:
+                                    supabase.table("comentarios_videos").insert({
+                                        "id_video": str(video_url),
+                                        "username_autor": user_atual["username"],
+                                        "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
+                                        "comentario": novo_coment.strip()
+                                    }).execute()
+                                    st.success("Comentário publicado!")
+                                    st.rerun()
+                                except Exception as err:
+                                    st.error(f"Erro ao salvar: {err}")
+
+                        st.markdown("---")
+                        if lista_comentarios:
+                            for c in reversed(lista_comentarios):
+                                c_col1, c_col2 = st.columns([1, 6])
+                                with c_col1: st.image(c.get("avatar_autor") or FOTO_PADRAO, width=30)
+                                with c_col2:
+                                    st.markdown(f"**@{c['username_autor']}**")
+                                    st.write(c["comentario"])
+                                st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+                        else:
+                            st.caption("Nenhum comentário ainda. Seja o primeiro!")
                                 
                     st.markdown("---")
         except Exception as e: st.error(f"Erro ao carregar o feed: {e}")
@@ -278,4 +315,4 @@ else:
                                 st.success("Enviado!")
                         else: st.error("Não encontrado.")
                     except: st.error("Erro.")
-                        
+    
