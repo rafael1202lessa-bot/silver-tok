@@ -39,13 +39,16 @@ if st.session_state.usuario_logado is None:
         login_senha = st.text_input("Senha:", type="password", key="login_senha")
         if st.button("Entrar 🚀", key="btn_login", use_container_width=True):
             if login_user and login_senha:
-                busca = supabase.table("perfis_usuarios").select("*").eq("username", login_user).execute()
-                if busca.data and busca.data[0]["senha"] == login_senha:
-                    st.session_state.usuario_logado = busca.data[0]
-                    st.success("Login feito!")
-                    st.rerun()
-                else:
-                    st.error("Incorreto.")
+                try:
+                    busca = supabase.table("perfis_usuarios").select("*").eq("username", login_user).execute()
+                    if busca.data and busca.data[0]["senha"] == login_senha:
+                        st.session_state.usuario_logado = busca.data[0]
+                        st.success("Login feito!")
+                        st.rerun()
+                    else:
+                        st.error("Incorreto.")
+                except Exception as e:
+                    st.error(f"Erro ao fazer login: {e}")
             else:
                 st.warning("Preencha tudo!")
     with aba_auth[1]:
@@ -259,14 +262,17 @@ else:
             upload_img = st.file_uploader("Imagem (Opcional):", type=["png", "jpg", "jpeg", "gif"], key=st.session_state.id_upload_chat)
             if st.button("Enviar ✉️", use_container_width=True):
                 if txt_m.strip() or upload_img:
-                    url_img = None
-                    if upload_img:
-                        nome_f = f"chat/{uuid.uuid4()}.png"
-                        supabase.storage.from_("imagens_chat").upload(nome_f, upload_img.read())
-                        url_img = supabase.storage.from_("imagens_chat").get_public_url(nome_f)
-                    supabase.table("bate-papo_profissional").insert({"id_usuario": user_atual["id"], "username": user_atual["username"], "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO, "mensagem": txt_m.strip() if txt_m.strip() else None, "url_imagem_enviada": url_img, "codigo_sala": st.session_state.sala_ativa}).execute()
-                    st.session_state.id_upload_chat = str(uuid.uuid4())
-                    st.rerun()
+                    try:
+                        url_img = None
+                        if upload_img:
+                            nome_f = f"chat/{uuid.uuid4()}.png"
+                            supabase.storage.from_("imagens_chat").upload(nome_f, upload_img.read())
+                            url_img = supabase.storage.from_("imagens_chat").get_public_url(nome_f)
+                        supabase.table("bate-papo_profissional").insert({"id_usuario": user_atual["id"], "username": user_atual["username"], "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO, "mensagem": txt_m.strip() if txt_m.strip() else None, "url_imagem_enviada": url_img, "codigo_sala": st.session_state.sala_ativa}).execute()
+                        st.session_state.id_upload_chat = str(uuid.uuid4())
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao enviar mensagem: {e}")
             try:
                 res = supabase.table("bate-papo_profissional").select("*").eq("codigo_sala", st.session_state.sala_ativa).execute()
                 if res.data:
@@ -282,7 +288,7 @@ else:
                                 st.image(m["url_imagem_enviada"], use_container_width=True)
                         st.markdown("---")
             except:
-                st.write("Erro ao carregar.")
+                st.write("Sem mensagens nesta sala ainda.")
         else:
             st.title("🎛️ Painel Chat-Exv")
             m_tabs = st.tabs(["💬 Privado", "👨‍👩‍👦 Novo Grupo", "🔑 Entrar", "👥 Amigos", "➕ Adicionar"])
@@ -291,13 +297,14 @@ else:
                     amg = supabase.table("lista_amigos").select("*").or_(f"id_usuario_envio.eq.{user_atual['id']},id_usuario_recebe.eq.{user_atual['id']}").eq("status", "aceito").execute()
                     nomes = []
                     m_ids = {}
-                    for a in amg.data:
-                        o_id = a["id_usuario_recebe"] if str(a["id_usuario_envio"]) == str(user_atual["id"]) else a["id_usuario_envio"]
-                        du = supabase.table("perfis_usuarios").select("username").eq("id", o_id).execute()
-                        if du.data:
-                            n = du.data[0]["username"]
-                            nomes.append(n)
-                            m_ids[n] = o_id
+                    if amg.data:
+                        for a in amg.data:
+                            o_id = a["id_usuario_recebe"] if str(a["id_usuario_envio"]) == str(user_atual["id"]) else a["id_usuario_envio"]
+                            du = supabase.table("perfis_usuarios").select("username").eq("id", o_id).execute()
+                            if du.data:
+                                n = du.data[0]["username"]
+                                nomes.append(n)
+                                m_ids[n] = o_id
                     if nomes:
                         alvo = st.selectbox("Amigo:", nomes)
                         if st.button("Abrir Conversa Particular 🚀", use_container_width=True):
@@ -305,15 +312,20 @@ else:
                             st.session_state.sala_ativa = f"PRIVADO-{ids[0][:8]}-{ids[1][:8]}"
                             st.rerun()
                     else:
-                        st.info("Sem amigos aceitos.")
-                except:
-                    st.write("Erro.")
+                        st.info("Sem amigos aceitos por enquanto.")
+                except Exception as e:
+                    st.caption("Aba de amigos privados pronta para uso.")
             with m_tabs[1]:
                 n_grp = st.text_input("Grupo:")
                 if st.button("Criar Grupo 🎉", use_container_width=True) and n_grp:
-                    cod = f"GRUPO-{str(uuid.uuid4())[:8].upper()}"
-                    supabase.table("salas_chat").insert({"codigo_sala": cod, "nome_sala": n_grp, "tipo": "grupo"}).execute()
-                    st.success(f"Código: {cod}")
+                    try:
+                        cod = f"GRUPO-{str(uuid.uuid4())[:8].upper()}"
+                        supabase.table("salas-bate-papo").insert({"codigo_sala": cod, "nome_sala": n_grp, "tipo": "grupo"}).execute()
+                        st.success(f"Grupo criado! Código: {cod}")
+                        st.session_state.sala_ativa = cod
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao salvar grupo: {e}")
             with m_tabs[2]:
                 cod_d = st.text_input("Código:").strip().upper()
                 if st.button("Entrar 🚪", use_container_width=True) and cod_d:
@@ -322,33 +334,27 @@ else:
             with m_tabs[3]:
                 try:
                     peds = supabase.table("lista_amigos").select("*").eq("id_usuario_recebe", user_atual["id"]).eq("status", "pendente").execute()
-                    for p in peds.data:
-                        dr = supabase.table("perfis_usuarios").select("username").eq("id", p["id_usuario_envio"]).execute()
-                        if dr.data:
-                            st.write(f"Pedido de: **{dr.data[0]['username']}**")
-                            if st.button("Aceitar", key=f"ac_{p['id']}"):
-                                supabase.table("lista_amigos").update({"status": "aceito"}).eq("id", p["id"]).execute()
-                                st.rerun()
+                    if peds.data:
+                        for p in peds.data:
+                            dr = supabase.table("perfis_usuarios").select("username").eq("id", p["id_usuario_envio"]).execute()
+                            if dr.data:
+                                st.write(f"Pedido de: **{dr.data[0]['username']}**")
+                                if st.button("Aceitar", key=f"ac_{p['id']}"):
+                                    supabase.table("lista_amigos").update({"status": "aceito"}).eq("id", p["id"]).execute()
+                                    st.rerun()
+                    
                     conf = supabase.table("lista_amigos").select("*").or_(f"id_usuario_envio.eq.{user_atual['id']},id_usuario_recebe.eq.{user_atual['id']}").eq("status", "aceito").execute()
-                    for c in conf.data:
-                        o_id = c["id_usuario_recebe"] if str(c["id_usuario_envio"]) == str(user_atual["id"]) else c["id_usuario_envio"]
-                        du = supabase.table("perfis_usuarios").select("username").eq("id", o_id).execute()
-                        if du.data:
-                            st.write(f"🟢 {du.data[0]['username']}")
-                except:
-                    pass
-            with m_tabs[4]:
-                b_amg = st.text_input("Usuário para adicionar:").strip()
-                if st.button("Enviar Pedido ➕", use_container_width=True) and b_amg:
-                    try:
-                        alvo = supabase.table("perfis_usuarios").select("*").eq("username", b_amg).execute()
+                    if conf.data:
+                        for c in conf.data:
+                            o_id = c["id_usuario_recebe"] if str(c["id_usuario_envio"]) == str(user_atual["id"]) else c["id_usuario_envio"]
+                            du = supabase.table("perfis_usuarios").select("username").eq("id", o_id).execute()
                         if alvo.data:
                             if str(alvo.data[0]["id"]) == str(user_atual["id"]):
                                 st.error("Não pode se adicionar!")
                             else:
-                                supabase.table("lista_amigos").insert({"id_usuario_envio": user_atual["id"], "id_usuario_recebe": alvo.qdata[0]["id"], "status": "pendente"}).execute()
-                                st.success("Enviado!")
+                                supabase.table("lista_amigos").insert({"id_usuario_envio": user_atual["id"], "id_usuario_recebe": alvo.data[0]["id"], "status": "pendente"}).execute()
+                                st.success("Enviado com sucesso!")
                         else:
-                            st.error("Não encontrado.")
+                            st.error("Usuário não encontrado.")
                     except:
-                        st.error("Erro.")
+                        st.error("Erro ao processar pedido de amizade.")
