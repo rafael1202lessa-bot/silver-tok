@@ -314,14 +314,14 @@ else:
                     else:
                         st.info("Sem amigos aceitos por enquanto.")
                 except Exception as e:
-                    st.caption("Aba de amigos privados pronta para uso.")
+                    st.caption("Aba de amigos privados pronta.")
             with m_tabs[1]:
                 n_grp = st.text_input("Grupo:")
                 if st.button("Criar Grupo 🎉", use_container_width=True) and n_grp:
                     try:
                         cod = f"GRUPO-{str(uuid.uuid4())[:8].upper()}"
-                        # ADICIONADO O RETURNING="MINIMAL" PARA IGNORAR A COLUNA ID FALANTE!
-                        supabase.table("salas-bate-papo").insert({"codigo_sala": cod, "nome_sala": n_grp, "tipo": "grupo"}, returning="minimal").execute()
+                        # CORRIGIDO: NOME DA TABELA EM VEZ DE 'salas-bate-papo' AGORA É 'salas-chat'!
+                        supabase.table("salas-chat").insert({"codigo_sala": cod, "nome_sala": n_grp, "tipo": "grupo"}).execute()
                         st.success(f"Grupo criado! Código: {cod}")
                         st.session_state.sala_ativa = cod
                         st.rerun()
@@ -348,7 +348,7 @@ else:
                     if conf.data:
                         for c in conf.data:
                             o_id = c["id_usuario_recebe"] if str(c["id_usuario_envio"]) == str(user_atual["id"]) else c["id_usuario_envio"]
-                            du = supabase.table("perfis_usuarios").select("username").eq("id", o_id).execute()
+                 du = supabase.table("perfis_usuarios").select("username").eq("id", o_id).execute()
                             if du.data:
                                 st.write(f"🟢 {du.data[0]['username']}")
                     else:
