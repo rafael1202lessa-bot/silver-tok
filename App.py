@@ -75,10 +75,19 @@ else:
             url_v = st.text_input("Link do Vídeo (YouTube ou MP4 direto):", placeholder="https://www.youtube.com/watch?v=...")
             if st.button("Publicar 🚀", use_container_width=True):
                 if url_v.strip() and titulo_v.strip():
+                    link_final = url_v.strip()
+                    
+                    # Correção automática de links Shorts (converte /shorts/ para watch?v=)
+                    if "youtube.com/shorts/" in link_final:
+                        link_final = link_final.replace("youtube.com/shorts/", "youtube.com/watch?v=")
+                    elif "youtu.be/" in link_final and "shorts" in link_final:
+                        # Trata links móveis compartilhados de shorts
+                        link_final = link_final.replace("youtu.be/", "youtube.com/watch?v=")
+
                     try:
                         supabase.table("feed_videos").insert({
                             "titulo": titulo_v.strip(),
-                            "url_video": url_v.strip(),
+                            "url_video": link_final,
                             "username_autor": user_atual["username"],
                             "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                             "curtidas": 0
@@ -86,16 +95,24 @@ else:
                         st.success("Postado com sucesso!")
                         st.rerun()
                     except Exception as e: st.error(f"Erro ao salvar no feed: {e}")
-                else: st.warning("Preencha todos os campos!")
+                else: w = st.warning("Preencha todos os campos!")
         try:
             dados = supabase.table("feed_videos").select("*").execute()
             if dados.data:
                 for v in reversed(dados.data):
+                    autor = v.get('username_autor', 'Membro')
+                    img_autor = v.get('avatar_autor') or FOTO_PADRAO
+
+                    # Correção para os vídeos antigos que já foram salvos errados no banco
+                    video_url = v["url_video"]
+                    if "shorts/" in video_url:
+                        video_url = video_url.replace("shorts/", "watch?v=")
+
                     col_img, col_txt = st.columns([1, 6])
-                    with col_img: st.image(v.get("avatar_autor") or FOTO_PADRAO, width=40)
-                    with col_txt: st.markdown(f"**@{v.get('username_autor', 'Membro')}**")
+                    with col_img: st.image(img_autor, width=40)
+                    with col_txt: st.markdown(f"**@{autor}**")
                     st.caption(v["titulo"])
-                    st.video(v["url_video"])
+                    st.video(video_url)
                     likes = v.get("curtidas", 0)
                     if st.button(f"❤️ {likes} Curtidas", key=f"lk_{v['id']}"):
                         supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("id", v["id"]).execute()
@@ -183,7 +200,7 @@ else:
                         o_id = c["id_usuario_recebe"] if str(c["id_usuario_envio"]) == str(user_atual["id"]) else c["id_usuario_envio"]
                         du = supabase.table("perfis_usuarios").select("username").eq("id", o_id).execute()
                         if du.data: st.write(f"🟢 {du.data[0]['username']}")
-                except: st.caption("Erro.")
+                except: pass
             with m_tabs[4]:
                 b_amg = st.text_input("Usuário para adicionar:").strip()
                 if st.button("Enviar Pedido ➕", use_container_width=True) and b_amg:
@@ -196,4 +213,4 @@ else:
                                 st.success("Enviado!")
                         else: st.error("Não encontrado.")
                     except: st.error("Erro.")
-                    
+                        
