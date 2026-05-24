@@ -348,7 +348,9 @@ else:
 
                         total_coment = 0
                         lista_comentarios = res_c.data
-                                total_coment = len(res_c.data)
+                                               try:
+                            res_c = supabase.table("comentarios_videos").select("*").eq("id_video", str(video_url)).execute()
+                            total_coment = len(res_c.data)
                         except:
                             pass
 
