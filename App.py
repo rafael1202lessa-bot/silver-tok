@@ -120,7 +120,6 @@ else:
                     if "shorts/" in video_url:
                         video_url = video_url.replace("shorts/", "watch?v=")
 
-                    # Gerar uma chave única e segura independente da estrutura da tabela antiga
                     id_unico_video = v.get("id") or v.get("id_video") or hash(video_url)
                     chave_componente = f"vid_{id_unico_video}_{idx}"
 
@@ -180,7 +179,6 @@ else:
                                 st.success("Vídeo removido!")
                                 st.rerun()
 
-                    # 💬 SEÇÃO DE COMENTÁRIOS COM LINKS AUTOMÁTICOS
                     total_coment = 0
                     lista_comentarios = []
                     try:
@@ -210,10 +208,28 @@ else:
                         st.markdown("---")
                         if lista_comentarios:
                             for c in reversed(lista_comentarios):
+                                autor_c = c['username_autor']
+                                selo_comentario = ""
+                                
+                                # Verificação dinâmica do selo para os comentários
+                                try:
+                                    b_aut_c = supabase.table("perfis_usuarios").select("id").eq("username", autor_c).execute()
+                                    if b_aut_c.data:
+                                        id_aut_c = b_aut_c.data[0]["id"]
+                                        c_seg_c = supabase.table("seguidores").select("*", count="exact").eq("id_seguido", id_aut_c).execute()
+                                        qtd_seg_c = c_seg_c.count if (hasattr(c_seg_c, "count") and c_seg_c.count is not None) else len(c_seg_c.data)
+                                        
+                                        if autor_c == NOME_DEVELOPER:
+                                            selo_comentario = " 👑`DEV`"
+                                        elif qtd_seg_c >= 1000:
+                                            selo_comentario = " ✔️"
+                                except:
+                                    pass
+
                                 c_col1, c_col2 = st.columns([1, 6])
                                 with c_col1: st.image(c.get("avatar_autor") or FOTO_PADRAO, width=30)
                                 with c_col2:
-                                    st.markdown(f"**@{c['username_autor']}**")
+                                    st.markdown(f"**@{autor_c}**{selo_comentario}")
                                     st.write(c["comentario"])
                                 st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
                         else:
@@ -284,35 +300,5 @@ else:
                     st.success(f"Código: {cod}")
             with m_tabs[2]:
                 cod_d = st.text_input("Código:").strip().upper()
-                if st.button("Entrar 🚪", use_container_width=True) and cod_d:
-                    st.session_state.sala_ativa = cod_d
-                    st.rerun()
-            with m_tabs[3]:
-                try:
-                    peds = supabase.table("lista_amigos").select("*").eq("id_usuario_recebe", user_atual["id"]).eq("status", "pendente").execute()
-                    for p in peds.data:
-                        dr = supabase.table("perfis_usuarios").select("username").eq("id", p["id_usuario_envio"]).execute()
-                        if dr.data:
-                            st.write(f"Pedido de: **{dr.data[0]['username']}**")
-                            if st.button("Aceitar", key=f"ac_{p['id']}"):
-                                supabase.table("lista_amigos").update({"status": "aceito"}).eq("id", p["id"]).execute()
-                                st.rerun()
-                    conf = supabase.table("lista_amigos").select("*").or_(f"id_usuario_envio.eq.{user_atual['id']},id_usuario_recebe.eq.{user_atual['id']}").eq("status", "aceito").execute()
-                    for c in conf.data:
-                        o_id = c["id_usuario_recebe"] if str(c["id_usuario_envio"]) == str(user_atual["id"]) else c["id_usuario_envio"]
-                        du = supabase.table("perfis_usuarios").select("username").eq("id", o_id).execute()
-                        if du.data: st.write(f"🟢 {du.data[0]['username']}")
-                except: pass
-            with m_tabs[4]:
-                b_amg = st.text_input("Usuário para adicionar:").strip()
-                if st.button("Enviar Pedido ➕", use_container_width=True) and b_amg:
-                    try:
-                        alvo = supabase.table("perfis_usuarios").select("*").eq("username", b_amg).execute()
-                        if alvo.data:
-                            if str(alvo.data[0]["id"]) == str(user_atual["id"]): st.error("Não pode se adicionar!")
-                            else:
-                                supabase.table("lista_amigos").insert({"id_usuario_envio": user_atual["id"], "id_usuario_recebe": alvo.data[0]["id"], "status": "pendente"}).execute()
-                                st.success("Enviado!")
-                        else: st.error("Não encontrado.")
-                    except: st.error("Erro.")
-    
+                if st.button("Entrar 🚪",
+                                                                                       
