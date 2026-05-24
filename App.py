@@ -127,11 +127,9 @@ else:
                         # Lógica de Seguir (Não pode seguir a si mesmo)
                         if autor != user_atual["username"]:
                             try:
-                                # Achar o ID do autor do post
                                 b_autor = supabase.table("perfis_usuarios").select("id").eq("username", autor).execute()
                                 if b_autor.data:
                                     id_autor = b_autor.data[0]["id"]
-                                    # Verificar se já segue
                                     ja_segue = supabase.table("seguidores").select("*").eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor).execute()
                                     
                                     if ja_segue.data:
@@ -140,7 +138,7 @@ else:
                                             st.rerun()
                                     else:
                                         if st.button("Seguir ➕", key=f"fol_{v['id']}", use_container_width=True, type="primary"):
-                                            supabase.table("seguidores").insert({"id_seguidor", user_atual["id"], "id_seguido", id_autor}).execute()
+                                            supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor}).execute()
                                             st.rerun()
                             except: pass
 
@@ -259,4 +257,4 @@ else:
                                 st.success("Enviado!")
                         else: st.error("Não encontrado.")
                     except: st.error("Erro.")
-                                  
+                    
