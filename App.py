@@ -247,7 +247,8 @@ else:
                     st.markdown("---")
         except Exception as e:
             st.error(f"Erro ao carregar o feed: {e}")
-                    with aba_chat:
+            
+       with aba_chat:
         if st.session_state.sala_ativa is not None:
             st.title("💬 Sala Ativa")
             st.code(f"Código: {st.session_state.sala_ativa}")
