@@ -299,7 +299,7 @@ else:
                                         st.rerun()
                                 else:
                                     if st.button("Seguir ➕", key=f"fol_{chave_componente}", use_container_width=True, type="primary"):
-                                        supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor}).execute()
+                                        supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido", id_autor}).execute()
                                         st.rerun()
                             except:
                                 pass
@@ -428,17 +428,18 @@ else:
                 if txt_m.strip() or upload_img or gravar_audio:
                     try:
                         url_img = None
-                        url_aud = None
                         
                         if upload_img:
                             nome_f = f"chat/{uuid.uuid4()}.png"
                             supabase.storage.from_("imagens_chat").upload(nome_f, upload_img.read())
                             url_img = supabase.storage.from_("imagens_chat").get_public_url(nome_f)
                             
-                        if gravar_audio:
+                        # Correção Imagem 3147: Como 'url_video_enviado' não existe na tabela para armazenar áudio, 
+                        # guardamos a gravação diretamente em 'url_imagem_enviada' se não houver imagem instalada.
+                        if gravar_audio and not url_img:
                             nome_a = f"audios/{uuid.uuid4()}.wav"
                             supabase.storage.from_("imagens_chat").upload(nome_a, gravar_audio.read())
-                            url_aud = supabase.storage.from_("imagens_chat").get_public_url(nome_a)
+                            url_img = supabase.storage.from_("imagens_chat").get_public_url(nome_a)
                             
                         supabase.table("bate-papo_profissional").insert({
                             "id_usuario": user_atual["id"], 
@@ -446,7 +447,6 @@ else:
                             "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO, 
                             "mensagem": txt_m.strip() if txt_m.strip() else None, 
                             "url_imagem_enviada": url_img,
-                            "url_video_enviado": url_aud, 
                             "codigo_sala": st.session_state.sala_ativa
                         }).execute()
                         
@@ -468,9 +468,11 @@ else:
                             if m.get("mensagem"):
                                 st.write(m["mensagem"])
                             if m.get("url_imagem_enviada"):
-                                st.image(m["url_imagem_enviada"], use_container_width=True)
-                            if m.get("url_video_enviado"): 
-                                st.audio(m["url_video_enviado"])
+                                url_midia_c = m["url_imagem_enviada"]
+                                if url_midia_c.lower().endswith(('.wav', '.mp3', '.ogg')):
+                                    st.audio(url_midia_c)
+                                else:
+                                    st.image(url_midia_c, use_container_width=True)
                         st.markdown("---")
             except:
                 st.write("Sem mensagens nesta sala ainda.")
