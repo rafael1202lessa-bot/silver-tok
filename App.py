@@ -24,10 +24,10 @@ CHAVE_SECRETA = "ChatPrivado2026"
 FOTO_PADRAO = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
 NOME_DEVELOPER = "Rafael_oficial"
 
-# Link direto da sua logo ST hospedada
-URL_LOGO_ST = "https://lh3.googleusercontent.com/d/1XlR7P3t_8p6vO1L3N4D3R_hVn6tS_g6b"
+# Link direto seguro da logo ST (Hospedagem estável)
+URL_LOGO_ST = "https://i.ibb.co/vYm6gP9/ST-Logo.png"
 
-# Função para exibir o logo de forma centralizada e bonita usando o link
+# Função para exibir o logo de forma centralizada e bonita
 def exibir_logo():
     try:
         st.image(URL_LOGO_ST, use_container_width=True)
@@ -161,7 +161,7 @@ else:
                             st.caption(vid["titulo"])
                             url_midia = vid["url_video"]
                             if url_midia.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
-                                East = st.image(url_midia, use_container_width=True)
+                                st.image(url_midia, use_container_width=True)
                             else:
                                 st.video(url_midia)
                             st.markdown(f"❤️ {vid.get('curtidas', 0)} Curtidas")
@@ -251,7 +251,7 @@ else:
                                     }).execute()
                                     
                                 st.success("Foto postada com sucesso!")
-                                st.rerun()
+                                r=st.rerun()
                             except Exception as e:
                                 st.error(f"Erro ao fazer upload da foto: {e}")
                         else:
@@ -309,7 +309,7 @@ else:
                                             st.rerun()
                                     else:
                                         if st.button("Seguir ➕", key=f"fol_{chave_componente}", use_container_width=True, type="primary"):
-                                            supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido", id_autor}).execute()
+                                            supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor}).execute()
                                             st.rerun()
                                 except:
                                     pass
@@ -382,7 +382,7 @@ else:
                                             if autor_c == NOME_DEVELOPER:
                                                 selo_comentario = " 👑`DEV`"
                                             elif qtd_seg_c >= 1000:
-                                                selo_verificado = " ✔️"
+                                                selo_comentario = " ✔️"
                                     except:
                                         pass
 
