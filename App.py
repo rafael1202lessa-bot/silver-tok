@@ -344,7 +344,7 @@ else:
 
                                     c_col1, c_col2 = st.columns([1, 6])
                                     with c_col1:
-                                        st.markdown(f"**@{autor}**{selo_verificado}") # Nome dele
+                                         st.markdown(f"**@{autor}**{selo_verificado}") # Nome dele
                         
                         with col_perfil_btn:
                             # Botão dedicado para abrir o perfil do outro lado
