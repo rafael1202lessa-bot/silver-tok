@@ -139,7 +139,6 @@ else:
                                     supabase.table("seguidores").delete().eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor_vis).execute()
                                     st.rerun()
                             else:
-                                # Corrigido de ',' para ':' aqui
                                 if st.button("Seguir ➕", key="btn_fol_perfil", use_container_width=True, type="primary"):
                                     supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor_vis}).execute()
                                     st.rerun()
@@ -311,7 +310,6 @@ else:
                                             supabase.table("seguidores").delete().eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor).execute()
                                             st.rerun()
                                     else:
-                                        # Corrigido de ',' para ':' aqui também
                                         if st.button("Seguir ➕", key=f"fol_{chave_componente}", use_container_width=True, type="primary"):
                                             supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor}).execute()
                                             st.rerun()
@@ -347,10 +345,12 @@ else:
                                     st.rerun()
 
                         total_coment = 0
-                        lista_comentarios = res_c.data
-                                               try:
+                        lista_comentarios = []
+                        try:
                             res_c = supabase.table("comentarios_videos").select("*").eq("id_video", str(video_url)).execute()
-                            total_coment = len(res_c.data)
+                            if res_c.data:
+                                lista_comentarios = res_c.data
+                                total_coment = len(res_c.data)
                         except:
                             pass
 
@@ -443,7 +443,8 @@ else:
                             if m.get("mensagem"):
                                 st.write(m["mensagem"])
                             if m.get("url_imagem_enviada"):
-                                st.image(m["url_imagem_enviada"], use_container_width=True)
+                                m_img = m["url_imagem_enviada"]
+                                st.image(m_img, use_container_width=True)
                         st.markdown("---")
             except:
                 st.write("Sem mensagens nesta sala ainda.")
@@ -452,7 +453,7 @@ else:
             m_tabs = st.tabs(["💬 Privado", "👨‍👩‍👦 Novo Grupo", "🔑 Entrar", "👥 Amigos", "➕ Adicionar"])
             
             with m_tabs[0]:
-            try:
+                try:
                     amg = supabase.table("lista_amigos").select("*").or_(f"id_usuario_envio.eq.{user_atual['id']},id_usuario_recebe.eq.{user_atual['id']}").eq("status", "aceito").execute()
                     nomes = []
                     m_ids = {}
