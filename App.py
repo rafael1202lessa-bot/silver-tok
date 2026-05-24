@@ -17,14 +17,14 @@ def init_connection():
 
 supabase = init_connection()
 if supabase is None:
-    st.error("Erro de conexão.")
+    st.error("Erro de conexão com o banco de dados.")
     st.stop()
 
 CHAVE_SECRETA = "ChatPrivado2026"
 FOTO_PADRAO = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
 NOME_DEVELOPER = "Rafael_oficial"
 
-# Substituído por um título nativo limpo para garantir que nunca apareça imagem quebrada
+# Título nativo em texto e emojis - Sem imagens externas para evitar bugs visuais
 def exibir_logo():
     st.markdown("<h1 style='text-align: center;'>🎬 Silver Tok & Chat 🔐</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: gray;'>Sua plataforma de vídeos e conversas privadas</p>", unsafe_allow_html=True)
@@ -53,20 +53,20 @@ if st.session_state.usuario_logado is None:
                     busca = supabase.table("perfis_usuarios").select("*").eq("username", login_user).execute()
                     if busca.data and busca.data[0]["senha"] == login_senha:
                         st.session_state.usuario_logado = busca.data[0]
-                        st.success("Login feito!")
+                        st.success("Login feito com sucesso!")
                         st.rerun()
                     else:
-                        st.error("Incorreto.")
+                        st.error("Usuário ou senha incorretos.")
                 except Exception as e:
                     st.error(f"Erro ao fazer login: {e}")
             else:
-                st.warning("Preencha tudo!")
+                st.warning("Preencha todos os campos!")
                 
     with aba_auth[1]:
         st.subheader("Crie seu Perfil")
-        cad_user = st.text_input("Escolha Usuário:", key="cad_user").strip()
-        cad_senha = st.text_input("Crie Senha:", type="password", key="cad_senha")
-        cad_foto = st.file_uploader("Foto de Perfil:", type=["png", "jpg", "jpeg"], key="cad_foto")
+        cad_user = st.text_input("Escolha um Usuário:", key="cad_user").strip()
+        cad_senha = st.text_input("Crie uma Senha:", type="password", key="cad_senha")
+        cad_foto = st.file_uploader("Foto de Perfil (Opcional):", type=["png", "jpg", "jpeg"], key="cad_foto")
         codigo_convite = st.text_input("🔑 Código Secreto:", type="password", key="codigo_convite")
         if st.button("Cadastrar Conta 🎉", key="btn_cad", use_container_width=True):
             if cad_user and cad_senha and codigo_convite == CHAVE_SECRETA:
@@ -77,11 +77,11 @@ if st.session_state.usuario_logado is None:
                         supabase.storage.from_("imagens_chat").upload(nome_f, cad_foto.read())
                         url_foto = supabase.storage.from_("imagens_chat").get_public_url(nome_f)
                     supabase.table("perfis_usuarios").insert({"username": cad_user, "senha": cad_senha, "url_foto_perfil": url_foto}).execute()
-                    st.success("Criado! Faça login.")
+                    st.success("Conta criada! Agora faça o seu login.")
                 except:
-                    st.error("Erro ou usuário já existe.")
+                    st.error("Erro ao cadastrar ou o usuário já existe.")
             else:
-                st.warning("Verifique os campos!")
+                st.warning("Verifique se preencheu tudo e digitou o código secreto correto!")
 else:
     user_atual = st.session_state.usuario_logado
     total_seg = 0
@@ -146,8 +146,9 @@ else:
                                     supabase.table("seguidores").delete().eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor_vis).execute()
                                     st.rerun()
                             else:
+                                # CORRIGIDO: Modificado de vírgula para dois-pontos corrigindo o bug visual
                                 if st.button("Seguir ➕", key="btn_fol_perfil", use_container_width=True, type="primary"):
-                                    supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido", id_autor_vis}).execute()
+                                    supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor_vis}).execute()
                                     st.rerun()
                                     
                     st.markdown("### 🎬 Publicações")
@@ -335,7 +336,7 @@ else:
                                     except:
                                         if "id" in v:
                                             supabase.table("feed_videos").delete().eq("id", v["id"]).execute()
-                                    st.success("Removido!")
+                                    st.success("Removido com sucesso!")
                                     st.rerun()
 
                         total_coment = 0
@@ -349,7 +350,7 @@ else:
                             pass
 
                         with st.expander(f"💬 Comentários ({total_coment})"):
-                            novo_coment = st.text_input("Escreva um comentário...", key=f"in_cm_{chave_componente}", placeholder="O que achou?")
+                            novo_coment = st.text_input("Escreva um comentário...", key=f"in_cm_{chave_componente}", placeholder="O que você achou?")
                             if st.button("Comentar 🚀", key=f"btn_cm_{chave_componente}"):
                                 if novo_coment.strip():
                                     try:
@@ -359,7 +360,7 @@ else:
                                             "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                                             "comentario": novo_coment.strip()
                                         }).execute()
-                                        st.success("Publicado!")
+                                        st.success("Comentário publicado!")
                                         st.rerun()
                                     except Exception as err:
                                         st.error(f"Erro de envio.")
@@ -399,7 +400,7 @@ else:
     with aba_chat:
         if st.session_state.sala_ativa is not None:
             st.title("💬 Sala Ativa")
-            st.code(f"Código: {st.session_state.sala_ativa}")
+            st.code(f"Código da Sala: {st.session_state.sala_ativa}")
             if st.button("⬅️ Voltar ao Menu", use_container_width=True):
                 st.session_state.sala_ativa = None
                 st.rerun()
@@ -460,7 +461,7 @@ else:
                                 nomes.append(n)
                                 m_ids[n] = o_id
                     if nomes:
-                        alvo = st.selectbox("Amigo:", nomes)
+                        alvo = st.selectbox("Escolha um amigo:", nomes)
                         if st.button("Abrir Conversa Particular 🚀", use_container_width=True):
                             ids = sorted([str(user_atual["id"]), str(m_ids[alvo])])
                             st.session_state.sala_ativa = f"PRIVADO-{ids[0][:8]}-{ids[1][:8]}"
@@ -471,7 +472,7 @@ else:
                     st.caption("Aba de amigos privados pronta.")
                     
             with m_tabs[1]:
-                n_grp = st.text_input("Grupo:")
+                n_grp = st.text_input("Nome do Grupo:")
                 if st.button("Criar Grupo 🎉", use_container_width=True) and n_grp:
                     try:
                         cod = f"GRUPO-{str(uuid.uuid4())[:8].upper()}"
@@ -483,8 +484,8 @@ else:
                         st.error(f"Erro ao salvar grupo: {e}")
                         
             with m_tabs[2]:
-                cod_d = st.text_input("Código:").strip().upper()
-                if st.button("Entrar 🚪", use_container_width=True) and cod_d:
+                cod_d = st.text_input("Digite o Código da Sala:").strip().upper()
+                if st.button("Entrar na Sala 🚪", use_container_width=True) and cod_d:
                     st.session_state.sala_ativa = cod_d
                     st.rerun()
                     
@@ -495,7 +496,7 @@ else:
                         for p in peds.data:
                             dr = supabase.table("perfis_usuarios").select("username").eq("id", p["id_usuario_envio"]).execute()
                             if dr.data:
-                                st.write(f"Pedido de: **{dr.data[0]['username']}**")
+                                st.write(f"Pedido de amizade de: **{dr.data[0]['username']}**")
                                 if st.button("Aceitar", key=f"ac_{p['id']}"):
                                     supabase.table("lista_amigos").update({"status": "aceito"}).eq("id", p["id"]).execute()
                                     st.rerun()
@@ -513,17 +514,18 @@ else:
                     st.caption("Nenhum amigo pendente.")
                     
             with m_tabs[4]:
-                b_amg = st.text_input("Usuário para adicionar:").strip()
-                if st.button("Enviar Pedido ➕", use_container_width=True) and b_amg:
+                b_amg = st.text_input("Nome do Usuário para adicionar:").strip()
+                if st.button("Enviar Pedido de Amizade ➕", use_container_width=True) and b_amg:
                     try:
                         alvo = supabase.table("perfis_usuarios").select("*").eq("username", b_amg).execute()
                         if alvo.data:
                             if str(alvo.data[0]["id"]) == str(user_atual["id"]):
-                                st.error("Não pode se adicionar!")
+                                st.error("Você não pode adicionar a si mesmo!")
                             else:
                                 supabase.table("lista_amigos").insert({"id_usuario_envio": user_atual["id"], "id_usuario_recebe": alvo.data[0]["id"], "status": "pendente"}).execute()
-                                st.success("Enviado com sucesso!")
+                                st.success("Pedido enviado com sucesso!")
                         else:
                             st.error("Usuário não encontrado.")
                     except:
                         st.error("Erro ao processar pedido de amizade.")
+                      
