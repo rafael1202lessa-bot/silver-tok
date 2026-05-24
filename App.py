@@ -24,14 +24,10 @@ CHAVE_SECRETA = "ChatPrivado2026"
 FOTO_PADRAO = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
 NOME_DEVELOPER = "Rafael_oficial"
 
-# LINK CORRIGIDO: Link bruto direto (raw) para renderizar a imagem corretamente sem quebrar
-URL_LOGO_ST = "https://raw.githubusercontent.com/68616661656c/img/main/3140.png"
-
+# Substituído por um título nativo limpo para garantir que nunca apareça imagem quebrada
 def exibir_logo():
-    try:
-        st.image(URL_LOGO_ST, use_container_width=True)
-    except:
-        st.title("🎬 Silver Tok & Chat 🔐")
+    st.markdown("<h1 style='text-align: center;'>🎬 Silver Tok & Chat 🔐</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: gray;'>Sua plataforma de vídeos e conversas privadas</p>", unsafe_allow_html=True)
 
 # Inicialização do estado da sessão
 if "usuario_logado" not in st.session_state:
@@ -151,7 +147,7 @@ else:
                                     st.rerun()
                             else:
                                 if st.button("Seguir ➕", key="btn_fol_perfil", use_container_width=True, type="primary"):
-                                    supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor_vis}).execute()
+                                    supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido", id_autor_vis}).execute()
                                     st.rerun()
                                     
                     st.markdown("### 🎬 Publicações")
@@ -197,7 +193,7 @@ else:
                                     "titulo": titulo_v.strip(),
                                     "url_video": link_final,
                                     "username_autor": user_atual["username"],
-                                    "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADERÃO,
+                                    "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                                     "curtidas": 0
                                 }).execute()
                                 st.success("Postado com sucesso!")
