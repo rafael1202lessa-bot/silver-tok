@@ -40,7 +40,6 @@ def apagar_mensagem(id_mensagem):
         st.toast("Mensagem apagada! 🗑️")
     except:
         st.error("Erro ao deletar.")
-
 # --- TELA DE AUTENTICAÇÃO ---
 if st.session_state.usuario_logado is None:
     st.title("🎬 Silver Tok & Chat 🔐")
@@ -54,6 +53,49 @@ if st.session_state.usuario_logado is None:
         if st.button("Entrar 🚀", key="btn_login", use_container_width=True):
             if login_user and login_senha:
                 try:
+                    busca = supabase.table("perfis_usuarios").select("*").eq("username", login_user).execute()
+                    if busca.data and busca.data[0]["senha"] == login_senha:
+                        st.session_state.usuario_logado = busca.data[0]
+                        st.success("Login realizado!")
+                        st.rerun()
+                    else:
+                        st.error("Usuário ou senha incorretos.")
+                except Exception as e:
+                    st.error("Erro técnico ao validar credenciais.")
+            else:
+                st.warning("Preencha todos os campos!")
+
+    with aba_auth[1]:
+        st.subheader("Crie seu Perfil")
+        cad_user = st.text_input("Escolha um Nome de Usuário:", key="cad_user").strip()
+        cad_senha = st.text_input("Crie uma Senha:", type="password", key="cad_senha")
+        cad_foto = st.file_uploader("Escolha sua Foto de Perfil:", type=["png", "jpg", "jpeg"], key="cad_foto")
+        codigo_convite = st.text_input("🔑 Código de Convite Secreto:", type="password", key="codigo_convite")
+        
+        if st.button("Cadastrar Conta 🎉", key="btn_cad", use_container_width=True):
+            if cad_user and cad_senha:
+                if codigo_convite != CHAVE_SECRETA:
+                    st.error("❌ Código de Convite incorreto!")
+                else:
+                    try:
+                        url_foto = FOTO_PADRAO
+                        if cad_foto:
+                            extensao = cad_foto.name.split(".")[-1]
+                            nome_arquivo = f"perfis/{uuid.uuid4()}.{extensao}"
+                            supabase.storage.from_("imagens_chat").upload(nome_arquivo, cad_foto.read())
+                            url_foto = supabase.storage.from_("imagens_chat").get_public_url(nome_arquivo)
+                        
+                        supabase.table("perfis_usuarios").insert({
+                            "username": cad_user,
+                            "senha": cad_senha,
+                            "url_foto_perfil": url_foto
+                        }).execute()
+                        st.success("Conta criada! Faça o login na primeira aba.")
+                    except:
+                        st.error("Usuário já existe ou erro no cadastro.")
+            else:
+                st.warning("Usuário e senha são obrigatórios!")
+                
                     busca = supabase.table("perfis_usuarios").select("*").eq("username", login_user).execute()
                     if busca.data and busca.data[0]["senha"] == login_senha:
                         st.session_state.usuario_logado = busca.data[0]
