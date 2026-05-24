@@ -2,6 +2,7 @@ import streamlit as st
 from supabase import create_client, Client
 import uuid
 import datetime
+import os
 
 st.set_page_config(page_title="Silver Tok v2.0", page_icon="🎬", layout="centered")
 
@@ -24,6 +25,16 @@ CHAVE_SECRETA = "ChatPrivado2026"
 FOTO_PADRAO = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
 NOME_DEVELOPER = "Rafael_oficial"
 
+# Função para exibir o logo de forma centralizada e bonita
+def exibir_logo():
+    if os.path.exists("logo.png"):
+        st.image("logo.png", use_container_width=True)
+    elif os.path.exists("3140.png"):
+        st.image("3140.png", use_container_width=True)
+    else:
+        # Caso você ainda não tenha subido o arquivo, deixa apenas o título em texto
+        st.title("🎬 Silver Tok & Chat 🔐")
+
 # Inicialização do estado da sessão
 if "usuario_logado" not in st.session_state:
     st.session_state.usuario_logado = None
@@ -35,7 +46,9 @@ if "perfil_visitado" not in st.session_state:
     st.session_state.perfil_visitado = None
 
 if st.session_state.usuario_logado is None:
-    st.title("🎬 Silver Tok & Chat 🔐")
+    # Exibe o logo do Luffy no topo da tela de login
+    exibir_logo()
+    
     aba_auth = st.tabs(["Fazer Login", "Criar Nova Conta"])
     with aba_auth[0]:
         st.subheader("Acesse sua Conta")
@@ -148,10 +161,11 @@ else:
                     if v_dados.data:
                         for idx_v, vid in enumerate(reversed(v_dados.data)):
                             st.caption(vid["titulo"])
-                            if vid.get("tipo_midia") == "foto" or vid["url_video"].endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                                st.image(vid["url_video"], use_container_width=True)
+                            url_midia = vid["url_video"]
+                            if url_midia.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
+                                st.image(url_midia, use_container_width=True)
                             else:
-                                st.video(vid["url_video"])
+                                st.video(url_midia)
                             st.markdown(f"❤️ {vid.get('curtidas', 0)} Curtidas")
                             st.markdown("---")
                     else:
@@ -162,15 +176,12 @@ else:
                 st.error(f"Erro ao carregar perfil: {err_p}")
                 
         else:
-            st.title("📺 Feed de Edits")
+            # Exibe o logo no topo do feed geral também!
+            exibir_logo()
             
             # --- SISTEMA DE BUSCA NO FEED ---
             st.markdown("### 🔍 Procurar Posts")
-            col_b1, col_b2 = st.columns([3, 1])
-            with col_b1:
-                termo_pesquisa = st.text_input("Buscar por legenda:", placeholder="Ex: Bleach, Naruto, edit...", key="busca_feed").strip()
-            with col_b2:
-                filtro_midia = st.selectbox("Tipo:", ["Todos", "Vídeos", "Fotos"])
+            termo_pesquisa = st.text_input("Buscar por legenda:", placeholder="Ex: Bleach, Naruto, edit...", key="busca_feed").strip()
 
             # --- SEÇÃO DE PUBLICAÇÃO ---
             with st.expander("➕ Publicar Novo Conteúdo"):
@@ -192,8 +203,7 @@ else:
                                     "url_video": link_final,
                                     "username_autor": user_atual["username"],
                                     "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                                    "curtidas": 0,
-                                    "tipo_midia": "video"
+                                    "curtidas": 0
                                 }).execute()
                                 st.success("Postado com sucesso!")
                                 st.rerun()
@@ -217,8 +227,7 @@ else:
                                         "url_video": url_video_final,
                                         "username_autor": user_atual["username"],
                                         "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                                        "curtidas": 0,
-                                        "tipo_midia": "video"
+                                        "curtidas": 0
                                     }).execute()
                                     
                                 st.success("Vídeo enviado com sucesso!")
@@ -243,8 +252,7 @@ else:
                                         "url_video": url_foto_final,
                                         "username_autor": user_atual["username"],
                                         "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                                        "curtidas": 0,
-                                        "tipo_midia": "foto"
+                                        "curtidas": 0
                                     }).execute()
                                     
                                 st.success("Foto postada com sucesso!")
@@ -258,10 +266,6 @@ else:
                 query_feed = supabase.table("feed_videos").select("*")
                 if termo_pesquisa:
                     query_feed = query_feed.ilike("titulo", f"%{termo_pesquisa}%")
-                if filtro_midia == "Vídeos":
-                    query_feed = query_feed.or_("tipo_midia.eq.video,tipo_midia.is.null")
-                elif filtro_midia == "Fotos":
-                    query_feed = query_feed.eq("tipo_midia", "foto")
 
                 dados = query_feed.execute()
                 if dados.data:
@@ -269,7 +273,6 @@ else:
                         autor = v.get('username_autor', 'Membro')
                         img_autor = v.get('avatar_autor') or FOTO_PADRAO
                         video_url = v["url_video"]
-                        tipo_m = v.get("tipo_midia", "video")
                         
                         if "shorts/" in video_url:
                             video_url = video_url.replace("shorts/", "watch?v=")
@@ -318,7 +321,7 @@ else:
 
                         st.caption(v["titulo"])
                         
-                        if tipo_m == "foto" or video_url.endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                        if video_url.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
                             st.image(video_url, use_container_width=True)
                         else:
                             st.video(video_url)
