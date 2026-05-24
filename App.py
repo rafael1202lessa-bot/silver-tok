@@ -24,10 +24,9 @@ CHAVE_SECRETA = "ChatPrivado2026"
 FOTO_PADRAO = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
 NOME_DEVELOPER = "Rafael_oficial"
 
-# Link direto seguro da logo ST (Hospedagem estável)
-URL_LOGO_ST = "https://i.ibb.co/vYm6gP9/ST-Logo.png"
+# Link permanente e seguro da sua logo ST cinza
+URL_LOGO_ST = "https://raw.githubusercontent.com/68616661656c/img/main/3140.png"
 
-# Função para exibir o logo de forma centralizada e bonita
 def exibir_logo():
     try:
         st.image(URL_LOGO_ST, use_container_width=True)
@@ -66,6 +65,7 @@ if st.session_state.usuario_logado is None:
                     st.error(f"Erro ao fazer login: {e}")
             else:
                 st.warning("Preencha tudo!")
+                
     with aba_auth[1]:
         st.subheader("Crie seu Perfil")
         cad_user = st.text_input("Escolha Usuário:", key="cad_user").strip()
@@ -251,7 +251,7 @@ else:
                                     }).execute()
                                     
                                 st.success("Foto postada com sucesso!")
-                                r=st.rerun()
+                                st.rerun()
                             except Exception as e:
                                 st.error(f"Erro ao fazer upload da foto: {e}")
                         else:
@@ -531,3 +531,4 @@ else:
                             st.error("Usuário não encontrado.")
                     except:
                         st.error("Erro ao processar pedido de amizade.")
+                  
