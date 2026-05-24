@@ -247,8 +247,7 @@ else:
                     st.markdown("---")
         except Exception as e:
             st.error(f"Erro ao carregar o feed: {e}")
-
-    with aba_chat:
+                    with aba_chat:
         if st.session_state.sala_ativa is not None:
             st.title("💬 Sala Ativa")
             st.code(f"Código: {st.session_state.sala_ativa}")
@@ -341,13 +340,15 @@ else:
                 b_amg = st.text_input("Usuário para adicionar:").strip()
                 if st.button("Enviar Pedido ➕", use_container_width=True) and b_amg:
                     try:
-                        alvo = supabase.table("perfis_usuarios").select("*").eq("username", b_amg).execute() 
+                        alvo = supabase.table("perfis_usuarios").select("*").eq("username", b_amg).execute()
                         if alvo.data:
                             if str(alvo.data[0]["id"]) == str(user_atual["id"]):
                                 st.error("Não pode se adicionar!")
                             else:
                                 supabase.table("lista_amigos").insert({"id_usuario_envio": user_atual["id"], "id_usuario_recebe": alvo.data[0]["id"], "status": "pendente"}).execute()
-                            else:
-                                st.error("Não encontrado.")
-                        except:
-                            st.error("Erro.")
+                                st.success("Enviado!")
+                        else:
+                            st.error("Não encontrado.")
+                    except:
+                        st.error("Erro.")
+            
