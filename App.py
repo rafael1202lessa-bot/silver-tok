@@ -14,10 +14,13 @@ def init_connection():
     try:
         return create_client(SUPABASE_URL, SUPABASE_KEY)
     except Exception as e:
-        st.error("Erro de conexão com o servidor.")
         return None
 
 supabase = init_connection()
+
+if supabase is None:
+    st.error("Erro de conexão com o servidor.")
+    st.stop()
 
 # --- CONFIGURAÇÕES GERAIS ---
 CHAVE_SECRETA = "ChatPrivado2026"
@@ -121,7 +124,6 @@ else:
     with aba_principal:
         st.title("📺 Silver Tok Feed")
         
-        # Expander para enviar novos vídeos para a plataforma
         with st.expander("➕ Publicar Novo Post / Edit"):
             titulo_video = st.text_input("Legenda do Vídeo:", placeholder="Ex: Edit insano de Bleach! 🔥")
             arquivo_video = st.file_uploader("Selecione o Vídeo (MP4):", type=["mp4", "mov"], key=st.session_state.id_upload_video)
@@ -133,12 +135,9 @@ else:
                             ext = arquivo_video.name.split(".")[-1]
                             nome_video_db = f"videos/{uuid.uuid4()}.{ext}"
                             
-                            # Faz o upload no bucket existente do seu feed
                             supabase.storage.from_("videos_feed").upload(nome_video_db, arquivo_video.read())
                             url_video_final = supabase.storage.from_("videos_feed").get_public_url(nome_video_db)
                             
-                            # Salva as informações na tabela feed_videos
-                            # Incluindo o username e foto do autor do post
                             supabase.table("feed_videos").insert({
                                 "titulo": titulo_video.strip(),
                                 "url_video": url_video_final,
@@ -157,40 +156,39 @@ else:
 
         st.markdown("---")
 
-        # Exibição dos Vídeos Cadastrados no Banco
         try:
-            dados_feed = supabase.table("feed_videos").select("*").order("criado_em", desc=True).execute()
-            if dados_feed.data:
-                for video in dados_feed.data:
-                    # Cabeçalho do post (Quem publicou)
-                    col_autor_img, col_autor_txt = st.columns([1, 6])
-                    with col_autor_img:
-                        st.image(video.get("avatar_autor") or FOTO_PADRAO, width=40)
-                    with col_autor_txt:
-                        st.markdown(f"**{video.get('username_autor', 'Membro Secreto')}**")
-                    
-                    st.caption(f"{video['titulo']}")
-                    
-                    # Elemento de vídeo estilizado para Mobile
-                    st.video(video["url_video"])
-                    
-                    # Sistema de Curtidas Simples
-                    likes = video.get("curtidas", 0)
-                    col_like, col_espaco = st.columns([2, 5])
-                    with col_like:
-                        if st.button(f"❤️ {likes} Curtidas", key=f"like_{video['id']}"):
-                            supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("id", video["id"]).execute()
-                            st.rerun()
-                            
-                    st.markdown("<hr style='margin: 20px 0; border: 0; border-top: 1px solid #444;'>", unsafe_allow_html=True)
-            else:
-                st.info("Nenhum vídeo publicado ainda. Seja o primeiro a postar! 🎬")
-        except Exception as e:
-            st.error("Não foi possível carregar os vídeos do banco feed_videos.")
+            dados_feed = supabase.table("feed_videos").select("*").order("criated_at" if "criated_at" in supabase.table("feed_videos").select("*").execute().data[0] else "id", desc=True).execute()
+        except:
+            try:
+                dados_feed = supabase.table("feed_videos").select("*").execute()
+            except Exception as e:
+                dados_feed = None
+                st.error("Erro ao carregar tabela de vídeos.")
+
+        if dados_feed and dados_feed.data:
+            for video in dados_feed.data:
+                col_autor_img, col_autor_txt = st.columns([1, 6])
+                with col_autor_img:
+                    st.image(video.get("avatar_autor") or FOTO_PADRAO, width=40)
+                with col_autor_txt:
+                    st.markdown(f"**{video.get('username_autor', 'Membro Secreto')}**")
+                
+                st.caption(f"{video['titulo']}")
+                st.video(video["url_video"])
+                
+                likes = video.get("curtidas", 0)
+                col_like, col_espaco = st.columns([2, 5])
+                with col_like:
+                    if st.button(f"❤️ {likes} Curtidas", key=f"like_{video['id']}"):
+                        supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("id", video["id"]).execute()
+                        st.rerun()
+                        
+                st.markdown("<hr style='margin: 20px 0; border: 0; border-top: 1px solid #444;'>", unsafe_allow_html=True)
+        else:
+            st.info("Nenhum vídeo publicado ainda. Seja o primeiro a postar! 🎬")
 
     # ==================== ABA 2: CHAT EXCLUSIVO (CHAT-EXV) ====================
     with aba_batepapo:
-        # Se estiver em uma sala de bate-papo ativa
         if st.session_state.sala_ativa is not None:
             st.title(f"💬 Sala Ativa")
             st.code(f"Código da Sala: {st.session_state.sala_ativa}")
@@ -201,7 +199,6 @@ else:
                 
             st.markdown("---")
 
-            # Área de Envio de Mensagens e Fotos
             with st.container():
                 txt_msg = st.text_input("Digite sua mensagem:", placeholder="Escreva algo aqui...", key="txt_msg_input")
                 upload_img = st.file_uploader("Enviar uma Imagem (Opcional):", type=["png", "jpg", "jpeg", "gif"], key=st.session_state.id_upload_chat)
@@ -236,9 +233,9 @@ else:
             st.subheader("📋 Histórico de Mensagens")
 
             try:
-                resposta = supabase.table("bate-papo_profissional").select("*").eq("codigo_sala", st.session_state.sala_ativa).order("criado_em", desc=True).limit(40).execute()
+                resposta = supabase.table("bate-papo_profissional").select("*").eq("codigo_sala", st.session_state.sala_ativa).execute()
                 if resposta.data:
-                    for msg in resposta.data:
+                    for msg in reversed(resposta.data[-40:]):
                         col1, col2, col3 = st.columns([1, 5, 1])
                         with col1:
                             st.image(msg.get("url_foto_perfil") or FOTO_PADRAO, width=45)
@@ -259,7 +256,6 @@ else:
             except Exception as e:
                 st.write("Erro ao carregar o histórico.")
 
-        # Se não estiver em nenhuma sala, exibe o Menu Principal do Chat
         else:
             st.title("🎛️ Painel Chat-Exv")
             menu = st.tabs([
@@ -270,7 +266,6 @@ else:
                 "➕ Adicionar"
             ])
             
-            # 1️⃣ CRIAR CONVERSA PRIVADA
             with menu[0]:
                 st.subheader("Iniciar Chat Particular")
                 try:
@@ -298,7 +293,6 @@ else:
                 except:
                     st.write("Erro ao carregar amigos.")
 
-            # 2️⃣ CRIAR GRUPO
             with menu[1]:
                 st.subheader("Criar Novo Grupo do Chat")
                 nome_novo_grupo = st.text_input("Nome do Grupo:", placeholder="Ex: Resenha de Animes")
@@ -313,7 +307,6 @@ else:
                     else:
                         st.warning("Digite um nome para o grupo!")
 
-            # 3️⃣ ENTRAR COM CÓDIGO
             with menu[2]:
                 st.subheader("Entrar em uma Sala de Grupo Existente")
                 codigo_digitado = st.text_input("Insira o Código da Sala:", placeholder="Ex: GRUPO-A8F2B9D1").strip().upper()
@@ -324,7 +317,6 @@ else:
                     else:
                         st.warning("Por favor, digite um código de sala válido.")
 
-            # 4️⃣ LISTA DE AMIGOS E SOLICITAÇÕES
             with menu[3]:
                 st.subheader("Seus Amigos Conectados")
                 try:
@@ -356,7 +348,6 @@ else:
                 except:
                     st.caption("Erro ao carregar lista.")
 
-            # 5️⃣ ADICIONAR AMIGO
             with menu[4]:
                 st.subheader("Procurar Membro pelo Usuário")
                 buscar_amigo = st.text_input("Digite exatamente o nome do amigo:", placeholder="Ex: Carlos123").strip()
@@ -368,5 +359,16 @@ else:
                                 id_alvo = alvo_user.data[0]["id"]
                                 if str(id_alvo) == str(user_atual["id"]):
                                     st.error("Você não pode adicionar a si mesmo!")
+                                else:
+                                    supabase.table("lista_amigos").insert({
+                                        "id_usuario_envio": user_atual["id"],
+                                        "id_usuario_recebe": id_alvo,
+                                        "status": "pendente"
+                                    }).execute()
+                                    st.success(f"Solicitação enviada para **{buscar_amigo}**!")
+                            else:
+                                st.error("Usuário não encontrado!")
+                        except:
+                            st.error("Erro ao processar solicitação de amizade.")
                     else:
-                    
+                        st.warning("Digite um nome de u
