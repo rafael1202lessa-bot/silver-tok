@@ -299,7 +299,7 @@ else:
                                         st.rerun()
                                 else:
                                     if st.button("Seguir ➕", key=f"fol_{chave_componente}", use_container_width=True, type="primary"):
-                                        supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido", id_autor}).execute()
+                                        supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor}).execute()
                                         st.rerun()
                             except:
                                 pass
@@ -434,8 +434,6 @@ else:
                             supabase.storage.from_("imagens_chat").upload(nome_f, upload_img.read())
                             url_img = supabase.storage.from_("imagens_chat").get_public_url(nome_f)
                             
-                        # Correção Imagem 3147: Como 'url_video_enviado' não existe na tabela para armazenar áudio, 
-                        # guardamos a gravação diretamente em 'url_imagem_enviada' se não houver imagem instalada.
                         if gravar_audio and not url_img:
                             nome_a = f"audios/{uuid.uuid4()}.wav"
                             supabase.storage.from_("imagens_chat").upload(nome_a, gravar_audio.read())
