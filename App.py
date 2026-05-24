@@ -341,7 +341,7 @@ else:
                 b_amg = st.text_input("Usuário para adicionar:").strip()
                 if st.button("Enviar Pedido ➕", use_container_width=True) and b_amg:
                     try:
-                        alvo = supabase.table("perfis_usuarios").select("*").eq("username", b_amg).execute()
+                        alvo = supabase.table("perfis_usuarios").select("*").eq("username", b_amg).execute() 
                         if alvo.data:
                             if str(alvo.data[0]["id"]) == str(user_atual["id"]):
                                 st.error("Não pode se adicionar!")
