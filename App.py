@@ -24,7 +24,7 @@ CHAVE_SECRETA = "ChatPrivado2026"
 FOTO_PADRAO = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
 NOME_DEVELOPER = "Rafael_oficial"
 
-# Link permanente e seguro da sua logo ST cinza
+# LINK CORRIGIDO: Link bruto direto (raw) para renderizar a imagem corretamente sem quebrar
 URL_LOGO_ST = "https://raw.githubusercontent.com/68616661656c/img/main/3140.png"
 
 def exibir_logo():
@@ -197,7 +197,7 @@ else:
                                     "titulo": titulo_v.strip(),
                                     "url_video": link_final,
                                     "username_autor": user_atual["username"],
-                                    "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
+                                    "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADERÃO,
                                     "curtidas": 0
                                 }).execute()
                                 st.success("Postado com sucesso!")
@@ -531,4 +531,3 @@ else:
                             st.error("Usuário não encontrado.")
                     except:
                         st.error("Erro ao processar pedido de amizade.")
-                  
