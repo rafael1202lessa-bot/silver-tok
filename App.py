@@ -2,8 +2,10 @@ import streamlit as st
 from supabase import create_client, Client
 import uuid
 
+# Configuração da Página
 st.set_page_config(page_title="Silver Tok v2.0", page_icon="🎬", layout="centered")
 
+# --- CONEXÃO COM O BANCO DE DADOS ---
 SUPABASE_URL = "https://ldjtqgeyorkzbvuichjj.supabase.co"
 SUPABASE_KEY = "sb_publishable_ZWY9Hp6kQrhOzff6xc_DrA_8TlnrqQ_"
 
@@ -16,29 +18,28 @@ def init_connection():
 
 supabase = init_connection()
 if supabase is None:
-    st.error("Erro de conexão.")
+    st.error("Erro de conexão com o banco.")
     st.stop()
 
 CHAVE_SECRETA = "ChatPrivado2026"
 FOTO_PADRAO = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
 
+# Inicialização do controle de sessão
 if "usuario_logado" not in st.session_state:
     st.session_state.usuario_logado = None
-if "sala_ativa" not in st.session_state:
-    st.session_state.sala_ativa = None
-if "id_upload_chat" not in st.session_state:
-    st.session_state.id_upload_chat = str(uuid.uuid4())
 if "id_upload_video" not in st.session_state:
     st.session_state.id_upload_video = str(uuid.uuid4())
 
+# --- TELA DE CADASTRO / LOGIN ---
 if st.session_state.usuario_logado is None:
     st.title("🎬 Silver Tok & Chat 🔐")
     aba_auth = st.tabs(["Fazer Login", "Criar Nova Conta"])
+    
     with aba_auth[0]:
         st.subheader("Acesse sua Conta")
-        login_user = st.text_input("Usuário:", key="login_user").strip()
-        login_senha = st.text_input("Senha:", type="password", key="login_senha")
-        if st.button("Entrar 🚀", key="btn_login", use_container_width=True):
+        login_user = st.text_input("Usuário:", key="l_user").strip()
+        login_senha = st.text_input("Senha:", type="password", key="l_senha")
+        if st.button("Entrar 🚀", key="btn_l", use_container_width=True):
             if login_user and login_senha:
                 busca = supabase.table("perfis_usuarios").select("*").eq("username", login_user).execute()
                 if busca.data and busca.data[0]["senha"] == login_senha:
@@ -46,37 +47,41 @@ if st.session_state.usuario_logado is None:
                     st.success("Login feito!")
                     st.rerun()
                 else:
-                    st.error("Incorreto.")
+                    st.error("Usuário ou senha incorretos.")
             else:
-                st.warning("Preencha tudo!")
+                st.warning("Preencha todos os campos!")
+                
     with aba_auth[1]:
         st.subheader("Crie seu Perfil")
-        cad_user = st.text_input("Escolha Usuário:", key="cad_user").strip()
-        cad_senha = st.text_input("Crie Senha:", type="password", key="cad_senha")
-        codigo_convite = st.text_input("🔑 Código Secreto:", type="password", key="codigo_convite")
-        if st.button("Cadastrar Conta 🎉", key="btn_cad", use_container_width=True):
+        cad_user = st.text_input("Escolha Usuário:", key="c_user").strip()
+        cad_senha = st.text_input("Crie Senha:", type="password", key="c_senha")
+        codigo_convite = st.text_input("🔑 Código Secreto:", type="password", key="c_codigo")
+        if st.button("Cadastrar Conta 🎉", key="btn_c", use_container_width=True):
             if cad_user and cad_senha and codigo_convite == CHAVE_SECRETA:
                 try:
                     supabase.table("perfis_usuarios").insert({"username": cad_user, "senha": cad_senha, "url_foto_perfil": FOTO_PADRAO}).execute()
-                    st.success("Criado! Faça login.")
+                    st.success("Conta criada! Faça login.")
                 except:
-                    st.error("Erro ou usuário já existe.")
+                    st.error("Erro: Usuário já existe.")
             else:
-                st.warning("Verifique os campos e o código!")
-                else:
+                st.warning("Verifique as senhas ou o código secreto!")
+
+# --- PLATAFORMA LOGADA ---
+else:
     user_atual = st.session_state.usuario_logado
-    st.sidebar.image(FOTO_PADRAO, width=90)
-    st.sidebar.write(f"Usuário: **{user_atual['username']}**")
-    if st.sidebar.button("Sair 🚪", use_container_width=True):
+    
+    st.sidebar.write(f"Logado como: **{user_atual['username']}**")
+    if st.sidebar.button("Sair da Conta 🚪", use_container_width=True):
         st.session_state.usuario_logado = None
         st.rerun()
 
     aba_feed, aba_chat = st.tabs(["📺 Silver Tok (Feed)", "💬 Chat-Exv"])
 
+    # 1️⃣ ABA DO FEED DE VÍDEOS
     with aba_feed:
         st.title("📺 Feed de Edits")
         with st.expander("➕ Publicar Vídeo"):
-            titulo_v = st.text_input("Legenda:", placeholder="Edit top!")
+            titulo_v = st.text_input("Legenda do Vídeo:", placeholder="Ex: Edit top!")
             arq_v = st.file_uploader("Vídeo (MP4):", type=["mp4"], key=st.session_state.id_upload_video)
             if st.button("Publicar 🚀", use_container_width=True):
                 if arq_v and titulo_v:
@@ -92,7 +97,8 @@ if st.session_state.usuario_logado is None:
             dados = supabase.table("feed_videos").select("*").execute()
             if dados.data:
                 for v in reversed(dados.data):
-                    st.markdown(f"**@{v.get('username_autor', 'Membro')}** - {v['titulo']}")
+                    st.markdown(f"**@{v.get('username_autor', 'Membro')}**")
+                    st.caption(v["titulo"])
                     st.video(v["url_video"])
                     likes = v.get("curtidas", 0)
                     if st.button(f"❤️ {likes} Curtidas", key=f"lk_{v['id']}"):
@@ -102,12 +108,14 @@ if st.session_state.usuario_logado is None:
         except:
             st.error("Erro ao carregar o feed.")
 
+    # 2️⃣ ABA DO CHAT GERAL
     with aba_chat:
         st.title("💬 Chat Geral")
-        txt_m = st.text_input("Sua mensagem:", key="msg_geral")
-        if st.button("Enviar Msg ✉️", use_container_width=True) and txt_m.strip():
-            supabase.table("bate-papo_profissional").insert({"id_usuario": user_atual["id"], "username": user_atual["username"], "mensagem": txt_m.strip(), "codigo_sala": "GERAL"}).execute()
-            st.rerun()
+        txt_m = st.text_input("Sua mensagem:", key="msg_input")
+        if st.button("Enviar Mensagem ✉️", use_container_width=True):
+            if txt_m.strip():
+                supabase.table("bate-papo_profissional").insert({"username": user_atual["username"], "mensagem": txt_m.strip(), "codigo_sala": "GERAL"}).execute()
+                st.rerun()
 
         try:
             msgs = supabase.table("bate-papo_profissional").select("*").eq("codigo_sala", "GERAL").execute()
@@ -115,5 +123,5 @@ if st.session_state.usuario_logado is None:
                 for m in reversed(msgs.data[-30:]):
                     st.markdown(f"**{m['username']}:** {m['mensagem']}")
         except:
-            st.error("Erro ao carregar chat.")
+            st.error("Erro ao carregar mensagens.")
             
