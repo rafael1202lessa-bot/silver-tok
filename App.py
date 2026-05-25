@@ -326,7 +326,7 @@ else:
                                 st.rerun()
                         else:
                             if st.button("Seguir ➕", type="primary"):
-                                supabase.table("seguidores").insert({"id_seguidor": u_id, "id_seguido": vis_id}).execute()
+                                supabase.table("seguidores").insert({"id_seguidor": u_id, "id_seguido", vis_id}).execute()
                                 st.rerun()
 
                 st.write("### Publicações do Usuário")
