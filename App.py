@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Silver Tok v2.5", page_icon="🎬", layout="centered")
+st.set_page_config(page_title="Silver Tok v2.6", page_icon="🎬", layout="centered")
 
 # --- CONEXÃO BANCO DE DADOS ---
 SUPABASE_URL = "https://ldjtqgeyorkzbvuichjj.supabase.co"
@@ -32,10 +32,10 @@ VIDEOS_BOT_BOTEY = [
     {"titulo": "🔥 Edit Incrível de Anime (Vertical)", "url": "https://www.w3schools.com/html/mov_bbb.mp4", "formato": "vertical"},
     {"titulo": "🌌 Gameplay Relaxante 4K (Horizontal)", "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", "formato": "horizontal"},
     {"titulo": "⚡ Lo-Fi Hip Hop para Estudar (Horizontal)", "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4", "formato": "horizontal"},
-    {"titulo": "🎬 Mini Clip Engraçado (Vertical)", "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4", "formato": "vertical"}
+    {"titulo": "🎬 Mini Clip Engraçado (Vertical)", "url": "https://commondatachannel.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4", "formato": "vertical"}
 ]
 
-# --- FUNÇÕES AUXILIARES ---
+# --- FUNÇÕES AUXILIARES (Definidas no topo para evitar erros de escopo) ---
 def obter_status_emoji(timestamp_str):
     if not timestamp_str:
         return "⚪ Offline"
@@ -74,7 +74,7 @@ def exibir_logo():
     st.markdown("<h1 style='text-align: center;'>🎬 Silver Tok & Chat 🔐</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: gray;'>Sua plataforma de vídeos e conversas privadas</p>", unsafe_allow_html=True)
 
-# --- INICIALIZAÇÃO DE ESTADOS (SESSION STATE) ---
+# --- INICIALIZAÇÃO DE ESTADOS ---
 if "usuario_logado" not in st.session_state:
     st.session_state.usuario_logado = None
 if "sala_ativa" not in st.session_state:
@@ -142,13 +142,11 @@ if st.session_state.usuario_logado is None:
 else:
     user_atual = st.session_state.usuario_logado
     
-    # Atualizar ping de atividade
     try:
         supabase.table("perfis_usuarios").update({"ultimo_visto": datetime.now(timezone.utc).isoformat()}).eq("id", user_atual["id"]).execute()
     except:
         pass
 
-    # Contagem de seguidores
     total_seg = 0
     try:
         res_seg = supabase.table("seguidores").select("*", count="exact").eq("id_seguido", user_atual["id"]).execute()
@@ -156,7 +154,6 @@ else:
     except:
         pass
 
-    # Contagem de notificações não lidas (Protegido contra tabelas ausentes)
     total_notif = 0
     try:
         res_n = supabase.table("notificacoes").select("*", count="exact").eq("id_destinatario", user_atual["id"]).eq("lida", False).execute()
@@ -199,21 +196,19 @@ else:
                 try:
                     supabase.table("perfis_usuarios").update(dados_atualizar).eq("id", user_atual["id"]).execute()
                     for k, v in dados_atualizar.items(): st.session_state.usuario_logado[k] = v
-                    st.success("Perfil updated com sucesso!")
+                    st.success("Perfil updated!")
                     st.rerun()
-                except: st.error("Erro ao persistir dados de atualização.")
+                except: st.error("Erro ao salvar dados.")
 
-    # Menu de Desenvolvedor visível apenas para o Rafael_oficial
     if user_atual["username"] == NOME_DEVELOPER:
         with st.sidebar.expander("🤖 Comandos do Desenvolvedor", expanded=True):
-            st.write("**Código Secreto do Desenvolvedor:**")
+            st.write("**Código Secreto:**")
             st.code(COMANDO_BOT_SECRETO, language="text")
-            
-            comando_exec = st.text_input("Digitar o comando especial aqui:", placeholder="Cole o código acima aqui...")
+            comando_exec = st.text_input("Digitar o comando especial aqui:", placeholder="Cole o código acima...")
             
             if st.button("Executar Comando ⚡", use_container_width=True):
                 if comando_exec.strip() == COMANDO_BOT_SECRETO:
-                    with st.spinner("Injetando publicações de demonstração no feed..."):
+                    with st.spinner("Injetando publicações do bot..."):
                         sucesso_envios = 0
                         for v_item in VIDEOS_BOT_BOTEY:
                             try:
@@ -229,7 +224,7 @@ else:
                                 sucesso_envios += 1
                             except: pass
                         if sucesso_envios > 0:
-                            st.success(f"Sucesso! O Bot publicou {sucesso_envios} mídias.")
+                            st.success(f"O Bot publicou {sucesso_envios} mídias.")
                             st.rerun()
                 else: st.warning("Comando inválido!")
 
@@ -239,7 +234,7 @@ else:
         st.session_state.perfil_visitado = None
         st.rerun()
 
-    # --- NAVEGAÇÃO PRINCIPAL EM ABAS ---
+    # --- NAVEGAÇÃO PRINCIPAL ---
     aba_feed, aba_chat, aba_status, aba_notif = st.tabs([
         "📺 Silver Tok (Feed)", "💬 Chat-Exv", "✨ Status", f"🔔 Notificações ({total_notif})"
     ])
@@ -289,7 +284,7 @@ else:
                                         criar_notificacao(id_autor_vis, "seguidor", f"@{user_atual['username']} começou a seguir o seu perfil!")
                                         st.rerun()
                             except: pass
-                else: st.error("Este perfil não foi encontrado.")
+                else: st.error("Perfil não encontrado.")
             except Exception as e: st.error(f"Erro ao abrir perfil: {e}")
         else:
             exibir_logo()
@@ -335,7 +330,7 @@ else:
                             "username_autor": user_atual["username"], "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                             "curtidas": 0, "id_autor": user_atual["id"], "tipo_formato": "horizontal"
                         }).execute()
-                        st.success("Foto publicada com sucesso!"); st.rerun()
+                        st.success("Foto publicada!"); st.rerun()
 
             aba_formato_mini, aba_formato_longo = st.tabs(["📱 Mini Vídeos (Verticais)", "🖥️ Vídeos Longos (Horizontais)"])
 
@@ -346,7 +341,8 @@ else:
                     img_autor = v.get('avatar_autor') or FOTO_PADRAO
                     video_url = v["url_video"]
                     likes = v.get("curtidas", 0)
-                    chave_comp = f"feed_{identificador_formato}_{idx}_{v.get('id', hash(video_url))}"
+                    id_post = v.get("id")
+                    chave_comp = f"feed_{identificador_formato}_{idx}_{id_post}"
 
                     st.markdown("---")
                     col_f1, col_f2 = st.columns([1, 5])
@@ -378,14 +374,51 @@ else:
                     col_b1, col_b2 = st.columns(2)
                     with col_b1:
                         if st.button(f"❤️ {likes} Curtidas", key=f"btn_like_{chave_comp}"):
-                            supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("id", v["id"]).execute()
+                            supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("id", id_post).execute()
                             if v.get("id_autor"):
                                 criar_notificacao(v["id_autor"], "curtida", f"@{user_atual['username']} curtiu sua publicação!")
                             st.rerun()
                     with col_b2:
                         if autor == user_atual["username"] and st.button("Remover Post 🗑️", key=f"btn_deletar_{chave_comp}"):
-                            supabase.table("feed_videos").delete().eq("id", v["id"]).execute()
+                            supabase.table("feed_videos").delete().eq("id", id_post).execute()
                             st.rerun()
+
+                    # === SECÇÃO DE COMENTÁRIOS INTEGRADA ===
+                    with st.expander(f"💬 Comentários para este post"):
+                        with st.form(key=f"form_coment_{chave_comp}", clear_on_submit=True):
+                            novo_coment = st.text_input("Escreve um comentário:", placeholder="Diz o que achas...")
+                            enviar_c = st.form_submit_button("Comentar ✉️")
+                            
+                            if enviar_c and novo_coment.strip():
+                                try:
+                                    supabase.table("comentarios_feed").insert({
+                                        "id_video": id_post,
+                                        "id_autor": user_atual["id"],
+                                        "username_autor": user_atual["username"],
+                                        "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
+                                        "comentario": novo_coment.strip()
+                                    }).execute()
+                                    if v.get("id_autor"):
+                                        criar_notificacao(v["id_autor"], "comentario", f"@{user_atual['username']} comentou no teu post!")
+                                    st.success("Comentário enviado!")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error("Erro ao enviar comentário. Certifica-te de rodar o SQL corrigido no painel.")
+
+                        try:
+                            lista_c = supabase.table("comentarios_feed").select("*").eq("id_video", id_post).order("criado_em", descending=True).execute()
+                            if lista_c.data:
+                                for c in lista_c.data:
+                                    col_c1, col_c2 = st.columns([1, 8])
+                                    with col_c1:
+                                        st.image(c.get("avatar_autor") or FOTO_PADRAO, width=35)
+                                    with col_c2:
+                                        st.markdown(f"**{c['username_autor']}**: {c['comentario']}")
+                                        st.caption(f"Enviado em: {c['criado_em'][:16].replace('T', ' ')}")
+                            else:
+                                st.caption("Nenhum comentário por aqui ainda. Sê o primeiro!")
+                        except:
+                            st.caption("A carregar comentários...")
 
             try:
                 query_feed = supabase.table("feed_videos").select("*")
@@ -544,7 +577,7 @@ else:
         except: pass
 
 
-    # === 🔔 ABA NOTIFICAÇÕES (IMUNE A FALHAS) ===
+    # === 🔔 ABA NOTIFICAÇÕES ===
     with aba_notif:
         st.header("🔔 Interações Recentes")
         try:
@@ -559,4 +592,5 @@ else:
             else:
                 st.info("Não tens nenhuma notificação recente.")
         except Exception as e:
-            st.info("A carregar área de notificações... (Cria a tabela 'notificacoes' no Supabase para ativar os alertas em tempo real).")
+            st.info("A aguardar criação da tabela 'notificacoes' no Supabase...")
+                 
