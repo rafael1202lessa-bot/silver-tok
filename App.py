@@ -33,7 +33,7 @@ VIDEOS_BOT_BOTEY = [
     {"titulo": "🎬 Mini Clip Engraçado (Vertical)", "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4", "formato": "vertical"}
 ]
 
-# --- FUNÇÕES AUXILIARES ESSENCIAIS (No topo para evitar erros de compilação) ---
+# --- FUNÇÕES AUXILIARES ---
 def obter_status_emoji(timestamp_str):
     if not timestamp_str:
         return "⚪ Offline"
@@ -136,16 +136,13 @@ if st.session_state.usuario_logado is None:
             else:
                 st.warning("Verifique os campos!")
 else:
-    # --- USUÁRIO LOGADO ---
     user_atual = st.session_state.usuario_logado
     
-    # Atualizar o "Último Visto" (Online status)
     try:
         supabase.table("perfis_usuarios").update({"ultimo_visto": datetime.now(timezone.utc).isoformat()}).eq("id", user_atual["id"]).execute()
     except:
         pass
 
-    # Carregar contadores
     total_seg = 0
     try:
         res_seg = supabase.table("seguidores").select("*", count="exact").eq("id_seguido", user_atual["id"]).execute()
@@ -160,7 +157,7 @@ else:
     except:
         pass
 
-    # --- SIDEBAR PERFIL ---
+    # --- SIDEBAR ---
     st.sidebar.image(user_atual.get("url_foto_perfil") or FOTO_PADRAO, width=90)
     nome_exibicao = user_atual.get("apelido") or user_atual["username"]
     
@@ -177,34 +174,28 @@ else:
     st.sidebar.write(f"👥 **{total_seg}** seguidores")
     st.sidebar.write("🟢 Status: **Online**")
     
-    # Expandível para Editar Perfil (Corrigido)
     with st.sidebar.expander("⚙️ Editar Meu Perfil"):
         novo_apelido = st.text_input("Alterar Apelido:", value=user_atual.get("apelido") or user_atual["username"]).strip()
         nova_foto_perfil = st.file_uploader("Trocar Foto de Perfil:", type=["png", "jpg", "jpeg", "webp"])
         
         if st.button("Salvar Alterações 💾", use_container_width=True):
             dados_atualizar = {}
-            if novo_apelido:
-                dados_atualizar["apelido"] = novo_apelido
+            if novo_apelido: dados_atualizar["apelido"] = novo_apelido
             if nova_foto_perfil:
                 try:
                     nome_f = f"perfis/{uuid.uuid4()}.png"
                     supabase.storage.from_("imagens_chat").upload(nome_f, nova_foto_perfil.read())
                     dados_atualizar["url_foto_perfil"] = supabase.storage.from_("imagens_chat").get_public_url(nome_f)
-                except:
-                    st.error("Erro ao fazer upload da foto de perfil.")
+                except: st.error("Erro no envio da imagem.")
             
             if dados_atualizar:
                 try:
                     supabase.table("perfis_usuarios").update(dados_atualizar).eq("id", user_atual["id"]).execute()
-                    for k, v in dados_atualizar.items():
-                        st.session_state.usuario_logado[k] = v
+                    for k, v in dados_atualizar.items(): st.session_state.usuario_logado[k] = v
                     st.success("Perfil atualizado!")
                     st.rerun()
-                except:
-                    st.error("Erro ao salvar novos dados no banco.")
+                except: st.error("Erro ao atualizar dados.")
 
-    # Expandível para Comandos do Desenvolvedor Bot
     if user_atual["username"] == NOME_DEVELOPER:
         with st.sidebar.expander("🤖 Comandos do Desenvolvedor", expanded=False):
             st.caption("Painel do Sistema do Bot")
@@ -226,13 +217,11 @@ else:
                                     "tipo_formato": v_item["formato"]
                                 }).execute()
                                 sucesso_envios += 1
-                            except:
-                                pass
+                            except: pass
                         if sucesso_envios > 0:
                             st.success(f"O Bot publicou {sucesso_envios} posts!")
                             st.rerun()
-                else:
-                    st.warning("Comando inválido.")
+                else: st.warning("Comando inválido.")
 
     if st.sidebar.button("Sair 🚪", use_container_width=True):
         st.session_state.usuario_logado = None
@@ -297,13 +286,16 @@ else:
                 formato_db = "vertical" if "mini" in formato_sel else "horizontal"
                 titulo_v = st.text_input("Legenda do Post:")
                 
-                if tipo_pub == "Inserir Link (YouTube)" and st.button("Publicar Link 🚀", use_container_width=True) and titulo_v.strip():
-                    supabase.table("feed_videos").insert({
-                        "titulo": titulo_v.strip(), "url_video": st.text_input("Link:"),
-                        "username_autor": user_atual["username"], "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                        "curtidas": 0, "id_autor": user_atual["id"], "tipo_formato": formato_db
-                    }).execute()
-                    st.success("Postado!"); st.rerun()
+                if tipo_pub == "Inserir Link (YouTube)":
+                    link_yt = st.text_input("Link do YouTube:")
+                    if st.button("Publicar Link 🚀", use_container_width=True) and titulo_v.strip() and link_yt.strip():
+                        supabase.table("feed_videos").insert({
+                            "titulo": titulo_v.strip(), "url_video": link_yt.strip(),
+                            "username_autor": user_atual["username"], "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
+                            "curtidas": 0, "id_autor": user_atual["id"], "tipo_formato": formato_db
+                        }).execute()
+                        st.success("Postado!"); st.rerun()
+                        
                 elif tipo_pub == "Enviar Arquivo de Vídeo":
                     file_v = st.file_uploader("Escolha o vídeo:", type=["mp4", "mov"])
                     if st.button("Fazer Upload 🎥", use_container_width=True) and file_v and titulo_v.strip():
@@ -316,6 +308,19 @@ else:
                             "curtidas": 0, "id_autor": user_atual["id"], "tipo_formato": formato_db
                         }).execute()
                         st.success("Enviado!"); st.rerun()
+
+                elif tipo_pub == "Postar Foto 📸":
+                    file_img = st.file_uploader("Escolha a imagem:", type=["png","jpg","jpeg"])
+                    if st.button("Postar Foto 🖼️", use_container_width=True) and file_img and titulo_v.strip():
+                        nome_img_bucket = f"fotos_feed/{uuid.uuid4()}.png"
+                        supabase.storage.from_("imagens_chat").upload(nome_img_bucket, file_img.read())
+                        url_img_final = supabase.storage.from_("imagens_chat").get_public_url(nome_img_bucket)
+                        supabase.table("feed_videos").insert({
+                            "titulo": titulo_v.strip(), "url_video": url_img_final,
+                            "username_autor": user_atual["username"], "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
+                            "curtidas": 0, "id_autor": user_atual["id"], "tipo_formato": "horizontal"
+                        }).execute()
+                        st.success("Foto publicada!"); st.rerun()
 
             aba_formato_mini, aba_formato_longo = st.tabs(["📱 Mini Vídeos (Verticais)", "🖥️ Vídeos Longos (Horizontais)"])
 
@@ -330,7 +335,10 @@ else:
 
                     st.markdown("---")
                     col_f1, col_f2 = st.columns([1, 5])
-                    with col_f1: st.image(img_autor, width=45)
+                    with col_f1: 
+                        if st.button("👤", key=f"perfil_btn_{chave_comp}"):
+                            st.session_state.perfil_visitado = autor
+                            st.rerun()
                     with col_f2:
                         st.markdown(f"**{autor}**")
                         st.caption(v["titulo"])
@@ -353,9 +361,11 @@ else:
                     with col_b1:
                         if st.button(f"❤️ {likes} Curtidas", key=f"lk_{chave_comp}"):
                             supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("id", v["id"]).execute()
+                            if v.get("id_autor"):
+                                criar_notificacao(v["id_autor"], "curtida", f"@{user_atual['username']} curtiu sua publicação: {v['titulo'][:15]}...")
                             st.rerun()
                     with col_b2:
-                        if autor == user_atual["username"] and st.button("Remover 🗑️", key=f"del_{chave_comp}"):
+                     if autor == user_atual["username"] and st.button("Remover 🗑️", key=f"del_{chave_comp}"):
                             supabase.table("feed_videos").delete().eq("id", v["id"]).execute()
                             st.rerun()
 
@@ -374,7 +384,7 @@ else:
                         else: st.info("Nenhum vídeo longo.")
             except Exception as e: st.error(f"Erro no feed: {e}")
 
-    # === ABA CHAT ===
+    # === ABA CHAT RECONSTRUÍDA COM LÓGICA EM TODAS AS SUB-ABAS ===
     with aba_chat:
         if st.session_state.sala_ativa is not None:
             st.title(f"💬 Sala: {st.session_state.sala_ativa}")
@@ -411,29 +421,65 @@ else:
             try:
                 res = supabase.table("bate-papo_profissional").select("*").eq("codigo_sala", st.session_state.sala_ativa).execute()
                 if res.data:
-                    for m in reversed(res.data[-30:]):
+                    for m in reversed(res.data[-40:]):
                         st.markdown(f"**{m['username']}:** {m.get('mensagem') or ''}")
                         if m.get("url_imagem_enviada"):
                             if m["url_imagem_enviada"].lower().endswith(('.wav', '.mp3')): st.audio(m["url_imagem_enviada"])
-                            else: st.image(m["url_imagem_enviada"], width=200)
+                            else: st.image(m["url_imagem_enviada"], width=230)
             except: pass
         else:
             st.title("🎛️ Painel Chat-Exv")
             m_tabs = st.tabs(["💬 Privado", "👨‍👩‍👦 Novo Grupo", "🔑 Entrar", "👥 Amigos", "➕ Adicionar"])
+            
             with m_tabs[0]:
-                st.write("Selecione um amigo listado na aba 'Amigos' e abra o canal privado.")
+                st.subheader("Canais Privados Ativos")
+                st.caption("Salas criadas automaticamente com os teus amigos.")
+                cod_privado_sugerido = f"PRIV-{user_atual['username'].upper()}"
+                if st.button(f"Entrar no Meu Canal Direto ({cod_privado_sugerido})", use_container_width=True):
+                    st.session_state.sala_ativa = cod_privado_sugerido
+                    st.rerun()
+                    
+            with m_tabs[1]:
+                st.subheader("Criar uma Nova Sala / Grupo")
+                nome_novo_grupo = st.text_input("Nome do Grupo ou Código Único:", placeholder="Ex: ANIME-CLUB")
+                if st.button("Criar e Entrar no Grupo 🚀", use_container_width=True) and nome_novo_grupo.strip():
+                    codigo_final = nome_novo_grupo.strip().upper()
+                    st.session_state.sala_ativa = codigo_final
+                    st.success(f"Grupo {codigo_final} iniciado!")
+                    st.rerun()
+                    
             with m_tabs[2]:
-                cod_d = st.text_input("Código da Sala:").strip().upper()
-                if st.button("Entrar 🚪", use_container_width=True) and cod_d:
+                st.subheader("Entrar em Código Existente")
+                cod_d = st.text_input("Insira o código da sala de bate-papo:").strip().upper()
+                if st.button("Conectar à Sala 🚪", use_container_width=True) and cod_d:
                     st.session_state.sala_ativa = cod_d
+                    st.rerun()
+                    
+            with m_tabs[3]:
+                st.subheader("Lista de Utilizadores do Sistema")
+                try:
+                    todos_usuarios = supabase.table("perfis_usuarios").select("username", "ultimo_visto").execute()
+                    if todos_usuarios.data:
+                        for u in todos_usuarios.data:
+                            if u["username"] != user_atual["username"]:
+                                status_u = obter_status_emoji(u.get("ultimo_visto"))
+                                st.write(f"👤 **{u['username']}** - {status_u}")
+                    else: st.info("Nenhum utilizador registado além de ti.")
+                except: st.write("Erro ao listar perfis.")
+                    
+            with m_tabs[4]:
+                st.subheader("Pesquisar Amigos")
+                procura_user = st.text_input("Escreva o username exato do utilizador:").strip()
+                if st.button("Verificar Perfil 🔍", use_container_width=True) and procura_user:
+                    st.session_state.perfil_visitado = procura_user
                     st.rerun()
 
     # === ABA STATUS ===
     with aba_status:
         st.header("✨ Status Recentes")
-        with st.expander("➕ Postar um Status"):
-            t_status = st.text_input("O que você está pensando?:")
-            f_status = st.file_uploader("Adicionar Foto do Status:", type=["png","jpg"])
+        with st.expander("➕ Postar um Status (Dura 24 Horas)"):
+            t_status = st.text_input("O que estás a pensar?:")
+            f_status = st.file_uploader("Adicionar Foto ao Status:", type=["png","jpg","jpeg"])
             if st.button("Postar Status 🚀", use_container_width=True) and (t_status.strip() or f_status):
                 url_st = ""
                 if f_status:
@@ -443,17 +489,20 @@ else:
                 supabase.table("feed_videos").insert({
                     "titulo": f"[STATUS] {t_status.strip()}", "url_video": url_st,
                     "username_autor": user_atual["username"], "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                    "curtidas": 0, "id_autor": user_atual["id"]
+                    "curtidas": 0, "id_autor": user_atual["id"], "tipo_formato": "horizontal"
                 }).execute()
-                st.success("Postado!"); st.rerun()
+                st.success("Status publicado!"); st.rerun()
 
         try:
             todos = supabase.table("feed_videos").select("*").execute()
             if todos.data:
                 stats = [p for p in todos.data if str(p.get("titulo","")).startswith("[STATUS]")]
-                for s in reversed(stats):
-                    st.write(f"**{s['username_autor']}:** {s['titulo'].replace('[STATUS]','')}")
-                    if s["url_video"]: st.image(s["url_video"], width=250)
+                if stats:
+                    for s in reversed(stats):
+                        st.markdown(f"**{s['username_autor']}:** {s['titulo'].replace('[STATUS]','')}")
+                        if s["url_video"]: st.image(s["url_video"], width=250)
+                        st.markdown("---")
+                else: st.info("Nenhum status ativo de momento.")
         except: pass
 
     # === ABA NOTIFICAÇÕES ===
@@ -466,8 +515,9 @@ else:
                     supabase.table("notificacoes").update({"lida": True}).eq("id_destinatario", user_atual["id"]).execute()
                     st.rerun()
                 for n in reversed(res_notif.data):
-                    st.write(f"➔ {n['mensagem']} {'🔴' if not n['lida'] else ''}")
+                    cor_marcador = "🔴 (Nova)" if not n['lida'] else "⚪"
+                    st.write(f"{cor_marcador} {n['mensagem']}")
             else:
-                st.info("Nenhuma notificação encontrada.")
+                st.info("Nenhuma notificação por aqui.")
         except Exception as e:
-            st.warning("Crie a tabela 'notificacoes' no Supabase para rodar esta aba.")
+            st.warning("Verifica se criaste a tabela de notificações no Supabase.")
