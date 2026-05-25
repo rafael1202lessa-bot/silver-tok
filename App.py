@@ -170,12 +170,24 @@ if st.session_state.usuario_logado is None:
                 except:
                     st.error("Nome de usuário indisponível.")
 else:
-    # Sincronização segura
+    # Sincronização e validação segura anti-NoneType
     try:
-        atualizar_dados = supabase.table("perfis_usuarios").select("*").eq("id", st.session_state.usuario_logado.get("id")).execute()
-        if atualizar_dados.data:
-            st.session_state.usuario_logado = atualizar_dados.data[0]
-    except: pass
+        if st.session_state.usuario_logado and "id" in st.session_state.usuario_logado:
+            atualizar_dados = supabase.table("perfis_usuarios").select("*").eq("id", st.session_state.usuario_logado.get("id")).execute()
+            if atualizar_dados.data:
+                st.session_state.usuario_logado = atualizar_dados.data[0]
+            else:
+                st.session_state.usuario_logado = None
+                st.rerun()
+        else:
+            st.session_state.usuario_logado = None
+            st.rerun()
+    except: 
+        pass
+
+    # Re-checagem absoluta pós-sincronização
+    if st.session_state.usuario_logado is None:
+        st.rerun()
 
     user_atual = st.session_state.usuario_logado
     u_id = user_atual.get("id", "")
@@ -401,9 +413,8 @@ else:
                 else:
                     st.button("Saldo Insuficiente ❌", key=f"insuf_{chave}", disabled=True, use_container_width=True)
 
-    # === 💬 ABA CHAT-EXV TOTALMENTE BLINDADA CONTRA CAMPOS NULOS ===
+    # === 💬 ABA CHAT-EXV ===
     with aba_chat:
-        # Isolamos o nome da sala atual numa variável local estável para evitar perdas a meio da execução
         sala_atual = st.session_state.sala_ativa
 
         if sala_atual:
@@ -428,7 +439,6 @@ else:
                         supabase.storage.from_("audios_chat").upload(nome_arquivo, dados_audio)
                         url_publica_audio = supabase.storage.from_("audios_chat").get_public_url(nome_arquivo)
                         
-                        # PROTEÇÃO CRÍTICA: Impedir inserção caso a variável tenha ficado vazia
                         if sala_atual:
                             supabase.table("bate-papo_profissional").insert({
                                 "id_mensagem": str(uuid.uuid4()),
@@ -508,7 +518,6 @@ else:
             st.components.v1.html(gravador_html, height=85)
             st.markdown("---")
 
-            # --- INPUT DE TEXTO COM VALIDAÇÃO IMPENETRÁVEL ---
             m_txt = st.text_input("Mensagem:", key="input_texto_chat_direto", placeholder="Digite sua mensagem aqui...")
             if st.button("Enviar Mensagem ✉️", use_container_width=True):
                 if m_txt.strip():
@@ -614,7 +623,7 @@ else:
     # === ✨ ABA STATUS ===
     with aba_status:
         st.header("✨ Status Temporários")
-        stat_txt = st.text_input("O que você está pensando?")
+        stat_txt = st.text_input("O que você está thinking?")
         if st.button("Postar Status") and stat_txt.strip():
             supabase.table("feed_videos").insert({
                 "titulo": f"[STATUS] {stat_txt.strip()}", "url_video": "", "username_autor": u_name,
@@ -635,3 +644,4 @@ else:
                 st.info("Nenhuma notificação por aqui.")
         except:
             st.info("Notificações indisponíveis no momento.")
+                     
