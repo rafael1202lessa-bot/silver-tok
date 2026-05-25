@@ -401,7 +401,7 @@ else:
                 else:
                     st.button("Saldo Insuficiente ❌", key=f"insuf_{chave}", disabled=True, use_container_width=True)
 
-    # === 💬 ABA CHAT-EXV CORRIGIDA COM ID_MENSAGEM MANDATÓRIO ===
+    # === 💬 ABA CHAT-EXV CORRIGIDA COM CREATED_AT EXPLÍCITO ===
     with aba_chat:
         if st.session_state.sala_ativa:
             st.subheader(f"Sala: {st.session_state.sala_ativa}")
@@ -425,9 +425,10 @@ else:
                         supabase.storage.from_("audios_chat").upload(nome_arquivo, dados_audio)
                         url_publica_audio = supabase.storage.from_("audios_chat").get_public_url(nome_arquivo)
                         
-                        # Inserção de áudio corrigida usando id_mensagem
+                        # Inserção de áudio fornecendo explicitamente id_mensagem e created_at
                         supabase.table("bate-papo_profissional").insert({
                             "id_mensagem": str(uuid.uuid4()),
+                            "created_at": datetime.now(timezone.utc).isoformat(),
                             "username": u_name,
                             "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                             "mensagem": url_publica_audio, 
@@ -503,14 +504,15 @@ else:
             st.components.v1.html(gravador_html, height=85)
             st.markdown("---")
 
-            # --- INPUT DE TEXTO CORRIGIDO PASSANDO ID_MENSAGEM OBRIGATÓRIA ---
+            # --- INPUT DE TEXTO CORRIGIDO COM CREATED_AT OBRIGATÓRIO ---
             m_txt = st.text_input("Mensagem:", key="input_texto_chat_direto", placeholder="Digite sua mensagem aqui...")
             if st.button("Enviar Mensagem ✉️", use_container_width=True):
                 if m_txt.strip():
                     try:
-                        # Passando a chave primária correta (id_mensagem) exigida pela sua tabela
+                        # Incluído o campo created_at gerado em tempo de execução
                         supabase.table("bate-papo_profissional").insert({
                             "id_mensagem": str(uuid.uuid4()),
+                            "created_at": datetime.now(timezone.utc).isoformat(),
                             "username": u_name,
                             "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                             "mensagem": m_txt.strip(), 
