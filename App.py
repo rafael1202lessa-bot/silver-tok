@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Silver Tok v3.0 Master", page_icon="🎬", layout="centered")
+st.set_page_config(page_title="Silver Tok v3.1 Master", page_icon="🎬", layout="centered")
 
 # --- CONEXÃO BANCO DE DADOS ---
 SUPABASE_URL = "https://ldjtqgeyorkzbvuichjj.supabase.co"
@@ -108,11 +108,19 @@ def renderizar_caixa_mensagem(username, mensagem, selo, estilo_caixa, eh_admin=F
     else:
         estilo_css = "background-color: #f1f3f4; padding: 10px; border-radius: 8px; margin-bottom: 8px;"
         
+    # Identificar e processar elementos de mídia dentro da mensagem
+    conteudo_mensagem = mensagem
+    if "https://" in mensagem:
+        if mensagem.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+            conteudo_mensagem = f'<br><img src="{mensagem}" style="max-width: 100%; border-radius: 8px; margin-top: 5px;">'
+        elif mensagem.lower().endswith(('.mp3', '.wav', '.ogg', '.m4a')):
+            conteudo_mensagem = f'<br><audio controls style="max-width: 100%; margin-top: 5px;"><source src="{mensagem}"></audio>'
+
     st.markdown(f"""
     <div style="{estilo_css}">
         <span style="font-weight: bold; color: {'#d4af37' if (eh_admin or estilo_caixa == '👑 Balão Dourado DEV') else '#333'};">{username}</span> 
         <span style="font-size: 12px; font-weight: bold;">{selo}</span>: 
-        <span style="color: {'#111' if estilo_caixa != '🔮 Balão Neon Cyber' else '#fff'};">{mensagem}</span>
+        <span style="color: {'#111' if estilo_caixa != '🔮 Balão Neon Cyber' else '#fff'};">{conteudo_mensagem}</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -162,7 +170,6 @@ if st.session_state.usuario_logado is None:
                 except:
                     st.error("Nome de usuário indisponível.")
 else:
-    # Sincronização segura
     try:
         atualizar_dados = supabase.table("perfis_usuarios").select("*").eq("id", st.session_state.usuario_logado.get("id")).execute()
         if atualizar_dados.data:
@@ -193,7 +200,6 @@ else:
         st.write(f"**{user_atual.get('apelido') or u_name}** {selo_proprio}")
         st.markdown(f"🪙 **Saldo:** {user_atual.get('moedas', 0)} Moedas")
         
-        # --- INVENTÁRIO CORRIGIDO CONTRA MENSAGEM DUPLA ---
         with st.expander("🎒 Meu Inventário"):
             st.caption("Equipe suas customizações salvas:")
             estilo_atual = user_atual.get("banner_ativo", "Nenhum")
@@ -213,7 +219,6 @@ else:
                 except: 
                     st.error("Falha ao equipar o cosmético.")
 
-        # --- MENU EDITAR PERFIL ---
         with st.expander("⚙️ Editar Meu Perfil"):
             novo_apelido = st.text_input("Alterar Apelido:", value=user_atual.get("apelido") or u_name)
             nova_foto = st.text_input("URL da Foto de Perfil:", value=user_atual.get("url_foto_perfil") or FOTO_PADRAO)
@@ -223,7 +228,7 @@ else:
                         "apelido": novo_apelido.strip(),
                         "url_foto_perfil": nova_foto.strip()
                     }).eq("id", u_id).execute()
-                    st.success("Perfil updated!")
+                    st.success("Perfil atualizado!")
                     st.rerun()
                 except: st.error("Erro ao salvar dados.")
 
@@ -393,7 +398,7 @@ else:
                 else:
                     st.button("Saldo Insuficiente ❌", key=f"insuf_{chave}", disabled=True, use_container_width=True)
 
-    # === 💬 ABA CHAT-EXV 100% RESTAURADA COM TODAS AS ABAS ===
+    # === 💬 ABA CHAT-EXV COM SUPORTE A FOTO E ÁUDIO RESTAURADOS ===
     with aba_chat:
         if st.session_state.sala_ativa:
             st.subheader(f"Sala: {st.session_state.sala_ativa}")
@@ -401,15 +406,48 @@ else:
                 st.session_state.sala_ativa = None
                 st.rerun()
 
-            with st.form(key="chat_msg_form", clear_on_submit=True):
-                m_txt = st.text_input("Mensagem:")
-                if st.form_submit_button("Enviar ✉️") and m_txt.strip():
-                    supabase.table("bate-papo_profissional").insert({
-                        "username": u_name,
-                        "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                        "mensagem": m_txt.strip(), "codigo_sala": st.session_state.sala_ativa
-                    }).execute()
-                    st.rerun()
+            # Estrutura flexível para digitação e anexos de mídia
+            c_txt, c_btn = st.columns([5, 1])
+            with c_txt:
+                m_txt = st.text_input("Mensagem:", label_visibility="collapsed", placeholder="Digite sua mensagem aqui...")
+            with c_btn:
+                envio_simples = st.button("Enviar ✉️", use_container_width=True)
+
+            # Controles de mídias acoplados abaixo do chat
+            exp_foto, exp_audio = st.columns(2)
+            url_midia_enviar = None
+
+            with exp_foto:
+                with st.expander("🖼️ Enviar Foto"):
+                    arq_foto = st.file_uploader("Escolha a Imagem:", type=["png", "jpg", "jpeg", "gif", "webp"], key="upload_foto_chat")
+                    if arq_foto and st.button("Confirmar Imagem 📤"):
+                        try:
+                            path_b = f"chat/fotos/{uuid.uuid4()}_{arq_foto.name}"
+                            supabase.storage.from_("imagens_chat").upload(path_b, arq_foto.read())
+                            url_midia_enviar = supabase.storage.from_("imagens_chat").get_public_url(path_b)
+                            st.success("Imagem pronta para envio!")
+                        except: st.error("Erro no upload da foto.")
+
+            with exp_audio:
+                with st.expander("🎙️ Enviar Áudio"):
+                    arq_audio = st.file_uploader("Escolha o Áudio:", type=["mp3", "wav", "ogg", "m4a"], key="upload_audio_chat")
+                    if arq_audio and st.button("Confirmar Áudio 📤"):
+                        try:
+                            path_b = f"chat/audios/{uuid.uuid4()}_{arq_audio.name}"
+                            supabase.storage.from_("audios_chat").upload(path_b, arq_audio.read())
+                            url_midia_enviar = supabase.storage.from_("audios_chat").get_public_url(path_b)
+                            st.success("Áudio pronto para envio!")
+                        except: st.error("Erro no upload do áudio.")
+
+            # Lógica Unificada de Disparo de Mensagem
+            conteudo_final = url_midia_enviar if url_midia_enviar else m_txt.strip()
+            if (envio_simples and m_txt.strip()) or url_midia_enviar:
+                supabase.table("bate-papo_profissional").insert({
+                    "username": u_name,
+                    "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
+                    "mensagem": conteudo_final, "codigo_sala": st.session_state.sala_ativa
+                }).execute()
+                st.rerun()
 
             try:
                 m_dados = supabase.table("bate-papo_profissional").select("*").eq("codigo_sala", st.session_state.sala_ativa).execute()
@@ -433,8 +471,6 @@ else:
             except: pass
         else:
             st.title("🎛️ Painel Chat-Exv")
-            
-            # ABA CORRIGIDA AQUI: Adicionado de volta "Entrar" e "Adicionar"
             t_chat = st.tabs(["💬 Privado", "🔑 Entrar", "👥 Grupos", "👥 Membros", "➕ Adicionar"])
             
             with t_chat[0]:
@@ -504,7 +540,7 @@ else:
                 "titulo": f"[STATUS] {stat_txt.strip()}", "url_video": "", "username_autor": u_name,
                 "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO, "curtidas": 0, "id_autor": u_id, "tipo_formato": "horizontal"
             }).execute()
-            st.success("Status atualizado!")
+            st.success("Status updated!")
             st.rerun()
 
     # === 🔔 ABA NOTIFICAÇÕES ===
