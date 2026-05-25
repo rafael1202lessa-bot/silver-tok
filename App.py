@@ -40,12 +40,11 @@ if "id_audio_chat" not in st.session_state:
 if "perfil_visitado" not in st.session_state:
     st.session_state.perfil_visitado = None
 
-# Função auxiliar para verificar o status de online do usuário baseado no timestamp
-def obter_status_emoji(timestamp_str):
+# Função auxiliar para verificar o status de online do usuário
+def obtener_status_emoji(timestamp_str):
     if not timestamp_str:
         return "⚪ Offline"
     try:
-        # Trata o formato de data vindo do Supabase
         if "T" in timestamp_str:
             timestamp_str = timestamp_str.split("+")[0]
             dt_usuario = datetime.fromisoformat(timestamp_str).replace(tzinfo=timezone.utc)
@@ -53,7 +52,6 @@ def obter_status_emoji(timestamp_str):
             dt_usuario = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S.%f").replace(tzinfo=timezone.utc)
         
         agora = datetime.now(timezone.utc)
-        # Se atualizou nos últimos 2 minutos, está online
         if agora - dt_usuario < timedelta(minutes=2):
             return "🟢 Online"
     except:
@@ -74,7 +72,6 @@ if st.session_state.usuario_logado is None:
                     busca = supabase.table("perfis_usuarios").select("*").eq("username", login_user).execute()
                     if busca.data and busca.data[0]["senha"] == login_senha:
                         st.session_state.usuario_logado = busca.data[0]
-                        # Atualiza o status de online no login
                         supabase.table("perfis_usuarios").update({"ultimo_visto": datetime.now(timezone.utc).isoformat()}).eq("id", busca.data[0]["id"]).execute()
                         st.success("Login feito com sucesso!")
                         st.rerun()
@@ -108,7 +105,6 @@ if st.session_state.usuario_logado is None:
 else:
     user_atual = st.session_state.usuario_logado
     
-    # ATUALIZAÇÃO AUTOMÁTICA DE STATUS (Roda silenciosamente a cada clique do usuário logado)
     try:
         supabase.table("perfis_usuarios").update({"ultimo_visto": datetime.now(timezone.utc).isoformat()}).eq("id", user_atual["id"]).execute()
     except:
@@ -129,7 +125,7 @@ else:
     else:
         st.sidebar.write(f"Usuário: **{user_atual['username']}**")
     st.sidebar.write(f"👥 **{total_seg}** seguidores")
-    st.sidebar.write("🟢 status: **Online**")
+    st.sidebar.write("🟢 Status: **Online**")
     
     if st.sidebar.button("Sair 🚪", use_container_width=True):
         st.session_state.usuario_logado = None
@@ -337,7 +333,8 @@ else:
                                         st.rerun()
                                 else:
                                     if st.button("Seguir ➕", key=f"fol_{chave_componente}", use_container_width=True, type="primary"):
-                                        supabase.table("seguidores").insert({"id_seguidor", user_atual["id"], "id_seguido", id_autor}).execute()
+                                        # CORREÇÃO DA SINTAXE DE DICIONÁRIO AQUI:
+                                        supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor}).execute()
                                         st.rerun()
                             except:
                                 pass
@@ -359,16 +356,6 @@ else:
                                 if "id" in v:
                                     supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("id", v["id"]).execute()
                             st.rerun()
-                    with col_del:
-                        if autor == user_atual["username"]:
-                            if st.button("Excluir Post 🗑️", key=f"del_{chave_componente}"):
-                                try:
-                                    supabase.table("feed_videos").delete().eq("url_video", video_url).execute()
-                                except:
-                                    if "id" in v:
-                                        supabase.table("feed_videos").delete().eq("id", v["id"]).execute()
-                                st.success("Removido com sucesso!")
-                                st.rerun()
 
                     total_coment = 0
                     lista_comentarios = []
@@ -380,7 +367,8 @@ else:
                     except:
                         pass
 
-                    with st.expander(f"💬 Comentários ({total_coment})"):
+                    # CORREÇÃO AQUI: Mudado de 'id=' para 'key=' para evitar quebra no Streamlit
+                    with st.expander(f"💬 Comentários ({total_coment})", key=f"exp_{chave_componente}"):
                         novo_coment = st.text_input("Escreva um comentário...", key=f"in_cm_{chave_componente}", placeholder="O que você achou?")
                         if st.button("Comentar 🚀", key=f"btn_cm_{chave_componente}"):
                             if novo_coment.strip():
@@ -449,11 +437,9 @@ else:
     # === ABA CHAT ===
     with aba_chat:
         if st.session_state.sala_ativa is not None:
-            # Pegando o nome e o status de quem você está conversando
             titulo_chat = "💬 Sala Ativa"
             if "PRIVADO-" in st.session_state.sala_ativa:
                 try:
-                    # Tenta descobrir o nome do outro participante do privado
                     amg_res = supabase.table("lista_amigos").select("*").or_(f"id_usuario_envio.eq.{user_atual['id']},id_usuario_recebe.eq.{user_atual['id']}").eq("status", "aceito").execute()
                     if amg_res.data:
                         for a in amg_res.data:
@@ -497,6 +483,7 @@ else:
                             supabase.storage.from_("imagens_chat").upload(nome_a, gravar_audio.read())
                             url_img = supabase.storage.from_("imagens_chat").get_public_url(nome_a)
                             
+                        # CORREÇÃO DA COLUNA AQUI: Mudado para 'url_imagem_enviada' conforme o cache do Supabase espera
                         supabase.table("bate-papo_profissional").insert({
                             "id_usuario": user_atual["id"], 
                             "username": user_atual["username"], 
@@ -688,4 +675,3 @@ else:
                 st.info("Nenhum status disponível.")
         except Exception as e:
             st.error(f"Erro ao carregar os status: {e}")
- 
