@@ -100,6 +100,9 @@ def renderizar_foto_com_banner(url_foto, username_alvo, user_id_alvo=None, taman
     st.markdown(html, unsafe_allow_html=True)
 
 def renderizar_caixa_mensagem(username, mensagem, selo, estilo_caixa, eh_admin=False):
+    if mensagem is None or str(mensagem).lower() == "none":
+        return
+
     if eh_admin or estilo_caixa == "👑 Balão Dourado DEV":
         estilo_css = "background: linear-gradient(135deg, #fff7e6, #ffeaa7); border-left: 5px solid #ffd700; padding: 12px; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 2px 5px rgba(255,215,0,0.2);"
     elif estilo_caixa == "🔷 Balão Azul Moderno":
@@ -119,7 +122,7 @@ def renderizar_caixa_mensagem(username, mensagem, selo, estilo_caixa, eh_admin=F
     st.markdown(f"""
     <div style="{estilo_css}">
         <span style="font-weight: bold; color: {'#d4af37' if (eh_admin or estilo_caixa == '👑 Balão Dourado DEV') else '#333'};">{username}</span> 
-        <span style="font-size: 12px; font-weight: bold;">{selo}</span>: 
+        <span style="font-size: 12px; font-weight: bold; color: #d4af37;">{selo}</span>: 
         <span style="color: {'#111' if estilo_caixa != '🔮 Balão Neon Cyber' else '#fff'};">{conteudo_final}</span>
     </div>
     """, unsafe_allow_html=True)
@@ -210,7 +213,7 @@ else:
         st.write(f"**{user_atual.get('apelido') or u_name}** {selo_proprio}")
         st.markdown(f"🪙 **Saldo:** {user_atual.get('moedas', 0)} Moedas")
         
-        # --- INVENTÁRIO ---
+        # --- INVENTÁRIO (CORRIGIDO PARA EVITAR DUPLO STATUS VISUAL) ---
         with st.expander("🎒 Meu Inventário"):
             st.caption("Equipe suas customizações salvas:")
             estilo_atual = user_atual.get("banner_ativo", "Nenhum")
@@ -225,7 +228,7 @@ else:
             if st.button("Equipar Cosmético 🛡️"):
                 try:
                     supabase.table("perfis_usuarios").update({"banner_ativo": escolha_custom}).eq("id", u_id).execute()
-                    st.success("Item equipado com sucesso!")
+                    st.toast("Item equipado com sucesso! 🛡️")
                     st.rerun()
                 except: 
                     st.error("Falha ao equipar o cosmético.")
@@ -240,7 +243,7 @@ else:
                         "apelido": novo_apelido.strip(),
                         "url_foto_perfil": nova_foto.strip()
                     }).eq("id", u_id).execute()
-                    st.success("Perfil updated!")
+                    st.success("Perfil atualizado!")
                     st.rerun()
                 except: st.error("Erro ao salvar dados.")
 
@@ -256,7 +259,7 @@ else:
         "📺 Silver Tok (Feed)", "🛒 Loja & Caixas", "💬 Chat-Exv", "✨ Status", f"🔔 Notificações ({total_notif})"
     ])
 
-    # --- LISTAGEM DO FEED COM SEÇÃO DE COMENTÁRIOS DE VOLTA ---
+    # --- LISTAGEM DO FEED COM SEÇÃO DE COMENTÁRIOS TOTALMENTE REFEITA ---
     def renderizar_lista_filtrada(lista_posts, identificador_formato, termo_busca="", ordenacao=""):
         if termo_busca:
             lista_posts = [p for p in lista_posts if termo_busca.lower() in str(p.get("titulo", "")).lower()]
@@ -309,7 +312,7 @@ else:
                             except: pass
                         st.rerun()
 
-            # --- SEÇÃO DE COMENTÁRIOS DO VÍDEO (RESTABELECIDA) ---
+            # --- SEÇÃO DE COMENTÁRIOS COM FOTO, BALÃO E SELO (PRIMEIRA FALHA CORRIGIDA) ---
             with st.expander(f"💬 Ver Comentários do Post"):
                 cod_discussao = f"POST-{id_post}"
                 
@@ -331,7 +334,26 @@ else:
                     comentarios = supabase.table("bate-papo_profissional").select("*").eq("codigo_sala", cod_discussao).execute()
                     if comentarios.data:
                         for c in comentarios.data:
-                            st.markdown(f"**{c.get('username')}**: {c.get('mensagem')}")
+                            c_user = c.get('username')
+                            c_msg = c.get('mensagem')
+                            if c_msg and str(c_msg).lower() != "none":
+                                col_c1, col_c2 = st.columns([1, 6])
+                                with col_c1:
+                                    # Busca os cosméticos do autor do comentário em tempo real
+                                    try:
+                                        estilo_c = supabase.table("perfis_usuarios").select("banner_ativo", "id", "url_foto_perfil").eq("username", c_user).execute()
+                                        txt_caixa_c = estilo_c.data[0].get("banner_ativo", "Nenhum") if estilo_c.data else "Nenhum"
+                                        uid_c = estilo_c.data[0].get("id") if estilo_c.data else None
+                                        foto_c = estilo_c.data[0].get("url_foto_perfil") or FOTO_PADRAO
+                                    except:
+                                        txt_caixa_c = "Nenhum"
+                                        uid_c = None
+                                        foto_c = FOTO_PADRAO
+                                        
+                                    renderizar_foto_com_banner(foto_c, c_user, uid_c, tamanho=40, banner_equipado=txt_caixa_c)
+                                with col_c2:
+                                    selo_c = obter_selo_texto(c_user, uid_c)
+                                    renderizar_caixa_mensagem(c_user, c_msg, selo_c, txt_caixa_c, eh_admin=verificar_se_eh_dev(uid_c))
                     else:
                         st.caption("Ninguém comentou ainda.")
                 except: pass
@@ -561,23 +583,25 @@ else:
             try:
                 m_dados = supabase.table("bate-papo_profissional").select("*").eq("codigo_sala", sala_atual).execute()
                 if m_dados.data:
-                    # Removida ordenação forçada por colunas que dão erro de Schema
                     for m in reversed(m_dados.data[-40:]):
-                        col_m1, col_m2 = st.columns([1, 6])
                         m_user = m.get('username', 'Membro')
-                        with col_m1:
-                            renderizar_foto_com_banner(m.get("url_foto_perfil") or FOTO_PADRAO, m_user, tamanho=40)
-                        with col_m2:
-                            s_msg = obter_selo_texto(m_user)
-                            try:
-                                estilo_u = supabase.table("perfis_usuarios").select("banner_ativo", "id").eq("username", m_user).execute()
-                                txt_caixa = estilo_u.data[0].get("banner_ativo", "Nenhum") if estilo_u.data else "Nenhum"
-                                uid_remetente = estilo_u.data[0].get("id") if estilo_u.data else ""
-                            except:
-                                txt_caixa = "Nenhum"
-                                uid_remetente = ""
-                                
-                            renderizar_caixa_mensagem(m_user, m.get('mensagem', ''), s_msg, txt_caixa, eh_admin=verificar_se_eh_dev(uid_remetente))
+                        m_msg = m.get('mensagem', '')
+                        
+                        if m_msg and str(m_msg).lower() != "none":
+                            col_m1, col_m2 = st.columns([1, 6])
+                            with col_m1:
+                                renderizar_foto_com_banner(m.get("url_foto_perfil") or FOTO_PADRAO, m_user, tamanho=40)
+                            with col_m2:
+                                s_msg = obter_selo_texto(m_user)
+                                try:
+                                    estilo_u = supabase.table("perfis_usuarios").select("banner_ativo", "id").eq("username", m_user).execute()
+                                    txt_caixa = estilo_u.data[0].get("banner_ativo", "Nenhum") if estilo_u.data else "Nenhum"
+                                    uid_remetente = estilo_u.data[0].get("id") if estilo_u.data else ""
+                                except:
+                                    txt_caixa = "Nenhum"
+                                    uid_remetente = ""
+                                    
+                                renderizar_caixa_mensagem(m_user, m_msg, s_msg, txt_caixa, eh_admin=verificar_se_eh_dev(uid_remetente))
             except: pass
         else:
             st.title("🎛️ Painel Chat-Exv")
@@ -648,7 +672,7 @@ else:
                     "titulo": f"[STATUS] {stat_txt.strip()}", "url_video": "", "username_autor": u_name,
                     "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO, "curtidas": 0, "id_autor": u_id, "tipo_formato": "horizontal"
                 }).execute()
-                st.success("Status atualizado!")
+                st.success("Status updated!")
                 st.rerun()
             except: pass
 
@@ -664,3 +688,4 @@ else:
                 st.info("Nenhuma notificação por aqui.")
         except:
             st.info("Notificações indisponíveis no momento.")
+                        
