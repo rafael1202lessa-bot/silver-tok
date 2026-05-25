@@ -1,7 +1,7 @@
 import streamlit as st
 from supabase import create_client, Client
 import uuid
-import datetime
+from datetime import datetime, timedelta, timezone
 
 st.set_page_config(page_title="Silver Tok v2.0", page_icon="🎬", layout="centered")
 
@@ -40,6 +40,26 @@ if "id_audio_chat" not in st.session_state:
 if "perfil_visitado" not in st.session_state:
     st.session_state.perfil_visitado = None
 
+# Função auxiliar para verificar o status de online do usuário baseado no timestamp
+def obter_status_emoji(timestamp_str):
+    if not timestamp_str:
+        return "⚪ Offline"
+    try:
+        # Trata o formato de data vindo do Supabase
+        if "T" in timestamp_str:
+            timestamp_str = timestamp_str.split("+")[0]
+            dt_usuario = datetime.fromisoformat(timestamp_str).replace(tzinfo=timezone.utc)
+        else:
+            dt_usuario = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S.%f").replace(tzinfo=timezone.utc)
+        
+        agora = datetime.now(timezone.utc)
+        # Se atualizou nos últimos 2 minutos, está online
+        if agora - dt_usuario < timedelta(minutes=2):
+            return "🟢 Online"
+    except:
+        pass
+    return "⚪ Offline"
+
 if st.session_state.usuario_logado is None:
     exibir_logo()
     
@@ -54,6 +74,8 @@ if st.session_state.usuario_logado is None:
                     busca = supabase.table("perfis_usuarios").select("*").eq("username", login_user).execute()
                     if busca.data and busca.data[0]["senha"] == login_senha:
                         st.session_state.usuario_logado = busca.data[0]
+                        # Atualiza o status de online no login
+                        supabase.table("perfis_usuarios").update({"ultimo_visto": datetime.now(timezone.utc).isoformat()}).eq("id", busca.data[0]["id"]).execute()
                         st.success("Login feito com sucesso!")
                         st.rerun()
                     else:
@@ -77,7 +99,7 @@ if st.session_state.usuario_logado is None:
                         nome_f = f"perfis/{uuid.uuid4()}.png"
                         supabase.storage.from_("imagens_chat").upload(nome_f, cad_foto.read())
                         url_foto = supabase.storage.from_("imagens_chat").get_public_url(nome_f)
-                    supabase.table("perfis_usuarios").insert({"username": cad_user, "senha": cad_senha, "url_foto_perfil": url_foto}).execute()
+                    supabase.table("perfis_usuarios").insert({"username": cad_user, "senha": cad_senha, "url_foto_perfil": url_foto, "ultimo_visto": datetime.now(timezone.utc).isoformat()}).execute()
                     st.success("Conta criada! Agora faça o seu login.")
                 except:
                     st.error("Erro ao cadastrar ou o usuário já existe.")
@@ -85,6 +107,13 @@ if st.session_state.usuario_logado is None:
                 st.warning("Verifique os campos!")
 else:
     user_atual = st.session_state.usuario_logado
+    
+    # ATUALIZAÇÃO AUTOMÁTICA DE STATUS (Roda silenciosamente a cada clique do usuário logado)
+    try:
+        supabase.table("perfis_usuarios").update({"ultimo_visto": datetime.now(timezone.utc).isoformat()}).eq("id", user_atual["id"]).execute()
+    except:
+        pass
+
     total_seg = 0
     try:
         res_seg = supabase.table("seguidores").select("*", count="exact").eq("id_seguido", user_atual["id"]).execute()
@@ -100,6 +129,7 @@ else:
     else:
         st.sidebar.write(f"Usuário: **{user_atual['username']}**")
     st.sidebar.write(f"👥 **{total_seg}** seguidores")
+    st.sidebar.write("🟢 status: **Online**")
     
     if st.sidebar.button("Sair 🚪", use_container_width=True):
         st.session_state.usuario_logado = None
@@ -107,8 +137,9 @@ else:
         st.session_state.perfil_visitado = None
         st.rerun()
 
-    aba_feed, aba_chat = st.tabs(["📺 Silver Tok (Feed)", "💬 Chat-Exv"])
+    aba_feed, aba_chat, aba_status = st.tabs(["📺 Silver Tok (Feed)", "💬 Chat-Exv", "✨ Status"])
     
+    # === ABA FEED ===
     with aba_feed:
         if st.session_state.perfil_visitado is not None:
             autor_vis = st.session_state.perfil_visitado
@@ -123,6 +154,7 @@ else:
                     p_info = dados_perf.data[0]
                     id_autor_vis = p_info["id"]
                     img_autor_vis = p_info.get("url_foto_perfil") or FOTO_PADRAO
+                    status_autor = obter_status_emoji(p_info.get("ultimo_visto"))
                     
                     c_seg_v = supabase.table("seguidores").select("*", count="exact").eq("id_seguido", id_autor_vis).execute()
                     qtd_seg_v = c_seg_v.count if (hasattr(c_seg_v, "count") and c_seg_v.count is not None) else len(c_seg_v.data)
@@ -137,6 +169,7 @@ else:
                         elif qtd_seg_v >= 1000:
                             selo_v = " ✔️"
                         st.subheader(f"@{autor_vis}{selo_v}")
+                        st.write(f"Status: **{status_autor}**")
                         st.write(f"👥 **{qtd_seg_v}** seguidores")
                         
                         if autor_vis != user_atual["username"]:
@@ -154,6 +187,8 @@ else:
                     v_dados = supabase.table("feed_videos").select("*").eq("username_autor", autor_vis).execute()
                     if v_dados.data:
                         for idx_v, vid in enumerate(reversed(v_dados.data)):
+                            if vid["titulo"].startswith("[STATUS]"):
+                                continue
                             st.caption(vid["titulo"])
                             url_midia = vid["url_video"]
                             if url_midia.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
@@ -255,6 +290,9 @@ else:
 
             def renderizar_posts(lista_posts, identificador_aba):
                 for idx, v in enumerate(lista_posts):
+                    if str(v.get("titulo", "")).startswith("[STATUS]"):
+                        continue
+                        
                     autor = v.get('username_autor', 'Membro')
                     img_autor = v.get('avatar_autor') or FOTO_PADRAO
                     video_url = v["url_video"]
@@ -299,7 +337,7 @@ else:
                                         st.rerun()
                                 else:
                                     if st.button("Seguir ➕", key=f"fol_{chave_componente}", use_container_width=True, type="primary"):
-                                        supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor}).execute()
+                                        supabase.table("seguidores").insert({"id_seguidor", user_atual["id"], "id_seguido", id_autor}).execute()
                                         st.rerun()
                             except:
                                 pass
@@ -408,9 +446,29 @@ else:
             except Exception as e:
                 st.error(f"Erro ao carregar o feed: {e}")
 
+    # === ABA CHAT ===
     with aba_chat:
         if st.session_state.sala_ativa is not None:
-            st.title("💬 Sala Ativa")
+            # Pegando o nome e o status de quem você está conversando
+            titulo_chat = "💬 Sala Ativa"
+            if "PRIVADO-" in st.session_state.sala_ativa:
+                try:
+                    # Tenta descobrir o nome do outro participante do privado
+                    amg_res = supabase.table("lista_amigos").select("*").or_(f"id_usuario_envio.eq.{user_atual['id']},id_usuario_recebe.eq.{user_atual['id']}").eq("status", "aceito").execute()
+                    if amg_res.data:
+                        for a in amg_res.data:
+                            o_id = a["id_usuario_recebe"] if str(a["id_usuario_envio"]) == str(user_atual["id"]) else a["id_usuario_envio"]
+                            ids_combinados = sorted([str(user_atual["id"]), str(o_id)])
+                            if f"PRIVADO-{ids_combinados[0][:8]}-{ids_combinados[1][:8]}" == st.session_state.sala_ativa:
+                                perf_outro = supabase.table("perfis_usuarios").select("username", "ultimo_visto").eq("id", o_id).execute()
+                                if perf_outro.data:
+                                    nome_o = perf_outro.data[0]["username"]
+                                    status_o = obter_status_emoji(perf_outro.data[0].get("ultimo_visto"))
+                                    titulo_chat = f"💬 @{nome_o} ({status_o})"
+                except:
+                    pass
+
+            st.title(titulo_chat)
             st.code(f"Código da Sala: {st.session_state.sala_ativa}")
             if st.button("⬅️ Voltar ao Menu", use_container_width=True):
                 st.session_state.sala_ativa = None
@@ -486,15 +544,16 @@ else:
                     if amg.data:
                         for a in amg.data:
                             o_id = a["id_usuario_recebe"] if str(a["id_usuario_envio"]) == str(user_atual["id"]) else a["id_usuario_envio"]
-                            du = supabase.table("perfis_usuarios").select("username").eq("id", o_id).execute()
+                            du = supabase.table("perfis_usuarios").select("username", "ultimo_visto").eq("id", o_id).execute()
                             if du.data:
-                                n = du.data[0]["username"]
-                                nomes.append(n)
-                                m_ids[n] = o_id
+                                status_amg = obter_status_emoji(du.data[0].get("ultimo_visto"))
+                                label_n = f"{du.data[0]['username']} ({status_amg})"
+                                nomes.append(label_n)
+                                m_ids[label_n] = o_id
                     if nomes:
-                        alvo = st.selectbox("Escolha um amigo:", nomes)
+                        alvo_label = st.selectbox("Escolha um amigo para conversar:", nomes)
                         if st.button("Abrir Conversa Particular 🚀", use_container_width=True):
-                            ids = sorted([str(user_atual["id"]), str(m_ids[alvo])])
+                            ids = sorted([str(user_atual["id"]), str(m_ids[alvo_label])])
                             st.session_state.sala_ativa = f"PRIVADO-{ids[0][:8]}-{ids[1][:8]}"
                             st.rerun()
                     else:
@@ -536,9 +595,10 @@ else:
                     if conf.data:
                         for c in conf.data:
                             o_id = c["id_usuario_recebe"] if str(c["id_usuario_envio"]) == str(user_atual["id"]) else c["id_usuario_envio"]
-                            du = supabase.table("perfis_usuarios").select("username").eq("id", o_id).execute()
+                            du = supabase.table("perfis_usuarios").select("username", "ultimo_visto").eq("id", o_id).execute()
                             if du.data:
-                                st.write(f"🟢 {du.data[0]['username']}")
+                                st_amigo = obter_status_emoji(du.data[0].get("ultimo_visto"))
+                                st.write(f"👤 **{du.data[0]['username']}** - {st_amigo}")
                     else:
                         st.caption("Nenhum amigo na lista.")
                 except:
@@ -559,4 +619,73 @@ else:
                             st.error("Usuário não encontrado.")
                     except:
                         st.error("Erro ao processar pedido de amizade.")
-                  
+
+    # === ABA STATUS ===
+    with aba_status:
+        st.header("✨ Status Recentes")
+        st.write("Compartilhe momentos rápidos com os seus seguidores.")
+        
+        with st.expander("➕ Postar um Status"):
+            texto_status = st.text_input("O que você está pensando? (Legenda):", placeholder="Ex: Curtindo o domingo... ☀️", key="input_txt_status")
+            foto_status = st.file_uploader("Adicionar Imagem do Status 📸:", type=["png", "jpg", "jpeg", "webp", "gif"], key="input_img_status")
+            
+            if st.button("Postar Status 🚀", use_container_width=True):
+                if texto_status.strip() or foto_status:
+                    try:
+                        url_status_final = ""
+                        if foto_status:
+                            with st.spinner("Enviando imagem..."):
+                                nome_status_bucket = f"status/{uuid.uuid4()}.png"
+                                supabase.storage.from_("imagens_chat").upload(nome_status_bucket, foto_status.read())
+                                url_status_final = supabase.storage.from_("imagens_chat").get_public_url(nome_status_bucket)
+                        
+                        supabase.table("feed_videos").insert({
+                            "titulo": f"[STATUS] {texto_status.strip()}",
+                            "url_video": url_status_final,
+                            "username_autor": user_atual["username"],
+                            "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
+                            "curtidas": 0
+                        }).execute()
+                        
+                        st.success("Status postado com sucesso!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao postar status: {e}")
+                else:
+                    st.warning("Escreva alguma coisa ou selecione uma foto!")
+                    
+        st.markdown("---")
+        
+        try:
+            todos_posts = supabase.table("feed_videos").select("*").execute()
+            if todos_posts.data:
+                lista_status = [p for p in todos_posts.data if str(p.get("titulo", "")).startswith("[STATUS]")]
+                
+                if lista_status:
+                    for s in reversed(lista_status):
+                        clean_text = s["titulo"].replace("[STATUS]", "").strip()
+                        
+                        st.markdown(f"##### ✨ **@{s['username_autor']}**")
+                        
+                        col_st1, col_st2 = st.columns([1, 6])
+                        with col_st1:
+                            st.image(s.get("avatar_autor") or FOTO_PADRAO, width=45)
+                        with col_st2:
+                            if clean_text:
+                                st.info(clean_text)
+                            if s["url_video"]:
+                                st.image(s["url_video"], width=300)
+                                
+                        if s["username_autor"] == user_atual["username"]:
+                            if st.button("Apagar Status 🗑️", key=f"del_st_{s['id']}"):
+                                supabase.table("feed_videos").delete().eq("id", s["id"]).execute()
+                                st.success("Status removido!")
+                                st.rerun()
+                        st.markdown("---")
+                else:
+                    st.info("Nenhum status postado recentemente. Seja o primeiro!")
+            else:
+                st.info("Nenhum status disponível.")
+        except Exception as e:
+            st.error(f"Erro ao carregar os status: {e}")
+ 
