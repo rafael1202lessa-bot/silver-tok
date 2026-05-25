@@ -2,6 +2,7 @@ import streamlit as st
 from supabase import create_client, Client
 import uuid
 from datetime import datetime, timedelta, timezone
+import base64
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Silver Tok v3.0 Master", page_icon="🎬", layout="centered")
@@ -108,12 +109,11 @@ def renderizar_caixa_mensagem(username, mensagem, selo, estilo_caixa, eh_admin=F
     else:
         estilo_css = "background-color: #f1f3f4; padding: 10px; border-radius: 8px; margin-bottom: 8px;"
         
-    # Identificar e embutir reprodutores caso a mensagem seja um link de mídia
     conteudo_final = mensagem
     if str(mensagem).startswith("https://"):
         if any(ext in str(mensagem).lower() for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp']) or "imagens_chat" in str(mensagem):
             conteudo_final = f'<br><img src="{mensagem}" style="max-width: 100%; border-radius: 8px; margin-top: 5px;">'
-        elif any(ext in str(mensagem).lower() for ext in ['.mp3', '.wav', '.ogg', '.m4a', '.webm']) or "audios_chat" in str(mensagem):
+        elif any(ext in str(mensagem).lower() for ext in ['.mp3', '.wav', '.ogg', '.m4a', '.webm', '.bin']) or "audios_chat" in str(mensagem):
             conteudo_final = f'<br><audio controls style="max-width: 100%; margin-top: 5px;"><source src="{mensagem}"></audio>'
 
     st.markdown(f"""
@@ -401,7 +401,7 @@ else:
                 else:
                     st.button("Saldo Insuficiente ❌", key=f"insuf_{chave}", disabled=True, use_container_width=True)
 
-    # === 💬 ABA CHAT-EXV ===
+    # === 💬 ABA CHAT-EXV INTERFACE MOBILE CLEAN ===
     with aba_chat:
         if st.session_state.sala_ativa:
             st.subheader(f"Sala: {st.session_state.sala_ativa}")
@@ -409,31 +409,79 @@ else:
                 st.session_state.sala_ativa = None
                 st.rerun()
 
-            # --- GRAVADOR DE ÁUDIO EMBUTIDO ---
-            st.markdown("### 🎙️ Enviar Mensagem de Voz")
-            audio_gravado = st.audio_input("Grave seu áudio aqui:")
+            # --- GRAVADOR HTML5 EMBUTIDO ULTRA COMPACTO ---
+            st.markdown("### 🎙️ Enviar Áudio")
             
-            if audio_gravado is not None:
-                if st.button("Enviar Áudio Gravado 🚀", use_container_width=True):
-                    try:
-                        nome_arquivo = f"chat/audios/{uuid.uuid4()}.wav"
-                        # Envia o arquivo gravado para o bucket 'audios_chat'
-                        supabase.storage.from_("audios_chat").upload(nome_arquivo, audio_gravado.read())
-                        url_publica_audio = supabase.storage.from_("audios_chat").get_public_url(nome_arquivo)
-                        
-                        # Insere a URL gerada na coluna 'mensagem'
-                        supabase.table("bate-papo_profissional").insert({
-                            "username": u_name,
-                            "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                            "mensagem": url_publica_audio, 
-                            "codigo_sala": st.session_state.sala_ativa
-                        }).execute()
-                        st.success("Áudio enviado com sucesso!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro ao fazer o upload do áudio: {e}")
+            # Captura de áudio nativa da Web API injetada diretamente via query_params de forma invisível
+            audio_base64 = st.text_input("Injetor de Áudio Interno", type="password", label_visibility="collapsed", key="audio_b64_injector")
+            
+            gravador_html = """
+            <div style="display: flex; gap: 10px; justify-content: center; padding: 5px 0;">
+                <button id="startBtn" style="background-color: #24a0ed; color: white; border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; width: 45%; cursor: pointer;">🎙️ Gravar</button>
+                <button id="stopBtn" style="background-color: #ff4b4b; color: white; border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; width: 45%; cursor: pointer; display: none;">⏹️ Enviar</button>
+            </div>
+            <div id="statusLabel" style="text-align: center; color: #555; font-size: 12px; margin-top: 4px;">Pronto para gravar</div>
 
-            st.markdown("---")
+            <script>
+            let mediaRecorder;
+            let audioChunks = [];
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const statusLabel = document.getElementById('statusLabel');
+
+            startBtn.onclick = async () => {
+                audioChunks = [];
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = () => {
+                        const base64String = reader.result.split(',')[1];
+                        // Procura o input do Streamlit e repassa o valor
+                        const inputs = window.parent.document.querySelectorAll('input[type="password"]');
+                        if(inputs.length > 0) {
+                            inputs[inputs.length - 1].value = base64String;
+                            inputs[inputs.length - 1].dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    };
+                    statusLabel.innerText = "Áudio enviado! Clique em Enviar no formulário.";
+                };
+                mediaRecorder.start();
+                startBtn.style.display = 'none';
+                stopBtn.style.display = 'inline-block';
+                statusLabel.innerText = "🔴 Gravando áudio...";
+            };
+
+            stopBtn.onclick = () => {
+                mediaRecorder.stop();
+                startBtn.style.display = 'inline-block';
+                stopBtn.style.display = 'none';
+                statusLabel.innerText = "Processando arquivo...";
+            };
+            </script>
+            """
+            st.components.v1.html(gravador_html, height=75)
+
+            # Se o JavaScript injetou a string de áudio, processamos o upload imediatamente
+            if audio_base64:
+                try:
+                    dados_audio = base64.b64decode(audio_base64)
+                    nome_arquivo = f"chat/audios/{uuid.uuid4()}.bin"
+                    supabase.storage.from_("audios_chat").upload(nome_arquivo, dados_audio)
+                    url_publica_audio = supabase.storage.from_("audios_chat").get_public_url(nome_arquivo)
+                    
+                    supabase.table("bate-papo_profissional").insert({
+                        "username": u_name,
+                        "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
+                        "mensagem": url_publica_audio, 
+                        "codigo_sala": st.session_state.sala_ativa
+                    }).execute()
+                    st.rerun()
+                except:
+                    pass
 
             # Formulário Padrão Original Intocado
             with st.form(key="chat_msg_form", clear_on_submit=True):
