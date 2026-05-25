@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Silver Tok v2.9 Master", page_icon="🎬", layout="centered")
+st.set_page_config(page_title="Silver Tok v3.0 Master", page_icon="🎬", layout="centered")
 
 # --- CONEXÃO BANCO DE DADOS ---
 SUPABASE_URL = "https://ldjtqgeyorkzbvuichjj.supabase.co"
@@ -40,7 +40,7 @@ VIDEOS_BOT_BOTEY = [
     {"id": "bot_2", "titulo": "🌌 Relaxing Cinematic View 4K", "url_video": "https://media.w3.org/2010/05/sintel/trailer_hd.mp4", "username_autor": "🤖 Bot_Natureza", "avatar_autor": "https://cdn-icons-png.flaticon.com/512/4213/4213732.png", "curtidas": 98, "tipo_formato": "horizontal"}
 ]
 
-# --- FUNÇÕES AUXILIARES ANTIFALHA (ANTI-KEYERROR) ---
+# --- FUNÇÕES AUXILIARES ANTIFALHA ---
 def obter_status_emoji(timestamp_str):
     if not timestamp_str:
         return "⚪ Offline"
@@ -162,7 +162,7 @@ if st.session_state.usuario_logado is None:
                 except:
                     st.error("Nome de usuário indisponível.")
 else:
-    # Sincronização segura em tempo real
+    # Sincronização segura
     try:
         atualizar_dados = supabase.table("perfis_usuarios").select("*").eq("id", st.session_state.usuario_logado.get("id")).execute()
         if atualizar_dados.data:
@@ -193,7 +193,7 @@ else:
         st.write(f"**{user_atual.get('apelido') or u_name}** {selo_proprio}")
         st.markdown(f"🪙 **Saldo:** {user_atual.get('moedas', 0)} Moedas")
         
-        # --- INVENTÁRIO AUTOMÁTICO E SEGURO ---
+        # --- INVENTÁRIO CORRIGIDO CONTRA MENSAGEM DUPLA ---
         with st.expander("🎒 Meu Inventário"):
             st.caption("Equipe suas customizações salvas:")
             estilo_atual = user_atual.get("banner_ativo", "Nenhum")
@@ -210,7 +210,8 @@ else:
                     supabase.table("perfis_usuarios").update({"banner_ativo": escolha_custom}).eq("id", u_id).execute()
                     st.success("Item equipado com sucesso!")
                     st.rerun()
-                except: st.error("Falha ao equipar o cosmético.")
+                except: 
+                    st.error("Falha ao equipar o cosmético.")
 
         # --- MENU EDITAR PERFIL ---
         with st.expander("⚙️ Editar Meu Perfil"):
@@ -222,32 +223,9 @@ else:
                         "apelido": novo_apelido.strip(),
                         "url_foto_perfil": nova_foto.strip()
                     }).eq("id", u_id).execute()
-                    st.success("Perfil atualizado!")
+                    st.success("Perfil updated!")
                     st.rerun()
                 except: st.error("Erro ao salvar dados.")
-
-        # --- PAINEL DE ADMINISTRADOR MASTER ---
-        if is_admin:
-            st.markdown("---")
-            st.markdown("### 👑 Painel Secreto Master")
-            with st.expander("🚀 Comandos de Admin"):
-                qtd_moedas = st.number_input("Quantidade de Moedas:", min_value=0, max_value=1000000, value=1000)
-                try:
-                    membros_db = supabase.table("perfis_usuarios").select("username").execute()
-                    lista_membros = [u.get("username") for u in membros_db.data if u.get("username")] if membros_db.data else [u_name]
-                except:
-                    lista_membros = [u_name]
-                    
-                alvo_moedas = st.selectbox("Dar moedas para:", lista_membros)
-                if st.button("Injetar Moedas 💸", type="primary"):
-                    try:
-                        dados_alvo = supabase.table("perfis_usuarios").select("moedas").eq("username", alvo_moedas).execute()
-                        saldo_atual = dados_alvo.data[0].get("moedas", 0) if dados_alvo.data else 0
-                        supabase.table("perfis_usuarios").update({"moedas": saldo_atual + qtd_moedas}).eq("username", alvo_moedas).execute()
-                        st.success(f"Fundos adicionados com sucesso para {alvo_moedas}!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro na transação: {e}")
 
         st.markdown("---")
         if st.button("Sair da Conta 🚪", use_container_width=True):
@@ -296,7 +274,6 @@ else:
                 elif video_url:
                     st.video(video_url)
 
-            # Botões funcionais sem KeyError
             col_b1, col_b2 = st.columns([2, 2])
             with col_b1:
                 if st.button(f"❤️ {v.get('curtidas', 0)} Curtidas", key=f"like_{chave_comp}"):
@@ -334,7 +311,6 @@ else:
                     st.subheader(f"{p_info.get('apelido') or autor_vis} {s_vis}")
                     
                     if autor_vis != u_name and vis_id:
-                        # Proteção extra antifalha na tabela de seguidores
                         ja_segue = supabase.table("seguidores").select("*").eq("id_seguidor", u_id).eq("id_seguido", vis_id).execute()
                         if ja_segue.data:
                             if st.button("Seguindo ✓"):
@@ -392,11 +368,8 @@ else:
                     renderizar_lista_filtrada(reversed(posts_completos_h), "horizontal_global", busca_legenda, ordenar_por)
                 except: pass
 
-    # === 🛒 ABA LOJA DE BANNERS E CAIXAS CORRIGIDA ===
+    # === 🛒 ABA LOJA ===
     with aba_loja:
-        if is_admin:
-            st.info("👑 Como Desenvolvedor principal, tu já tens a Coroa Suprema equipada permanentemente!")
-            
         st.header("🛒 Loja de Cosméticos Premium")
         st.caption("Adquira novas molduras e caixas de mensagens personalizadas.")
         
@@ -404,7 +377,6 @@ else:
         for idx, (chave, info) in enumerate(COSMETICOS.items()):
             coluna_foco = col_l1 if idx % 2 == 0 else col_l2
             with coluna_foco:
-                # Mostra o preview visual da imagem usando st.image de forma nativa e limpa
                 if info.get("img"):
                     st.image(info["img"], width=60)
                 st.markdown(f"### {info['nome']}")
@@ -421,7 +393,7 @@ else:
                 else:
                     st.button("Saldo Insuficiente ❌", key=f"insuf_{chave}", disabled=True, use_container_width=True)
 
-    # === 💬 ABA CHAT-EXV ===
+    # === 💬 ABA CHAT-EXV 100% RESTAURADA COM TODAS AS ABAS ===
     with aba_chat:
         if st.session_state.sala_ativa:
             st.subheader(f"Sala: {st.session_state.sala_ativa}")
@@ -461,7 +433,9 @@ else:
             except: pass
         else:
             st.title("🎛️ Painel Chat-Exv")
-            t_chat = st.tabs(["💬 Privado", "👥 Grupos", "👥 Membros"])
+            
+            # ABA CORRIGIDA AQUI: Adicionado de volta "Entrar" e "Adicionar"
+            t_chat = st.tabs(["💬 Privado", "🔑 Entrar", "👥 Grupos", "👥 Membros", "➕ Adicionar"])
             
             with t_chat[0]:
                 alvo = st.text_input("Username do amigo para iniciar privado:").strip()
@@ -471,12 +445,19 @@ else:
                     st.rerun()
             
             with t_chat[1]:
-                g_nome = st.text_input("Nome do Grupo:").strip().upper()
-                if st.button("Criar / Entrar no Grupo 🔐") and g_nome:
+                st.subheader("Entrar em uma Sala Existente")
+                cod_entrar = st.text_input("Insira o código do chat:", placeholder="Ex: GRUPO-VIP")
+                if st.button("Entrar na Sala 🚪") and cod_entrar:
+                    st.session_state.sala_ativa = cod_entrar.strip().upper()
+                    st.rerun()
+            
+            with t_chat[2]:
+                g_nome = st.text_input("Nome do Grupo para Criar:").strip().upper()
+                if st.button("Criar Grupo 🔐") and g_nome:
                     st.session_state.sala_ativa = g_nome
                     st.rerun()
 
-            with t_chat[2]:
+            with t_chat[3]:
                 st.subheader("Membros da Comunidade")
                 try:
                     u_todos = supabase.table("perfis_usuarios").select("*").execute()
@@ -497,6 +478,22 @@ else:
                                         st.session_state.sala_ativa = f"PRIV-{lista[0]}-{lista[1]}"
                                         st.rerun()
                 except: pass
+
+            with t_chat[4]:
+                st.subheader("Adicionar Novos Amigos")
+                st.caption("Busque e siga usuários para adicioná-los à sua lista do chat.")
+                busca_amigo = st.text_input("Digitar Username do Usuário:", key="busca_amigo_input")
+                if st.button("Buscar e Seguir ➕"):
+                    if busca_amigo.strip():
+                        try:
+                            verif = supabase.table("perfis_usuarios").select("id").eq("username", busca_amigo.strip()).execute()
+                            if verif.data:
+                                am_id = verif.data[0]["id"]
+                                supabase.table("seguidores").insert({"id_seguidor": u_id, "id_seguido": am_id}).execute()
+                                st.success(f"Você agora está seguindo {busca_amigo.strip()}!")
+                            else:
+                                st.error("Usuário não encontrado.")
+                        except: st.error("Você já segue este usuário ou ocorreu uma falha.")
 
     # === ✨ ABA STATUS ===
     with aba_status:
