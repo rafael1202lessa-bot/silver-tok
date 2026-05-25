@@ -401,7 +401,7 @@ else:
                 else:
                     st.button("Saldo Insuficiente ❌", key=f"insuf_{chave}", disabled=True, use_container_width=True)
 
-    # === 💬 ABA CHAT-EXV REMOVIDO TODO ID CONFLITANTE ===
+    # === 💬 ABA CHAT-EXV CORRIGIDA COM ID_MENSAGEM MANDATÓRIO ===
     with aba_chat:
         if st.session_state.sala_ativa:
             st.subheader(f"Sala: {st.session_state.sala_ativa}")
@@ -425,8 +425,9 @@ else:
                         supabase.storage.from_("audios_chat").upload(nome_arquivo, dados_audio)
                         url_publica_audio = supabase.storage.from_("audios_chat").get_public_url(nome_arquivo)
                         
-                        # Sem forçar campo de ID, deixando o Supabase processar livre
+                        # Inserção de áudio corrigida usando id_mensagem
                         supabase.table("bate-papo_profissional").insert({
+                            "id_mensagem": str(uuid.uuid4()),
                             "username": u_name,
                             "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                             "mensagem": url_publica_audio, 
@@ -502,13 +503,14 @@ else:
             st.components.v1.html(gravador_html, height=85)
             st.markdown("---")
 
-            # --- ENVIO COMPACTO SEM PASSAR NENHUMA COLUNA DE ID SOLUCIONANDO O PROBLEMA ---
+            # --- INPUT DE TEXTO CORRIGIDO PASSANDO ID_MENSAGEM OBRIGATÓRIA ---
             m_txt = st.text_input("Mensagem:", key="input_texto_chat_direto", placeholder="Digite sua mensagem aqui...")
             if st.button("Enviar Mensagem ✉️", use_container_width=True):
                 if m_txt.strip():
                     try:
-                        # Deixamos o Supabase assumir o controle total dos campos gerados automaticamente
+                        # Passando a chave primária correta (id_mensagem) exigida pela sua tabela
                         supabase.table("bate-papo_profissional").insert({
+                            "id_mensagem": str(uuid.uuid4()),
                             "username": u_name,
                             "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                             "mensagem": m_txt.strip(), 
@@ -604,7 +606,7 @@ else:
     # === ✨ ABA STATUS ===
     with aba_status:
         st.header("✨ Status Temporários")
-        stat_txt = st.text_input("O que você está thinking?")
+        stat_txt = st.text_input("O que você está pensando?")
         if st.button("Postar Status") and stat_txt.strip():
             supabase.table("feed_videos").insert({
                 "titulo": f"[STATUS] {stat_txt.strip()}", "url_video": "", "username_autor": u_name,
