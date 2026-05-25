@@ -401,10 +401,13 @@ else:
                 else:
                     st.button("Saldo Insuficiente ❌", key=f"insuf_{chave}", disabled=True, use_container_width=True)
 
-    # === 💬 ABA CHAT-EXV CORRIGIDA COM CREATED_AT EXPLÍCITO ===
+    # === 💬 ABA CHAT-EXV TOTALMENTE BLINDADA CONTRA CAMPOS NULOS ===
     with aba_chat:
-        if st.session_state.sala_ativa:
-            st.subheader(f"Sala: {st.session_state.sala_ativa}")
+        # Isolamos o nome da sala atual numa variável local estável para evitar perdas a meio da execução
+        sala_atual = st.session_state.sala_ativa
+
+        if sala_atual:
+            st.subheader(f"Sala: {sala_atual}")
             if st.button("⬅️ Sair da Sala"):
                 st.session_state.sala_ativa = None
                 st.rerun()
@@ -425,15 +428,16 @@ else:
                         supabase.storage.from_("audios_chat").upload(nome_arquivo, dados_audio)
                         url_publica_audio = supabase.storage.from_("audios_chat").get_public_url(nome_arquivo)
                         
-                        # Inserção de áudio fornecendo explicitamente id_mensagem e created_at
-                        supabase.table("bate-papo_profissional").insert({
-                            "id_mensagem": str(uuid.uuid4()),
-                            "created_at": datetime.now(timezone.utc).isoformat(),
-                            "username": u_name,
-                            "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                            "mensagem": url_publica_audio, 
-                            "codigo_sala": st.session_state.sala_ativa
-                        }).execute()
+                        # PROTEÇÃO CRÍTICA: Impedir inserção caso a variável tenha ficado vazia
+                        if sala_atual:
+                            supabase.table("bate-papo_profissional").insert({
+                                "id_mensagem": str(uuid.uuid4()),
+                                "created_at": datetime.now(timezone.utc).isoformat(),
+                                "username": u_name,
+                                "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
+                                "mensagem": url_publica_audio, 
+                                "codigo_sala": sala_atual
+                            }).execute()
                         st.session_state.b64_audio_data = ""
                         st.rerun()
                     except:
@@ -504,26 +508,28 @@ else:
             st.components.v1.html(gravador_html, height=85)
             st.markdown("---")
 
-            # --- INPUT DE TEXTO CORRIGIDO COM CREATED_AT OBRIGATÓRIO ---
+            # --- INPUT DE TEXTO COM VALIDAÇÃO IMPENETRÁVEL ---
             m_txt = st.text_input("Mensagem:", key="input_texto_chat_direto", placeholder="Digite sua mensagem aqui...")
             if st.button("Enviar Mensagem ✉️", use_container_width=True):
                 if m_txt.strip():
-                    try:
-                        # Incluído o campo created_at gerado em tempo de execução
-                        supabase.table("bate-papo_profissional").insert({
-                            "id_mensagem": str(uuid.uuid4()),
-                            "created_at": datetime.now(timezone.utc).isoformat(),
-                            "username": u_name,
-                            "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                            "mensagem": m_txt.strip(), 
-                            "codigo_sala": st.session_state.sala_ativa
-                        }).execute()
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro ao salvar mensagem: {e}")
+                    if not sala_atual:
+                        st.error("Erro: A sessão da sala expirou. Saia e entre novamente no chat.")
+                    else:
+                        try:
+                            supabase.table("bate-papo_profissional").insert({
+                                "id_mensagem": str(uuid.uuid4()),
+                                "created_at": datetime.now(timezone.utc).isoformat(),
+                                "username": u_name,
+                                "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
+                                "mensagem": m_txt.strip(), 
+                                "codigo_sala": sala_atual
+                            }).execute()
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Erro ao salvar mensagem: {e}")
 
             try:
-                m_dados = supabase.table("bate-papo_profissional").select("*").eq("codigo_sala", st.session_state.sala_ativa).execute()
+                m_dados = supabase.table("bate-papo_profissional").select("*").eq("codigo_sala", sala_atual).execute()
                 if m_dados.data:
                     for m in reversed(m_dados.data[-30:]):
                         col_m1, col_m2 = st.columns([1, 6])
