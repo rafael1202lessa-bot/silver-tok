@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Silver Tok v2.9", page_icon="🎬", layout="centered")
+st.set_page_config(page_title="Silver Tok v2.9.1", page_icon="🎬", layout="centered")
 
 # --- CONEXÃO BANCO DE DADOS ---
 SUPABASE_URL = "https://ldjtqgeyorkzbvuichjj.supabase.co"
@@ -39,12 +39,10 @@ DIC_BANNERS = {
 
 VIDEOS_BOT_BOTEY = [
     {"titulo": "🔥 Edit Incrível de Anime (Vertical)", "url": "https://www.w3schools.com/html/mov_bbb.mp4", "formato": "vertical"},
-    {"titulo": "🌌 Gameplay Relaxante 4K (Horizontal)", "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", "formato": "horizontal"},
-    {"titulo": "⚡ Lo-Fi Hip Hop para Estudar (Horizontal)", "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4", "formato": "horizontal"},
-    {"titulo": "🎬 Mini Clip Engraçado (Vertical)", "url": "https://commondatachannel.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4", "formato": "vertical"}
+    {"titulo": "🌌 Gameplay Relaxante 4K (Horizontal)", "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", "formato": "horizontal"}
 ]
 
-# --- FUNÇÕES AUXILIARES ---
+# --- FUNÇÕES AUXILIARES CORRIGIDAS ---
 def obter_status_emoji(timestamp_str):
     if not timestamp_str: return "⚪ Offline"
     try:
@@ -72,7 +70,6 @@ def renderizar_foto_com_banner(url_foto, tipo_banner, username_alvo="", tamanho=
     estilo_css = "border-radius: 50%; object-fit: cover;"
     mostrar_coroa = False
     
-    # Se for o Rafael_oficial, ganha automaticamente o banner supremo da Coroa de DEV
     if username_alvo == NOME_DEVELOPER:
         estilo_css += " border: 5px solid #ffd700; box-shadow: 0 0 25px #ffaa00, inset 0 0 10px #ffd700;"
         mostrar_coroa = True
@@ -86,7 +83,6 @@ def renderizar_foto_com_banner(url_foto, tipo_banner, username_alvo="", tamanho=
         elif "Neon" in tipo_banner:
             estilo_css += " border: 4px solid #00f3ff; box-shadow: 0 0 20px #ff007f, inset 0 0 10px #00f3ff;"
 
-    # Montagem do elemento com posição relativa para colocar a coroa flutuante
     coroa_html = f'<div style="position: absolute; top: -22px; left: 50%; transform: translateX(-50%); font-size: {int(tamanho*0.35)}px; z-index: 10;">👑</div>' if mostrar_coroa else ''
     
     html = f"""
@@ -118,7 +114,7 @@ def processar_ganho_de_moedas(user_id):
                         "ultimo_bonus_tempo": agora.isoformat()
                     }).eq("id", user_id).execute()
                     st.session_state.usuario_logado["moedas"] = novas_moedas
-                    st.toast(f"🪙 Ganhaste +{ciclos * 10} moedas por estares ativo!")
+                    st.toast(f"🪙 Ganhaste +{ciclos * 10} moedas por estares active!")
     except: pass
 
 def exibir_logo():
@@ -179,21 +175,19 @@ else:
             user_atual["banner_ativo"] = dados_frescos.data[0]["banner_ativo"]
     except: pass
 
-    selo_lateral = obtener_selo_usuario(user_atual["username"], user_atual["id"])
+    # CHAMADAS CORRIGIDAS AQUI (De espanhol para português)
+    selo_lateral = obter_selo_usuario(user_atual["username"], user_atual["id"])
 
     # --- PAINEL LATERAL (SIDEBAR) ---
     st.sidebar.markdown("<p style='text-align:center; font-weight:bold; margin-bottom:0;'>Meu Perfil</p>", unsafe_allow_html=True)
     
-    # Renderizar com a Coroa se for o Rafael
     renderizar_foto_com_banner(user_atual.get("url_foto_perfil") or FOTO_PADRAO, user_atual.get("banner_ativo", "Nenhum"), username_alvo=user_atual["username"])
     
     nome_exibicao = user_atual.get("apelido") or user_atual["username"]
     st.sidebar.markdown(f"<h3 style='text-align:center; margin-top:0; margin-bottom:0;'>{nome_exibicao}{selo_lateral}</h3>", unsafe_allow_html=True)
     st.sidebar.markdown(f"<p style='text-align:center; color:gray; margin-top:0;'>@{user_atual['username']}</p>", unsafe_allow_html=True)
-    
     st.sidebar.markdown(f"### 🪙 Carteira: **{user_atual.get('moedas', 0)}** moedas")
 
-    # Painel do Desenvolvedor Inteligente (Apenas para ti!)
     if user_atual["username"] == NOME_DEVELOPER:
         with st.sidebar.expander("🤖 Comandos do Desenvolvedor", expanded=False):
             st.code(COMANDO_BOT_SECRETO, language="text")
@@ -235,7 +229,7 @@ else:
                 dados_perf = supabase.table("perfis_usuarios").select("*").eq("username", autor_vis).execute()
                 if dados_perf.data:
                     p_info = dados_perf.data[0]
-                    selo_vis = obtener_selo_usuario(p_info["username"], p_info["id"])
+                    selo_vis = obter_selo_usuario(p_info["username"], p_info["id"])
                     st.markdown("---")
                     renderizar_foto_com_banner(p_info.get("url_foto_perfil") or FOTO_PADRAO, p_info.get("banner_ativo", "Nenhum"), username_alvo=p_info["username"], tamanho=120)
                     st.subheader(f"{p_info.get('apelido') or p_info['username']}{selo_vis}")
@@ -258,7 +252,6 @@ else:
                     id_autor_post = v.get("id_autor")
                     chave_comp = f"feed_{identificador_formato}_{idx}_{id_post}"
 
-                    # Banner dinâmico do autor do post
                     banner_autor_post = "Nenhum"
                     if id_autor_post:
                         try:
@@ -266,7 +259,7 @@ else:
                             if res_b.data: banner_autor_post = res_b.data[0].get("banner_ativo", "Nenhum")
                         except: pass
 
-                    selo_autor_post = obtener_selo_usuario(autor, id_autor_post) if id_autor_post else ""
+                    selo_autor_post = obter_selo_usuario(autor, id_autor_post) if id_autor_post else ""
 
                     st.markdown("---")
                     col_f1, col_f2 = st.columns([1, 5])
@@ -295,7 +288,7 @@ else:
                             supabase.table("feed_videos").delete().eq("id", id_post).execute()
                             st.rerun()
 
-                    # Comentários integrados
+                    # Comentários estruturados com a função certa
                     with st.expander(f"💬 Comentários"):
                         with st.form(key=f"f_c_{chave_comp}", clear_on_submit=True):
                             novo_coment = st.text_input("Escreve um comentário:")
@@ -321,7 +314,7 @@ else:
                                     with col_c1:
                                         renderizar_foto_com_banner(c.get("avatar_autor") or FOTO_PADRAO, banner_comentador, username_alvo=c['username_autor'], tamanho=40)
                                     with col_c2:
-                                        selo_comentador = obtener_selo_usuario(c['username_autor'], c.get('id_autor'))
+                                        selo_comentador = obter_selo_usuario(c['username_autor'], c.get('id_autor'))
                                         st.markdown(f"**{c['username_autor']}**{selo_comentador}: {c['comentario']}")
                         except: pass
 
@@ -390,4 +383,4 @@ else:
         if st.button("Entrar 🚪", use_container_width=True) and cod_d:
             st.session_state.sala_ativa = cod_d
             st.rerun()
-         
+     
