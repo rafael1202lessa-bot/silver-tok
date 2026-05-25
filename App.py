@@ -228,8 +228,8 @@ else:
         st.write(f"**{user_atual.get('apelido') or u_name}** {selo_proprio}")
         st.markdown(f"🪙 **Saldo:** {user_atual.get('moedas', 0)} Moedas")
         
-        # --- INVENTÁRIO (CORREÇÃO DE CONFLITO VISUAL) ---
-            with st.expander("🎒 Meu Inventário"):
+        # --- INVENTÁRIO (CORREÇÃO DE CONFLITO VISUAL) --    
+      with st.expander("🎒 Meu Inventário"):
         st.caption("Equipe suas customizações salvas:")
         st.write(f"Ativo no momento: **{user_atual.get('banner_ativo', 'Nenhum')}**")
         
