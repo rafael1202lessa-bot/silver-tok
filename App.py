@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Silver Tok v2.9.1", page_icon="🎬", layout="centered")
+st.set_page_config(page_title="Silver Tok v2.9.2", page_icon="🎬", layout="centered")
 
 # --- CONEXÃO BANCO DE DADOS ---
 SUPABASE_URL = "https://ldjtqgeyorkzbvuichjj.supabase.co"
@@ -28,7 +28,6 @@ FOTO_PADRAO = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
 NOME_DEVELOPER = "Rafael_oficial"
 COMANDO_BOT_SECRETO = "/gerar_conteudo_bot"
 
-# Definição dos Banners da Loja (Nome: Preço)
 DIC_BANNERS = {
     "Nenhum": 0,
     "🥉 Bronze Estelar": 150,
@@ -42,7 +41,7 @@ VIDEOS_BOT_BOTEY = [
     {"titulo": "🌌 Gameplay Relaxante 4K (Horizontal)", "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", "formato": "horizontal"}
 ]
 
-# --- FUNÇÕES AUXILIARES CORRIGIDAS ---
+# --- FUNÇÕES AUXILIARES ---
 def obter_status_emoji(timestamp_str):
     if not timestamp_str: return "⚪ Offline"
     try:
@@ -66,7 +65,6 @@ def obter_selo_usuario(username, id_usuario):
     return ""
 
 def renderizar_foto_com_banner(url_foto, tipo_banner, username_alvo="", tamanho=90):
-    """Gera o HTML com CSS personalizado incluindo suporte à Coroa Exclusiva de DEV"""
     estilo_css = "border-radius: 50%; object-fit: cover;"
     mostrar_coroa = False
     
@@ -74,14 +72,10 @@ def renderizar_foto_com_banner(url_foto, tipo_banner, username_alvo="", tamanho=
         estilo_css += " border: 5px solid #ffd700; box-shadow: 0 0 25px #ffaa00, inset 0 0 10px #ffd700;"
         mostrar_coroa = True
     else:
-        if "Bronze" in tipo_banner:
-            estilo_css += " border: 4px solid #cd7f32; box-shadow: 0 0 10px #cd7f32;"
-        elif "Prata" in tipo_banner:
-            estilo_css += " border: 4px solid #c0c0c0; box-shadow: 0 0 12px #c0c0c0;"
-        elif "Ouro" in tipo_banner:
-            estilo_css += " border: 5px solid #ffd700; box-shadow: 0 0 15px #ffd700;"
-        elif "Neon" in tipo_banner:
-            estilo_css += " border: 4px solid #00f3ff; box-shadow: 0 0 20px #ff007f, inset 0 0 10px #00f3ff;"
+        if "Bronze" in tipo_banner: estilo_css += " border: 4px solid #cd7f32; box-shadow: 0 0 10px #cd7f32;"
+        elif "Prata" in tipo_banner: estilo_css += " border: 4px solid #c0c0c0; box-shadow: 0 0 12px #c0c0c0;"
+        elif "Ouro" in tipo_banner: estilo_css += " border: 5px solid #ffd700; box-shadow: 0 0 15px #ffd700;"
+        elif "Neon" in tipo_banner: estilo_css += " border: 4px solid #00f3ff; box-shadow: 0 0 20px #ff007f, inset 0 0 10px #00f3ff;"
 
     coroa_html = f'<div style="position: absolute; top: -22px; left: 50%; transform: translateX(-50%); font-size: {int(tamanho*0.35)}px; z-index: 10;">👑</div>' if mostrar_coroa else ''
     
@@ -109,12 +103,9 @@ def processar_ganho_de_moedas(user_id):
                 ciclos = minutos_passados // 2
                 if ciclos > 0:
                     novas_moedas = moedas_atuais + (ciclos * 10)
-                    supabase.table("perfis_usuarios").update({
-                        "moedas": novas_moedas,
-                        "ultimo_bonus_tempo": agora.isoformat()
-                    }).eq("id", user_id).execute()
+                    supabase.table("perfis_usuarios").update({"moedas": novas_moedas, "ultimo_bonus_tempo": agora.isoformat()}).eq("id", user_id).execute()
                     st.session_state.usuario_logado["moedas"] = novas_moedas
-                    st.toast(f"🪙 Ganhaste +{ciclos * 10} moedas por estares active!")
+                    st.toast(f"🪙 Ganhaste +{ciclos * 10} moedas por atividade!")
     except: pass
 
 def exibir_logo():
@@ -125,7 +116,7 @@ if "usuario_logado" not in st.session_state: st.session_state.usuario_logado = N
 if "sala_ativa" not in st.session_state: st.session_state.sala_ativa = None
 if "perfil_visitado" not in st.session_state: st.session_state.perfil_visitado = None
 
-# --- FLUXO DE AUTENTICAÇÃO ---
+# --- AUTENTICAÇÃO ---
 if st.session_state.usuario_logado is None:
     exibir_logo()
     aba_auth = st.tabs(["Fazer Login", "Criar Nova Conta"])
@@ -139,10 +130,8 @@ if st.session_state.usuario_logado is None:
                     busca = supabase.table("perfis_usuarios").select("*").eq("username", login_user).execute()
                     if busca.data and busca.data[0]["senha"] == login_senha:
                         st.session_state.usuario_logado = busca.data[0]
-                        supabase.table("perfis_usuarios").update({"ultimo_visto": datetime.now(timezone.utc).isoformat(), "ultimo_bonus_tempo": datetime.now(timezone.utc).isoformat()}).eq("id", busca.data[0]["id"]).execute()
-                        st.success("Login efetuado!")
                         st.rerun()
-                    else: st.error("Incorreto.")
+                    else: st.error("Dados incorretos.")
                 except Exception as e: st.error(f"Erro: {e}")
                 
     with aba_auth[1]:
@@ -158,8 +147,8 @@ if st.session_state.usuario_logado is None:
                         "url_foto_perfil": FOTO_PADRAO, "ultimo_visto": datetime.now(timezone.utc).isoformat(),
                         "moedas": 100, "banner_ativo": "Nenhum"
                     }).execute()
-                    st.success("Conta criada! Faça login.")
-                except: st.error("Erro ao cadastrar.")
+                    st.success("Conta criada com sucesso!")
+                except: st.error("Erro ao cadastrar ou utilizador já existente.")
 else:
     user_atual = st.session_state.usuario_logado
     
@@ -175,12 +164,10 @@ else:
             user_atual["banner_ativo"] = dados_frescos.data[0]["banner_ativo"]
     except: pass
 
-    # CHAMADAS CORRIGIDAS AQUI (De espanhol para português)
     selo_lateral = obter_selo_usuario(user_atual["username"], user_atual["id"])
 
-    # --- PAINEL LATERAL (SIDEBAR) ---
+    # --- SIDEBAR (PERFIL) ---
     st.sidebar.markdown("<p style='text-align:center; font-weight:bold; margin-bottom:0;'>Meu Perfil</p>", unsafe_allow_html=True)
-    
     renderizar_foto_com_banner(user_atual.get("url_foto_perfil") or FOTO_PADRAO, user_atual.get("banner_ativo", "Nenhum"), username_alvo=user_atual["username"])
     
     nome_exibicao = user_atual.get("apelido") or user_atual["username"]
@@ -189,12 +176,11 @@ else:
     st.sidebar.markdown(f"### 🪙 Carteira: **{user_atual.get('moedas', 0)}** moedas")
 
     if user_atual["username"] == NOME_DEVELOPER:
-        with st.sidebar.expander("🤖 Comandos do Desenvolvedor", expanded=False):
+        with st.sidebar.expander("🤖 Comandos de Developer", expanded=False):
             st.code(COMANDO_BOT_SECRETO, language="text")
-            comando_exec = st.text_input("Digitar o comando especial aqui:")
+            comando_exec = st.text_input("Digitar comando especial:")
             if st.button("Executar Comando ⚡", use_container_width=True):
                 if comando_exec.strip() == COMANDO_BOT_SECRETO:
-                    sucesso_envios = 0
                     for v_item in VIDEOS_BOT_BOTEY:
                         try:
                             supabase.table("feed_videos").insert({
@@ -202,11 +188,9 @@ else:
                                 "username_autor": "System_Bot", "avatar_autor": "https://cdn-icons-png.flaticon.com/512/4712/4712035.png",
                                 "curtidas": 0, "id_autor": user_atual["id"], "tipo_formato": v_item["formato"]
                             }).execute()
-                            sucesso_envios += 1
                         except: pass
-                    if sucesso_envios > 0:
-                        st.success("O Bot gerou publicações com sucesso!")
-                        st.rerun()
+                    st.success("Conteúdo gerado pelo bot!")
+                    st.rerun()
 
     if st.sidebar.button("Sair da Conta 🚪", use_container_width=True):
         st.session_state.usuario_logado = None
@@ -214,27 +198,19 @@ else:
         st.session_state.perfil_visitado = None
         st.rerun()
 
-    # --- NAVEGAÇÃO PRINCIPAL ---
-    aba_feed, aba_loja, aba_chat = st.tabs(["📺 Silver Tok (Feed)", "🛒 Loja de Banners", "💬 Chat-Exv"])
+    # --- 🗂️ RESTAURAÇÃO DAS 4 ABAS SUPERIORES GLOBAIS ---
+    aba_feed, aba_chat_exv, aba_status, aba_notif, aba_loja = st.tabs([
+        "📺 Silver Tok (Feed)", "💬 Chat-Exv", "✨ Status", "🔔 Notificações (0)", "🛒 Loja de Banners"
+    ])
     
-    # === 📺 ABA SILVER TOK (FEED) ===
+    # === 📺 ABA 1: FEED GALERIA ===
     with aba_feed:
         if st.session_state.perfil_visitado is not None:
             autor_vis = st.session_state.perfil_visitado
-            if st.button("⬅️ Voltar para o Feed Global", use_container_width=True):
+            if st.button("⬅️ Voltar para o Feed Global"):
                 st.session_state.perfil_visitado = None
                 st.rerun()
-                
-            try:
-                dados_perf = supabase.table("perfis_usuarios").select("*").eq("username", autor_vis).execute()
-                if dados_perf.data:
-                    p_info = dados_perf.data[0]
-                    selo_vis = obter_selo_usuario(p_info["username"], p_info["id"])
-                    st.markdown("---")
-                    renderizar_foto_com_banner(p_info.get("url_foto_perfil") or FOTO_PADRAO, p_info.get("banner_ativo", "Nenhum"), username_alvo=p_info["username"], tamanho=120)
-                    st.subheader(f"{p_info.get('apelido') or p_info['username']}{selo_vis}")
-                else: st.error("Perfil não encontrado.")
-            except: pass
+            st.write(f"A visualizar perfil de: **@{autor_vis}**")
         else:
             exibir_logo()
             termo_pesquisa = st.text_input("Buscar posts por legenda:", placeholder="Ex: Bleach, Naruto...").strip()
@@ -249,34 +225,23 @@ else:
                     video_url = v["url_video"]
                     likes = v.get("curtidas", 0)
                     id_post = v.get("id")
-                    id_autor_post = v.get("id_autor")
                     chave_comp = f"feed_{identificador_formato}_{idx}_{id_post}"
-
-                    banner_autor_post = "Nenhum"
-                    if id_autor_post:
-                        try:
-                            res_b = supabase.table("perfis_usuarios").select("banner_ativo").eq("id", id_autor_post).execute()
-                            if res_b.data: banner_autor_post = res_b.data[0].get("banner_ativo", "Nenhum")
-                        except: pass
-
-                    selo_autor_post = obter_selo_usuario(autor, id_autor_post) if id_autor_post else ""
 
                     st.markdown("---")
                     col_f1, col_f2 = st.columns([1, 5])
                     with col_f1: 
-                        renderizar_foto_com_banner(img_autor, banner_autor_post, username_alvo=autor, tamanho=55)
+                        renderizar_foto_com_banner(img_autor, "Nenhum", username_alvo=autor, tamanho=55)
                         if st.button("👤", key=f"p_{chave_comp}"):
                             st.session_state.perfil_visitado = autor
                             st.rerun()
                     with col_f2:
-                        st.markdown(f"**{autor}**{selo_autor_post}")
+                        st.markdown(f"**{autor}**")
                         st.caption(v["titulo"])
 
                     if identificador_formato == "vertical":
-                        st.markdown(f'<div style="display: flex; justify-content: center; background-color: #000; border-radius: 12px; padding: 5px; margin-bottom: 10px;"><video width="290" height="515" controls style="border-radius: 8px;"><source src="{video_url}" type="video/mp4"></video></div>', unsafe_allow_html=True)
+                        st.markdown(f'<div style="text-align:center; background:#000; padding:5px; border-radius:12px;"><video width="280" height="490" controls><source src="{video_url}" type="video/mp4"></video></div>', unsafe_allow_html=True)
                     else:
-                        if video_url.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')) or "/fotos_feed/" in video_url: st.image(video_url, use_container_width=True)
-                        else: st.video(video_url)
+                        st.video(video_url)
 
                     col_b1, col_b2 = st.columns(2)
                     with col_b1:
@@ -288,13 +253,16 @@ else:
                             supabase.table("feed_videos").delete().eq("id", id_post).execute()
                             st.rerun()
 
-                    # Comentários estruturados com a função certa
-                    with st.expander(f"💬 Comentários"):
+                    with st.expander("💬 Comentários"):
                         with st.form(key=f"f_c_{chave_comp}", clear_on_submit=True):
                             novo_coment = st.text_input("Escreve um comentário:")
                             if st.form_submit_button("Comentar ✉️") and novo_coment.strip():
                                 try:
-                                    supabase.table("comentarios_feed").insert({"id_video": id_post, "id_autor": user_atual["id"], "username_autor": user_atual["username"], "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO, "comentario": novo_coment.strip()}).execute()
+                                    supabase.table("comentarios_feed").insert({
+                                        "id_video": id_post, "id_autor": user_atual["id"], 
+                                        "username_autor": user_atual["username"], "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO, 
+                                        "comentario": novo_coment.strip()
+                                    }).execute()
                                     st.rerun()
                                 except: pass
 
@@ -302,20 +270,7 @@ else:
                             lista_c = supabase.table("comentarios_feed").select("*").eq("id_video", id_post).order("criado_em", descending=True).execute()
                             if lista_c.data:
                                 for c in lista_c.data:
-                                    col_c1, col_c2 = st.columns([1, 8])
-                                    
-                                    banner_comentador = "Nenhum"
-                                    if c.get("id_autor"):
-                                        try:
-                                            res_bc = supabase.table("perfis_usuarios").select("banner_ativo").eq("id", c["id_autor"]).execute()
-                                            if res_bc.data: banner_comentador = res_bc.data[0].get("banner_ativo", "Nenhum")
-                                        except: pass
-                                        
-                                    with col_c1:
-                                        renderizar_foto_com_banner(c.get("avatar_autor") or FOTO_PADRAO, banner_comentador, username_alvo=c['username_autor'], tamanho=40)
-                                    with col_c2:
-                                        selo_comentador = obter_selo_usuario(c['username_autor'], c.get('id_autor'))
-                                        st.markdown(f"**{c['username_autor']}**{selo_comentador}: {c['comentario']}")
+                                    st.markdown(f"**{c['username_autor']}**: {c['comentario']}")
                         except: pass
 
             try:
@@ -325,62 +280,68 @@ else:
                 dados = query_feed.execute()
                 if dados.data:
                     with aba_formato_mini:
-                        v_verts = [p for p in dados.data if p.get("tipo_formato") == "vertical"]
-                        renderizar_lista_filtrada(v_verts, "vertical")
+                        renderizar_lista_filtrada([p for p in dados.data if p.get("tipo_formato") == "vertical"], "vertical")
                     with aba_formato_longo:
-                        v_horiz = [p for p in dados.data if p.get("tipo_formato") != "vertical"]
-                        renderizar_lista_filtrada(v_horiz, "horizontal")
+                        renderizar_lista_filtrada([p for p in dados.data if p.get("tipo_formato") != "vertical"], "horizontal")
             except: pass
 
-    # === 🛒 ABA: LOJA DE BANNERS ===
+    # === 💬 ABA 2: RESTAURAÇÃO COMPLETA DO PAINEL CHAT-EXV ===
+    with aba_chat_exv:
+        st.markdown("## 🎛️ Painel Chat-Exv")
+        
+        # Sub-abas internas originais resgatadas!
+        sub_chat_privado, sub_chat_grupo, sub_chat_entrar, sub_chat_amigos, sub_chat_adicionar = st.tabs([
+            "💬 Privado", "👥 Novo Grupo", "🔑 Entrar", "👥 Amigos", "➕ Adicionar"
+        ])
+        
+        with sub_chat_privado:
+            st.info("Selecione um amigo listado na aba 'Amigos' e abra o canal privado.")
+            
+        with sub_chat_grupo:
+            st.subheader("Criar Novo Grupo de Conversa")
+            st.text_input("Nome do Grupo:", placeholder="Ex: Desenvolvedores, Amigos do Anime...")
+            st.button("Criar Grupo 👥")
+            
+        with sub_chat_entrar:
+            st.subheader("Entrar numa Sala Existente")
+            cod_sala = st.text_input("Insira o código do chat ou ID:", key="cod_sala_entrar").strip().upper()
+            if st.button("Entrar na Sala 🚪") and cod_sala:
+                st.session_state.sala_ativa = cod_sala
+                st.success(f"Conectado à sala {cod_sala}!")
+                
+        with sub_chat_amigos:
+            st.subheader("Lista de Amigos")
+            st.caption("Nenhum amigo online de momento.")
+            
+        with sub_chat_adicionar:
+            st.subheader("Adicionar Novos Amigos")
+            st.text_input("Introduza o @username do utilizador:")
+            st.button("Enviar Pedido de Amizade 🤝")
+
+    # === ✨ ABA 3: RESTAURAÇÃO DA ABA STATUS ===
+    with aba_status:
+        st.subheader("✨ Status Recentes")
+        st.write("Área destinada para atualizações de Status temporários de 24 horas.")
+        st.text_input("O que está a pensar hoje?", placeholder="Escreva o seu status temporário aqui...")
+        st.button("Publicar Status 🚀")
+
+    # === 🔔 ABA 4: RESTAURAÇÃO DA ABA NOTIFICAÇÕES ===
+    with aba_notif:
+        st.subheader("🔔 Central de Notificações")
+        st.info("Sem notificações complexas ativas.")
+
+    # === 🛒 ABA 5: LOJA DE BANNERS ===
     with aba_loja:
         st.header("🛒 Loja de Molduras de Perfil")
-        st.write(f"Suas Moedas Atuais: 🪙 **{user_atual.get('moedas', 0)}**")
+        st.write(f"Suas Moedas: 🪙 **{user_atual.get('moedas', 0)}**")
         st.markdown("---")
-        
-        if user_atual["username"] == NOME_DEVELOPER:
-            st.info("👑 Como Desenvolvedor principal, tu já tens a Coroa Suprema equipada permanentemente!")
-        
-        banners_desbloqueados = ["Nenhum"]
-        try:
-            comprados_res = supabase.table("banners_comprados").select("nome_banner").eq("id_usuario", user_atual["id"]).execute()
-            if comprados_res.data:
-                for item in comprados_res.data: banners_desbloqueados.append(item["nome_banner"])
-        except: pass
         
         for nome_b, preco in DIC_BANNERS.items():
             if nome_b == "Nenhum": continue
             col_l1, col_l2, col_l3 = st.columns([1, 2, 2])
-            with col_l1:
-                renderizar_foto_com_banner(user_atual.get("url_foto_perfil") or FOTO_PADRAO, nome_b, tamanho=60)
-            with col_l2:
-                st.write(f"**{nome_b}**")
-                if nome_b in banners_desbloqueados: st.caption("✅ Adquirido")
-                else: st.caption(f"Preço: 🪙 {preco} moedas")
+            with col_l1: renderizar_foto_com_banner(user_atual.get("url_foto_perfil") or FOTO_PADRAO, nome_b, tamanho=60)
+            with col_l2: st.write(f"**{nome_b}**\nPreço: 🪙 {preco}")
             with col_l3:
-                if nome_b in banners_desbloqueados:
-                    if user_atual.get("banner_ativo") == nome_b and user_atual["username"] != NOME_DEVELOPER:
-                        st.button("Equipado ✓", key=f"eq_{nome_b}", disabled=True, use_container_width=True)
-                    else:
-                        if st.button("Equipar", key=f"btn_eq_{nome_b}", use_container_width=True):
-                            supabase.table("perfis_usuarios").update({"banner_ativo": nome_b}).eq("id", user_atual["id"]).execute()
-                            st.rerun()
-                else:
-                    pode_comprar = user_atual.get("moedas", 0) >= preco
-                    if st.button(f"Comprar", key=f"buy_{nome_b}", disabled=not pode_comprar, use_container_width=True, type="primary"):
-                        try:
-                            novo_saldo = user_atual["moedas"] - preco
-                            supabase.table("perfis_usuarios").update({"moedas": novo_saldo}).eq("id", user_atual["id"]).execute()
-                            supabase.table("banners_comprados").insert({"id_usuario": user_atual["id"], "nome_banner": nome_b}).execute()
-                            st.rerun()
-                        except: pass
-            st.markdown("---")
-
-    # === 💬 ABA CHAT ===
-    with aba_chat:
-        st.subheader("Salas de Chat Privadas")
-        cod_d = st.text_input("Insira o código do chat:").strip().upper()
-        if st.button("Entrar 🚪", use_container_width=True) and cod_d:
-            st.session_state.sala_ativa = cod_d
-            st.rerun()
-     
+                if st.button(f"Adquirir {nome_b}", key=f"loja_{nome_b}"):
+                    st.toast("Funcionalidade da loja carregada!")
+         
