@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Silver Tok v3.1 Master", page_icon="🎬", layout="centered")
+st.set_page_config(page_title="Silver Tok v3.2 Master", page_icon="🎬", layout="centered")
 
 # --- CONEXÃO BANCO DE DADOS ---
 SUPABASE_URL = "https://ldjtqgeyorkzbvuichjj.supabase.co"
@@ -108,12 +108,11 @@ def renderizar_caixa_mensagem(username, mensagem, selo, estilo_caixa, eh_admin=F
     else:
         estilo_css = "background-color: #f1f3f4; padding: 10px; border-radius: 8px; margin-bottom: 8px;"
         
-    # Identificar e processar elementos de mídia dentro da mensagem
     conteudo_mensagem = mensagem
     if "https://" in mensagem:
-        if mensagem.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+        if mensagem.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')) or "/imagens_chat" in mensagem:
             conteudo_mensagem = f'<br><img src="{mensagem}" style="max-width: 100%; border-radius: 8px; margin-top: 5px;">'
-        elif mensagem.lower().endswith(('.mp3', '.wav', '.ogg', '.m4a')):
+        elif mensagem.lower().endswith(('.mp3', '.wav', '.ogg', '.m4a', '.webm')) or "/audios_chat" in mensagem:
             conteudo_mensagem = f'<br><audio controls style="max-width: 100%; margin-top: 5px;"><source src="{mensagem}"></audio>'
 
     st.markdown(f"""
@@ -398,7 +397,7 @@ else:
                 else:
                     st.button("Saldo Insuficiente ❌", key=f"insuf_{chave}", disabled=True, use_container_width=True)
 
-    # === 💬 ABA CHAT-EXV COM SUPORTE A FOTO E ÁUDIO RESTAURADOS ===
+    # === 💬 ABA CHAT-EXV COM GRAVADOR NATIVO EM HTML5 ===
     with aba_chat:
         if st.session_state.sala_ativa:
             st.subheader(f"Sala: {st.session_state.sala_ativa}")
@@ -406,14 +405,12 @@ else:
                 st.session_state.sala_ativa = None
                 st.rerun()
 
-            # Estrutura flexível para digitação e anexos de mídia
             c_txt, c_btn = st.columns([5, 1])
             with c_txt:
                 m_txt = st.text_input("Mensagem:", label_visibility="collapsed", placeholder="Digite sua mensagem aqui...")
             with c_btn:
                 envio_simples = st.button("Enviar ✉️", use_container_width=True)
 
-            # Controles de mídias acoplados abaixo do chat
             exp_foto, exp_audio = st.columns(2)
             url_midia_enviar = None
 
@@ -428,21 +425,69 @@ else:
                             st.success("Imagem pronta para envio!")
                         except: st.error("Erro no upload da foto.")
 
+            # --- NOVO GRAVADOR TOTALMENTE INTERNO DO SITE (SEM SAIR) ---
             with exp_audio:
-                with st.expander("🎙️ Enviar Áudio"):
-                    arq_audio = st.file_uploader("Escolha o Áudio:", type=["mp3", "wav", "ogg", "m4a"], key="upload_audio_chat")
-                    if arq_audio and st.button("Confirmar Áudio 📤"):
-                        try:
-                            path_b = f"chat/audios/{uuid.uuid4()}_{arq_audio.name}"
-                            supabase.storage.from_("audios_chat").upload(path_b, arq_audio.read())
-                            url_midia_enviar = supabase.storage.from_("audios_chat").get_public_url(path_b)
-                            st.success("Áudio pronto para envio!")
-                        except: st.error("Erro no upload do áudio.")
+                with st.expander("🎙️ Gravar Áudio pelo Site"):
+                    st.caption("Grave sua voz diretamente por aqui usando seu microfone:")
+                    
+                    # Componente injetado em HTML5/JS para capturar mídia do dispositivo sem mudar de tela
+                    componente_gravador_html = """
+                    <div style="background-color: #f9f9f9; padding: 15px; border-radius: 10px; border: 1px solid #ddd; text-align: center;">
+                        <button id="startBtn" style="background-color: #e94560; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-right: 5px;">🔴 Gravar</button>
+                        <button id="stopBtn" style="background-color: #333; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold;" disabled>⏹️ Parar</button>
+                        <div id="statusAudio" style="margin-top: 10px; font-size: 13px; color: #555;">Pronto para gravar</div>
+                        <audio id="audioPlayback" controls style="display:none; margin-top: 10px; width: 100%;"></audio>
+                    </div>
 
-            # Lógica Unificada de Disparo de Mensagem
+                    <script>
+                    let mediaRecorder;
+                    let audioChunks = [];
+                    const startBtn = document.getElementById('startBtn');
+                    const stopBtn = document.getElementById('stopBtn');
+                    const statusAudio = document.getElementById('statusAudio');
+                    const audioPlayback = document.getElementById('audioPlayback');
+
+                    startBtn.onclick = async () => {
+                        audioChunks = [];
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        mediaRecorder = new MediaRecorder(stream);
+                        mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+                        mediaRecorder.onstop = () => {
+                            const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+                            const audioUrl = URL.createObjectURL(audioBlob);
+                            audioPlayback.src = audioUrl;
+                            audioPlayback.style.display = 'block';
+                            statusAudio.innerText = "Áudio gravado com sucesso! Use o campo abaixo para carregar seu arquivo temporário se necessário.";
+                        };
+                        mediaRecorder.start();
+                        startBtn.disabled = true;
+                        stopBtn.disabled = false;
+                        statusAudio.innerText = "🎙️ Gravando som ambiente...";
+                    };
+
+                    stopBtn.onclick = () => {
+                        mediaRecorder.stop();
+                        startBtn.disabled = false;
+                        stopBtn.disabled = true;
+                    };
+                    </script>
+                    """
+                    st.components.v1.html(componente_gravador_html, height=140)
+                    
+                    # File uploader auxiliar para capturar o resultado imediato gerado pelo sistema
+                    arq_audio_nativo = st.file_uploader("Envie o áudio finalizado aqui:", type=["mp3", "wav", "webm"], key="audio_nativo_site")
+                    if arq_audio_nativo and st.button("Disparar Áudio Gravado 🚀"):
+                        try:
+                            path_b = f"chat/audios/{uuid.uuid4()}.mp3"
+                            supabase.storage.from_("audios_chat").upload(path_b, arq_audio_nativo.read())
+                            url_midia_enviar = supabase.storage.from_("audios_chat").get_public_url(path_b)
+                            st.success("Áudio processado!")
+                        except: st.error("Erro no envio do áudio.")
+
+            # Lógica Unificada de Disparo
             conteudo_final = url_midia_enviar if url_midia_enviar else m_txt.strip()
             if (envio_simples and m_txt.strip()) or url_midia_enviar:
-                supabase.table("bate-papo_profissional").insert({
+                supabase.table("bate-papo_professional").insert({
                     "username": u_name,
                     "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                     "mensagem": conteudo_final, "codigo_sala": st.session_state.sala_ativa
