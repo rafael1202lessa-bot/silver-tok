@@ -174,17 +174,22 @@ if st.session_state.usuario_logado is None:
                 except:
                     st.error("Nome de usuário indisponível.")
 else:
-    # 🌟 Captura as variáveis originais da sessão exatamente como o app precisa
-    u_id = st.session_state.usuario_logado.get("id") if st.session_state.usuario_logado else None
-    u_name = st.session_state.usuario_logado.get("username") if st.session_state.usuario_logado else None
+    try:
+        if st.session_state.usuario_logado:
+        
     
-    # 🚧 TRAVA DE MANUTENÇÃO (Rápida e direta)
-    if MODO_MANUTENCAO and str(u_id) != ID_REAL_DEVELOPER:
+    # 🚧 BLOQUEIO GLOBAL DE MANUTENÇÃO (Sem quebrar o fluxo de login)
+if MODO_MANUTENCAO:
+    # Captura quem está tentando acessar de forma segura
+    usuario_id_teste = st.session_state.get("usuario_logado", {}).get("id") if st.session_state.get("usuario_logado") else None
+    
+    # Se a pessoa NÃO for você (Admin), barra o acesso imediatamente
+    if str(usuario_id_teste) != ID_REAL_DEVELOPER:
         st.markdown("<h1 style='text-align: center;'>🚧 Silver Tok & Chat 🚧</h1>", unsafe_allow_html=True)
         st.error("O aplicativo está em manutenção para a implementação de novas funções! Voltamos em breve para a Grande Estreia. 🎬🚀")
         st.info("Acompanhe as novidades no nosso grupo oficial.")
-        st.stop()
-
+        st.stop()  # Congela o app aqui para usuários comuns
+        
     # Retorna exatamente para o seu try original sem inventar novas condições
     try:
         if st.session_state.usuario_logado:
