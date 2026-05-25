@@ -228,43 +228,40 @@ else:
         st.write(f"**{user_atual.get('apelido') or u_name}** {selo_proprio}")
         st.markdown(f"🪙 **Saldo:** {user_atual.get('moedas', 0)} Moedas")
         
-        # --- INVENTÁRIO (CORREÇÃO DE CONFLITO VISUAL) --    
-      with st.expander("🎒 Meu Inventário"):
-        st.caption("Equipe suas customizações salvas:")
-        st.write(f"Ativo no momento: **{user_atual.get('banner_ativo', 'Nenhum')}**")
-        
-        opcoes_inventario = ["Nenhum", "残留 Banners", "🥉 Bronze Estelar", "🥈 Prata Lendária", "🔷 Balão Azul Moderno", "🔮 Balão Neon Cyber"]
-        
-        from datetime import datetime
-        data_atual = datetime.now().date()
-        data_inicio = datetime.strptime("2026-05-25", "%Y-%m-%d").date()
-        data_fim = datetime.strptime("2026-05-31", "%Y-%m-%d").date()
-        
-        if data_inicio <= data_atual <= data_fim:
-            opcoes_inventario.insert(1, "🚀 Estreante Oficial")
-        elif user_atual.get('banner_ativo') == "🚀 Estreante Oficial":
-            opcoes_inventario.insert(1, "🚀 Estreante Oficial")
+        # --- INVENTÁRIO (CORRIGIDO AQUI 🛠️) ---    
+        with st.expander("🎒 Meu Inventário"):
+            st.caption("Equipe suas customizações salvas:")
+            st.write(f"Ativo no momento: **{user_atual.get('banner_ativo', 'Nenhum')}**")
             
-        if is_admin:
-            opcoes_inventario.insert(1, "👑 Coroa Suprema DEV")
-            opcoes_inventario.insert(2, "👑 Balão Dourado DEV")
+            opcoes_inventario = ["Nenhum", "残留 Banners", "🥉 Bronze Estelar", "🥈 Prata Lendária", "🔷 Balão Azul Moderno", "🔮 Balão Neon Cyber"]
             
-        escolha_custom = st.selectbox("Selecione para ativar:", opcoes_inventario, key="select_custom_inv")
-        
-        if st.button("Equipar Cosmético 🛡️", key="btn_equipar_inv_fix"):
-            try:
-                resposta = supabase.table("perfis_usuarios").update({"banner_ativo": escolha_custom}).eq("id", u_id).execute()
-                if resposta.data:
-                    st.toast("Item equipado com sucesso! 🛡️")
-                    st.rerun()
-                else:
-                    st.toast("Falha ao equipar o cosmético.")
-            except Exception:
-                st.toast("Falha ao conectar.")
+            from datetime import datetime
+            data_atual = datetime.now().date()
+            data_inicio = datetime.strptime("2026-05-25", "%Y-%m-%d").date()
+            data_fim = datetime.strptime("2026-05-31", "%Y-%m-%d").date()
+            
+            if data_inicio <= data_atual <= data_fim:
+                opcoes_inventario.insert(1, "🚀 Estreante Oficial")
+            elif user_atual.get('banner_ativo') == "🚀 Estreante Oficial":
+                opcoes_inventario.insert(1, "🚀 Estreante Oficial")
+                
+            if is_admin:
+                opcoes_inventario.insert(1, "👑 Coroa Suprema DEV")
+                opcoes_inventario.insert(2, "👑 Balão Dourado DEV")
+                
+            escolha_custom = st.selectbox("Selecione para ativar:", opcoes_inventario, key="select_custom_inv")
+            
+            if st.button("Equipar Cosmético 🛡️", key="btn_equipar_inv_fix"):
+                try:
+                    resposta = supabase.table("perfis_usuarios").update({"banner_ativo": escolha_custom}).eq("id", u_id).execute()
+                    if resposta.data:
+                        st.toast("Item equipado com sucesso! 🛡️")
+                        st.rerun()
+                    else:
+                        st.toast("Falha ao equipar o cosmético.")
+                except Exception:
+                    st.toast("Falha ao conectar.")
 
-                
-                
-                
         # --- MENU EDITAR PERFIL ---
         with st.expander("⚙️ Editar Meu Perfil"):
             novo_apelido = st.text_input("Alterar Apelido:", value=user_atual.get("apelido") or u_name)
@@ -275,7 +272,7 @@ else:
                         "apelido": novo_apelido.strip(),
                         "url_foto_perfil": nova_foto.strip()
                     }).eq("id", u_id).execute()
-                    st.success("Perfil atualizado!")
+                    st.success("Perfil updated!")
                     st.rerun()
                 except: st.error("Erro ao salvar dados.")
 
@@ -438,7 +435,7 @@ else:
             
             with aba_midia[0]:
                 try:
-                    f_dados = supabase.table("feed_videos").select("*").eq("tipo_formato", "vertical").execute()
+                    f_dados = supabase.table("feed_videos").select("*").eq("tipo_form刻", "vertical").execute()
                     posts_completos = (f_dados.data or []) + [b for b in VIDEOS_BOT_BOTEY if b.get("tipo_formato") == "vertical"]
                     renderizar_lista_filtrada(reversed(posts_completos), "vertical_global", busca_legenda, ordenar_por)
                 except: pass
@@ -498,7 +495,7 @@ else:
                 else:
                     st.button("Saldo Insuficiente ❌", key=f"insuf_{chave}", disabled=True, use_container_width=True)
 
-    # === 💬 ABA CHAT-EXV BLINDADA (Correção Total dos Erros dos Prints) ===
+    # === 💬 ABA CHAT-EXV BLINDADA ===
     with aba_chat:
         sala_atual = st.session_state.sala_ativa
 
@@ -517,7 +514,6 @@ else:
                         supabase.storage.from_("imagens_chat").upload(nome_da_foto, arquivo_chat.read())
                         url_da_foto = supabase.storage.from_("imagens_chat").get_public_url(nome_da_foto)
                         
-                        # Inserção explícita de campos string limpos (Evita BigInt error e Nulos)
                         supabase.table("bate-papo_profissional").insert({
                             "username": u_name,
                             "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
@@ -600,7 +596,6 @@ else:
             if st.button("Enviar Mensagem ✉️", use_container_width=True):
                 if m_txt.strip():
                     try:
-                        # Inserção limpa sem forçar id_usuario ou colunas inexistentes no cache
                         supabase.table("bate-papo_profissional").insert({
                             "username": u_name,
                             "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
