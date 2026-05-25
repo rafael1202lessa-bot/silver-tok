@@ -31,10 +31,10 @@ ID_REAL_DEVELOPER = "04daaa3c-63ef-486c-b33e-54d4e80ee9e9"
 
 # --- CONFIGURAÇÃO DE COSMÉTICOS (LOJA) ---
 COSMETICOS = {
-    "bronze": {"nome": "🥉 Bronze Estelar", "preco": 150, "tipo": "banner"},
-    "prata": {"nome": "🥈 Prata Lendária", "preco": 300, "tipo": "banner"},
-    "caixa_azul": {"nome": "🔷 Balão Azul Moderno", "preco": 100, "tipo": "caixa"},
-    "caixa_neon": {"nome": "🔮 Balão Neon Cyber", "preco": 250, "tipo": "caixa"}
+    "bronze": {"nome": "🥉 Bronze Estelar", "preco": 150},
+    "prata": {"nome": "🥈 Prata Lendária", "preco": 300},
+    "caixa_azul": {"nome": "🔷 Balão Azul Moderno", "preco": 100},
+    "caixa_neon": {"nome": "🔮 Balão Neon Cyber", "preco": 250}
 }
 
 # --- BANCO DE DADOS DO BOT ---
@@ -191,21 +191,17 @@ else:
         st.write(f"**{user_atual.get('apelido') or user_atual['username']}** {selo_proprio}")
         st.markdown(f"🪙 **Saldo:** {user_atual.get('moedas', 0)} Moedas")
         
-        # --- NOVO RECURSO: INVENTÁRIO DE COSMÉTICOS ---
+        # --- INVENTÁRIO DE COSMÉTICOS ---
         with st.expander("🎒 Meu Inventário"):
             st.caption("Equipe seus cosméticos adquiridos na loja:")
-            
-            # Como salvamos no banco de forma textual simplificada, criamos seleções dinâmicas
-            opcoes_banner = ["Nenhum", "💡 Ativar Estilo Adquirido"] if user_atual.get("moedas", 0) >= 0 else ["Nenhum"]
-            
             estilo_atual = user_atual.get("banner_ativo", "Nenhum")
-            st.write(f"Sua personalização atual: **{estilo_atual}**")
+            st.write(f"Equipado: **{estilo_atual}**")
             
-            escolha_custom = st.selectbox("Escolha uma Moldura/Balão:", ["Nenhum", "🥉 Bronze Estelar", "🥈 Prata Lendária", "🔷 Balão Azul Moderno", "🔮 Balão Neon Cyber"])
+            escolha_custom = st.selectbox("Escolha uma customização:", ["Nenhum", "🥉 Bronze Estelar", "🥈 Prata Lendária", "🔷 Balão Azul Moderno", "🔮 Balão Neon Cyber"])
             if st.button("Equipar Item 🛡️"):
                 try:
                     supabase.table("perfis_usuarios").update({"banner_ativo": escolha_custom}).eq("id", user_atual["id"]).execute()
-                    st.success("Cosmético equipado!")
+                    st.success("Cosmético alterado!")
                     st.rerun()
                 except: st.error("Erro ao equipar item.")
 
@@ -223,14 +219,13 @@ else:
                     st.rerun()
                 except: st.error("Erro ao atualizar dados.")
 
-        # --- EXCLUSIVO: PAINEL DE ADMINISTRADOR MASTER (RAFAEL) ---
+        # --- PAINEL DE ADMINISTRADOR MASTER ---
         if is_admin:
             st.markdown("---")
             st.markdown("### 👑 Painel Secreto Master")
             with st.expander("🚀 Comandos de Admin"):
                 qtd_moedas = st.number_input("Quantidade de Moedas:", min_value=0, max_value=1000000, value=1000)
                 
-                # Lista de usuários direto do banco para você escolher quem vai dar moedas
                 try:
                     membros_db = supabase.table("perfis_usuarios").select("username").execute()
                     lista_membros = [u["username"] for u in membros_db.data] if membros_db.data else [user_atual["username"]]
@@ -241,12 +236,11 @@ else:
                 
                 if st.button("Injetar Moedas 💸", type="primary"):
                     try:
-                        # Puxa o saldo atual do alvo escolhido
                         dados_alvo = supabase.table("perfis_usuarios").select("moedas").eq("username", alvo_moedas).execute()
                         saldo_atual = dados_alvo.data[0].get("moedas", 0) if dados_alvo.data else 0
                         
                         supabase.table("perfis_usuarios").update({"moedas": saldo_atual + qtd_moedas}).eq("username", alvo_moedas).execute()
-                        st.success(f"+{qtd_moedas} Moedas enviadas para {alvo_moedas}!")
+                        st.success(f"Moedas injetadas com sucesso em {alvo_moedas}!")
                         st.rerun()
                     except Exception as e:
                         st.error(f"Erro ao injetar fundos: {e}")
@@ -342,7 +336,7 @@ else:
                                 st.rerun()
                         else:
                             if st.button("Seguir ➕", type="primary"):
-                                supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido", p_info["id"]}).execute()
+                                supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": p_info["id"]}).execute()
                                 st.rerun()
 
                 st.write("### Publicações do Usuário")
@@ -444,7 +438,6 @@ else:
                         with col_m2:
                             s_msg = obter_selo_texto(m['username'])
                             
-                            # Busca o estilo de balão que o usuário salvou no seu banco
                             try:
                                 estilo_u = supabase.table("perfis_usuarios").select("banner_ativo", "id").eq("username", m['username']).execute()
                                 txt_caixa = estilo_u.data[0].get("banner_ativo", "Nenhum") if estilo_u.data else "Nenhum"
@@ -453,23 +446,23 @@ else:
                                 txt_caixa = "Nenhum"
                                 uid_remetente = ""
                                 
-                            # Chama a renderização customizada de balão de chat
                             renderizar_caixa_mensagem(m['username'], m['mensagem'], s_msg, txt_caixa, eh_admin=verificar_se_eh_dev(uid_remetente))
             except: pass
         else:
             st.title("🎛️ Painel Chat-Exv")
-            t_chat = st.tabs(["💬 Novo Grupo", "🔑 Entrar", "👥 Amigos", "➕ Adicionar"])
+            t_chat = st.tabs(["💬 Privado", "👥 Grupos", "👥 Membros"])
             
             with t_chat[0]:
-                g_nome = st.text_input("Nome do Novo Grupo:").strip().upper()
-                if st.button("Criar Grupo 🔐") and g_nome:
-                    st.session_state.sala_ativa = g_nome
+                alvo = st.text_input("Username do amigo para iniciar privado:").strip()
+                if st.button("Iniciar Chat Privado") and alvo:
+                    lista = sorted([user_atual['username'].upper(), alvo.upper()])
+                    st.session_state.sala_ativa = f"PRIV-{lista[0]}-{lista[1]}"
                     st.rerun()
             
             with t_chat[1]:
-                g_entrar = st.text_input("Insira o código do chat:").strip().upper()
-                if st.button("Entrar 🚪") and g_entrar:
-                    st.session_state.sala_ativa = g_entrar
+                g_nome = st.text_input("Nome do Grupo:").strip().upper()
+                if st.button("Criar / Entrar no Grupo 🔐") and g_nome:
+                    st.session_state.sala_ativa = g_nome
                     st.rerun()
 
             with t_chat[2]:
@@ -492,13 +485,6 @@ else:
                                         st.session_state.sala_ativa = f"PRIV-{lista[0]}-{lista[1]}"
                                         st.rerun()
                 except: pass
-
-            with t_chat[3]:
-                alvo = st.text_input("Username do amigo para adicionar:").strip()
-                if st.button("Iniciar Chat Privado") and alvo:
-                    lista = sorted([user_atual['username'].upper(), alvo.upper()])
-                    st.session_state.sala_ativa = f"PRIV-{lista[0]}-{lista[1]}"
-                    st.rerun()
 
     # === ✨ ABA STATUS ===
     with aba_status:
