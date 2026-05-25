@@ -71,7 +71,7 @@ def criar_notificacao(id_destinatario, tipo, mensagem):
             "id_remetente": st.session_state.usuario_logado["id"],
             "username_remetente": st.session_state.usuario_logado["username"],
             "tipo": tipo,
-            "mensagem": mensagem,
+            "mensagem": message,
             "lida": False
         }).execute()
     except:
@@ -136,7 +136,6 @@ else:
     except:
         pass
 
-    # Sistema de busca de notificações não lidas para o contador na barra lateral
     total_notif = 0
     try:
         res_n = supabase.table("notificacoes").select("*", count="exact").eq("id_destinatario", user_atual["id"]).eq("lida", False).execute()
@@ -281,7 +280,8 @@ else:
                             try:
                                 with st.spinner("Enviando vídeo..."):
                                     nome_video_bucket = f"videos/{uuid.uuid4()}.mp4"
-                                    supabase.storage.from("videos_feed").upload(nome_video_bucket, file_v.read())
+                                    # CORRIGIDO: mudado de .from() para .from_() para resolver o erro da imagem 3156
+                                    supabase.storage.from_("videos_feed").upload(nome_video_bucket, file_v.read())
                                     url_video_final = supabase.storage.from_("videos_feed").get_public_url(nome_video_bucket)
                                     
                                     supabase.table("feed_videos").insert({
@@ -754,7 +754,6 @@ else:
                 st.markdown("---")
                 
                 for n in res_notificacoes.data:
-                    # Ícone de acordo com o tipo de alerta
                     icone = "➕"
                     if n["tipo"] == "curtida":
                         icone = "❤️"
@@ -771,6 +770,5 @@ else:
                 st.info("Ainda não tens nenhuma notificação por aqui.")
         except Exception as e:
             st.error(f"Erro ao carregar as tuas notificações: {e}")
-
                             
-        
+                    
