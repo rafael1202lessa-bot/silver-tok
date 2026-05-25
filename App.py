@@ -108,11 +108,19 @@ def renderizar_caixa_mensagem(username, mensagem, selo, estilo_caixa, eh_admin=F
     else:
         estilo_css = "background-color: #f1f3f4; padding: 10px; border-radius: 8px; margin-bottom: 8px;"
         
+    # Identificar e embutir reprodutores caso a mensagem seja um link de mídia
+    conteudo_final = mensagem
+    if str(mensagem).startswith("https://"):
+        if any(ext in str(mensagem).lower() for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp']) or "imagens_chat" in str(mensagem):
+            conteudo_final = f'<br><img src="{mensagem}" style="max-width: 100%; border-radius: 8px; margin-top: 5px;">'
+        elif any(ext in str(mensagem).lower() for ext in ['.mp3', '.wav', '.ogg', '.m4a', '.webm']) or "audios_chat" in str(mensagem):
+            conteudo_final = f'<br><audio controls style="max-width: 100%; margin-top: 5px;"><source src="{mensagem}"></audio>'
+
     st.markdown(f"""
     <div style="{estilo_css}">
         <span style="font-weight: bold; color: {'#d4af37' if (eh_admin or estilo_caixa == '👑 Balão Dourado DEV') else '#333'};">{username}</span> 
         <span style="font-size: 12px; font-weight: bold;">{selo}</span>: 
-        <span style="color: {'#111' if estilo_caixa != '🔮 Balão Neon Cyber' else '#fff'};">{mensagem}</span>
+        <span style="color: {'#111' if estilo_caixa != '🔮 Balão Neon Cyber' else '#fff'};">{conteudo_final}</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -393,7 +401,7 @@ else:
                 else:
                     st.button("Saldo Insuficiente ❌", key=f"insuf_{chave}", disabled=True, use_container_width=True)
 
-    # === 💬 ABA CHAT-EXV 100% RESTAURADA COM TODAS AS ABAS ===
+    # === 💬 ABA CHAT-EXV ===
     with aba_chat:
         if st.session_state.sala_ativa:
             st.subheader(f"Sala: {st.session_state.sala_ativa}")
@@ -401,6 +409,33 @@ else:
                 st.session_state.sala_ativa = None
                 st.rerun()
 
+            # --- GRAVADOR DE ÁUDIO EMBUTIDO ---
+            st.markdown("### 🎙️ Enviar Mensagem de Voz")
+            audio_gravado = st.audio_input("Grave seu áudio aqui:")
+            
+            if audio_gravado is not None:
+                if st.button("Enviar Áudio Gravado 🚀", use_container_width=True):
+                    try:
+                        nome_arquivo = f"chat/audios/{uuid.uuid4()}.wav"
+                        # Envia o arquivo gravado para o bucket 'audios_chat'
+                        supabase.storage.from_("audios_chat").upload(nome_arquivo, audio_gravado.read())
+                        url_publica_audio = supabase.storage.from_("audios_chat").get_public_url(nome_arquivo)
+                        
+                        # Insere a URL gerada na coluna 'mensagem'
+                        supabase.table("bate-papo_profissional").insert({
+                            "username": u_name,
+                            "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
+                            "mensagem": url_publica_audio, 
+                            "codigo_sala": st.session_state.sala_ativa
+                        }).execute()
+                        st.success("Áudio enviado com sucesso!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao fazer o upload do áudio: {e}")
+
+            st.markdown("---")
+
+            # Formulário Padrão Original Intocado
             with st.form(key="chat_msg_form", clear_on_submit=True):
                 m_txt = st.text_input("Mensagem:")
                 if st.form_submit_button("Enviar ✉️") and m_txt.strip():
@@ -434,7 +469,6 @@ else:
         else:
             st.title("🎛️ Painel Chat-Exv")
             
-            # ABA CORRIGIDA AQUI: Adicionado de volta "Entrar" e "Adicionar"
             t_chat = st.tabs(["💬 Privado", "🔑 Entrar", "👥 Grupos", "👥 Membros", "➕ Adicionar"])
             
             with t_chat[0]:
@@ -492,7 +526,7 @@ else:
                                 supabase.table("seguidores").insert({"id_seguidor": u_id, "id_seguido": am_id}).execute()
                                 st.success(f"Você agora está seguindo {busca_amigo.strip()}!")
                             else:
-                                st.error("Usuário não encontrado.")
+                                am_id = verif.data[0]["id"]
                         except: st.error("Você já segue este usuário ou ocorreu uma falha.")
 
     # === ✨ ABA STATUS ===
@@ -504,7 +538,7 @@ else:
                 "titulo": f"[STATUS] {stat_txt.strip()}", "url_video": "", "username_autor": u_name,
                 "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO, "curtidas": 0, "id_autor": u_id, "tipo_formato": "horizontal"
             }).execute()
-            st.success("Status atualizado!")
+            st.success("Status updated!")
             st.rerun()
 
     # === 🔔 ABA NOTIFICAÇÕES ===
