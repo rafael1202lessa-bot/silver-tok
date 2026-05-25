@@ -220,23 +220,16 @@ else:
         
         # --- INVENTÁRIO (CORREÇÃO DE CONFLITO VISUAL) ---
         with st.expander("🎒 Meu Inventário"):
-            st.caption("Equipe suas customizações salvas:")
-            estilo_atual = user_atual.get("banner_ativo", "Nenhum")
-            st.write(f"Ativo no momento: **{estilo_atual}**")
+        st.caption("Equipe suas customizações salvas:")
+        estilo_atual = user_atual.get("banner_ativo", "Nenhum")
+        st.write(f"Ativo no momento: **{estilo_atual}**")
+        
+        opcoes_inventario = ["Nenhum", "🥉 Bronze Estelar", "🥈 Prata Lendária", "🔷 Balão Azul Moderno", "🔮 Balão Neon Cyber"]
+        if is_admin:
+            opcoes_inventario.insert(1, "👑 Coroa Suprema DEV")
+            opcoes_inventario.insert(2, "👑 Balão Dourado DEV")
             
-            opcoes_inventario = ["Nenhum", "🥉 Bronze Estelar", "🥈 Prata Lendária", "🔷 Balão Azul Moderno", "🔮 Balão Neon Cyber"]
-            if is_admin:
-                opcoes_inventario.insert(1, "👑 Coroa Suprema DEV")
-                opcoes_inventario.insert(2, "👑 Balão Dourado DEV")
-                
-            escolha_custom = st.selectbox("Selecione para ativar:", opcoes_inventario, key="select_custom_inv")
-            if st.button("Equipar Cosmético 🛡️", key="btn_equipar_inv"):
-                try:
-                    supabase.table("perfis_usuarios").update({"banner_ativo": escolha_custom}).eq("id", u_id).execute()
-                    st.toast(f"Item {escolha_custom} equipado com sucesso! 🛡️")
-                    st.rerun()
-                except: 
-                    st.toast("❌ Falha ao conectar/equipar cosmético.")
+        escolha_custom =
 
         # --- MENU EDITAR PERFIL ---
         with st.expander("⚙️ Editar Meu Perfil"):
