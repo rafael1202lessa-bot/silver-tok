@@ -35,7 +35,7 @@ VIDEOS_BOT_BOTEY = [
     {"titulo": "🎬 Mini Clip Engraçado (Vertical)", "url": "https://commondatachannel.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4", "formato": "vertical"}
 ]
 
-# --- FUNÇÕES AUXILIARES (Definidas no topo para evitar erros de escopo) ---
+# --- FUNÇÕES AUXILIARES ---
 def obter_status_emoji(timestamp_str):
     if not timestamp_str:
         return "⚪ Offline"
@@ -64,14 +64,31 @@ def criar_notificacao(id_destinatario, tipo, mensagem):
             "id_remetente": st.session_state.usuario_logado["id"],
             "username_remetente": st.session_state.usuario_logado["username"],
             "tipo": tipo,
-            "mensagem": mensagem,
+            "mensagem": message,
             "lida": False
         }).execute()
     except:
         pass
 
+def obter_selo_texto(username_alvo):
+    """Retorna o sufixo de texto/badge com base no cargo ou seguidores do usuário"""
+    if username_alvo == NOME_DEVELOPER:
+        return " 👑`DEV`"
+    try:
+        # Busca rápida para verificação de selo por contagem de seguidores
+        dados = supabase.table("perfis_usuarios").select("id").eq("username", username_alvo).execute()
+        if dados.data:
+            id_u = dados.data[0]["id"]
+            res_seg = supabase.table("seguidores").select("*", count="exact").eq("id_seguido", id_u).execute()
+            total = res_seg.count if (hasattr(res_seg, "count") and res_seg.count is not None) else len(res_seg.data)
+            if total >= 1000:
+                return " ✔️"
+    except:
+        pass
+    return ""
+
 def renderizar_foto_com_banner(url_foto, username_alvo, tamanho=90):
-    """Renderiza a foto de perfil. Se for o Rafael_oficial, injeta a Coroa e a borda Dourada Néon"""
+    """Renderiza a foto com a borda dourada néon e coroa exclusivamente para o desenvolvedor"""
     if username_alvo == NOME_DEVELOPER:
         estilo_css = "border-radius: 50%; object-fit: cover; border: 4px solid #ffd700; box-shadow: 0 0 20px #ffd700, inset 0 0 10px #ffd700;"
         coroa_html = f'<div style="position: absolute; top: -22px; left: 50%; transform: translateX(-50%); font-size: {int(tamanho*0.38)}px; z-index: 10; filter: drop-shadow(0px 2px 5px rgba(0,0,0,0.5));">👑</div>'
@@ -181,16 +198,10 @@ else:
     # --- PAINEL LATERAL (SIDEBAR) ---
     renderizar_foto_com_banner(user_atual.get("url_foto_perfil") or FOTO_PADRAO, user_atual["username"], tamanho=90)
     nome_exibicao = user_atual.get("apelido") or user_atual["username"]
+    selo_proprio = obter_selo_texto(user_atual["username"])
     
-    if user_atual["username"] == NOME_DEVELOPER:
-        st.sidebar.write(f"**{nome_exibicao}** 👑`DEV`")
-        st.sidebar.caption(f"@{user_atual['username']}")
-    elif total_seg >= 1000:
-        st.sidebar.write(f"**{nome_exibicao}** ✔️")
-        st.sidebar.caption(f"@{user_atual['username']}")
-    else:
-        st.sidebar.write(f"**{nome_exibicao}**")
-        st.sidebar.caption(f"@{user_atual['username']}")
+    st.sidebar.write(f"**{nome_exibicao}**{selo_proprio}")
+    st.sidebar.caption(f"@{user_atual['username']}")
     
     st.sidebar.write(f"👥 **{total_seg}** seguidores")
     st.sidebar.write("🟢 Status: **Online**")
@@ -213,7 +224,7 @@ else:
                 try:
                     supabase.table("perfis_usuarios").update(dados_atualizar).eq("id", user_atual["id"]).execute()
                     for k, v in dados_atualizar.items(): st.session_state.usuario_logado[k] = v
-                    st.success("Perfil updated!")
+                    st.success("Perfil atualizado!")
                     st.rerun()
                 except: st.error("Erro ao salvar dados.")
 
@@ -252,10 +263,99 @@ else:
         st.rerun()
 
     # --- NAVEGAÇÃO PRINCIPAL ---
-    aba_feed, aba_chat, aba_status, aba_notif = st.tabs([
-        "📺 Silver Tok (Feed)", "💬 Chat-Exv", "✨ Status", f"🔔 Notificações ({total_notif})"
+    aba_feed, aba_loja, aba_chat, aba_status, aba_notif = st.tabs([
+        "📺 Silver Tok (Feed)", "🛒 Loja de Banners", "💬 Chat-Exv", "✨ Status", f"🔔 Notificações ({total_notif})"
     ])
     
+    # REUSABILIDADE DO FEED DE MÍDIA FILTRADA
+    def renderizar_lista_filtrada(lista_posts, identificador_formato):
+        for idx, v in enumerate(lista_posts):
+            if str(v.get("titulo", "")).startswith("[STATUS]"): continue
+            autor = v.get('username_autor', 'Membro')
+            img_autor = v.get('avatar_autor') or FOTO_PADRAO
+            video_url = v["url_video"]
+            likes = v.get("curtidas", 0)
+            id_post = v.get("id")
+            chave_comp = f"feed_{identificador_formato}_{idx}_{id_post}"
+
+            st.markdown("---")
+            col_f1, col_f2 = st.columns([1, 5])
+            with col_f1: 
+                renderizar_foto_com_banner(img_autor, autor, tamanho=50)
+                if st.button("👤", key=f"btn_perfil_f_{chave_comp}"):
+                    st.session_state.perfil_visitado = autor
+                    st.rerun()
+            with col_f2:
+                selo_autor = obter_selo_texto(autor)
+                st.markdown(f"**{autor}**{selo_autor}")
+                st.caption(v["titulo"])
+
+            if identificador_formato == "vertical":
+                st.markdown(
+                    f"""
+                    <div style="display: flex; justify-content: center; background-color: #000; border-radius: 12px; padding: 5px; margin-bottom: 10px;">
+                        <video width="290" height="515" controls style="border-radius: 8px;">
+                            <source src="{video_url}" type="video/mp4">
+                        </video>
+                    </div>
+                    """, unsafe_allow_html=True
+                )
+            else:
+                if video_url.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')) or "/fotos_feed/" in video_url: 
+                    st.image(video_url, use_container_width=True)
+                else: 
+                    st.video(video_url)
+
+            col_b1, col_b2 = st.columns(2)
+            with col_b1:
+                if st.button(f"❤️ {likes} Curtidas", key=f"btn_like_{chave_comp}"):
+                    supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("id", id_post).execute()
+                    if v.get("id_autor"):
+                        criar_notificacao(v["id_autor"], "curtida", f"@{user_atual['username']} curtiu sua publicação!")
+                    st.rerun()
+            with col_b2:
+                if autor == user_atual["username"] and st.button("Remover Post 🗑️", key=f"btn_deletar_{chave_comp}"):
+                    supabase.table("feed_videos").delete().eq("id", id_post).execute()
+                    st.rerun()
+
+            # === SECÇÃO DE COMENTÁRIOS INTEGRADA ===
+            with st.expander(f"💬 Comentários para este post"):
+                with st.form(key=f"form_coment_{chave_comp}", clear_on_submit=True):
+                    novo_coment = st.text_input("Escreve um comentário:", placeholder="Diz o que achas...")
+                    enviar_c = st.form_submit_button("Comentar ✉️")
+                    
+                    if enviar_c and novo_coment.strip():
+                        try:
+                            supabase.table("comentarios_feed").insert({
+                                "id_video": id_post,
+                                "id_autor": user_atual["id"],
+                                "username_autor": user_atual["username"],
+                                "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
+                                "comentario": novo_coment.strip()
+                            }).execute()
+                            if v.get("id_autor"):
+                                criar_notificacao(v["id_autor"], "comentario", f"@{user_atual['username']} comentou no teu post!")
+                            st.success("Comentário enviado!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erro ao enviar comentário.")
+
+                try:
+                    lista_c = supabase.table("comentarios_feed").select("*").eq("id_video", id_post).order("criado_em", descending=True).execute()
+                    if lista_c.data:
+                        for c in lista_c.data:
+                            col_c1, col_c2 = st.columns([1, 8])
+                            with col_c1:
+                                renderizar_foto_com_banner(c.get("avatar_autor") or FOTO_PADRAO, c['username_autor'], tamanho=35)
+                            with col_c2:
+                                selo_coment = obter_selo_texto(c['username_autor'])
+                                st.markdown(f"**{c['username_autor']}**{selo_coment}: {c['comentario']}")
+                                st.caption(f"Enviado em: {c['criado_em'][:16].replace('T', ' ')}")
+                    else:
+                        st.caption("Nenhum comentário por aqui ainda. Sê o primeiro!")
+                except:
+                    st.caption("A carregar comentários...")
+
     # === 📺 ABA SILVER TOK (FEED) ===
     with aba_feed:
         if st.session_state.perfil_visitado is not None:
@@ -283,24 +383,18 @@ else:
                     col_p1, col_p2 = st.columns([1, 3])
                     with col_p1: renderizar_foto_com_banner(img_autor_vis, autor_vis, tamanho=100)
                     with col_p2:
-                        selo_v = " 👑`DEV`" if autor_vis == NOME_DEVELOPER else (" ✔️" if qtd_seg_v >= 1000 else "")
+                        selo_v = obter_selo_texto(autor_vis)
                         st.subheader(f"{apelido_autor}{selo_v}")
                         st.caption(f"@{autor_vis}")
                         st.write(f"Status: **{status_autor}** | 👥 **{qtd_seg_v}** seguidores")
                         
                         if autor_vis != user_atual["username"]:
                             try:
-                                ja_segue_v = supabase.table("seguidores").select("*").eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor_vis).execute()
-                                if ja_segue_v.data:
-                                    if st.button("Seguindo ✓", use_container_width=True):
-                                        supabase.table("seguidores").delete().eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor_vis).execute()
-                                        st.rerun()
-                                else:
-                                    if st.button("Seguir Perfil ➕", use_container_width=True, type="primary"):
-                                        supabase.table("seguidores").insert({"id_seguidor", user_atual["id"], "id_seguido", id_autor_vis}).execute()
-                                        criar_notificacao(id_autor_vis, "seguidor", f"@{user_atual['username']} começou a seguir o seu perfil!")
-                                        st.rerun()
-                            except: pass
+                                ja_segue_v = supabase.table("seguidores").select("*").eq("id_seguidor", username_autor", autor_vis).execute()
+                    if posts_perfil.data:
+                        renderizar_lista_filtrada(reversed(posts_perfil.data), "perfil")
+                    else:
+                        st.info("Este usuário ainda não fez nenhuma publicação.")
                 else: st.error("Perfil não encontrado.")
             except Exception as e: st.error(f"Erro ao abrir perfil: {e}")
         else:
@@ -351,92 +445,6 @@ else:
 
             aba_formato_mini, aba_formato_longo = st.tabs(["📱 Mini Vídeos (Verticais)", "🖥️ Vídeos Longos (Horizontais)"])
 
-            def renderizar_lista_filtrada(lista_posts, identificador_formato):
-                for idx, v in enumerate(lista_posts):
-                    if str(v.get("titulo", "")).startswith("[STATUS]"): continue
-                    autor = v.get('username_autor', 'Membro')
-                    img_autor = v.get('avatar_autor') or FOTO_PADRAO
-                    video_url = v["url_video"]
-                    likes = v.get("curtidas", 0)
-                    id_post = v.get("id")
-                    chave_comp = f"feed_{identificador_formato}_{idx}_{id_post}"
-
-                    st.markdown("---")
-                    col_f1, col_f2 = st.columns([1, 5])
-                    with col_f1: 
-                        renderizar_foto_com_banner(img_autor, autor, tamanho=50)
-                        if st.button("👤", key=f"btn_perfil_f_{chave_comp}"):
-                            st.session_state.perfil_visitado = autor
-                            st.rerun()
-                    with col_f2:
-                        st.markdown(f"**{autor}**")
-                        st.caption(v["titulo"])
-
-                    if identificador_formato == "vertical":
-                        st.markdown(
-                            f"""
-                            <div style="display: flex; justify-content: center; background-color: #000; border-radius: 12px; padding: 5px; margin-bottom: 10px;">
-                                <video width="290" height="515" controls style="border-radius: 8px;">
-                                    <source src="{video_url}" type="video/mp4">
-                                </video>
-                            </div>
-                            """, unsafe_allow_html=True
-                        )
-                    else:
-                        if video_url.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')) or "/fotos_feed/" in video_url: 
-                            st.image(video_url, use_container_width=True)
-                        else: 
-                            st.video(video_url)
-
-                    col_b1, col_b2 = st.columns(2)
-                    with col_b1:
-                        if st.button(f"❤️ {likes} Curtidas", key=f"btn_like_{chave_comp}"):
-                            supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("id", id_post).execute()
-                            if v.get("id_autor"):
-                                criar_notificacao(v["id_autor"], "curtida", f"@{user_atual['username']} curtiu sua publicação!")
-                            st.rerun()
-                    with col_b2:
-                        if autor == user_atual["username"] and st.button("Remover Post 🗑️", key=f"btn_deletar_{chave_comp}"):
-                            supabase.table("feed_videos").delete().eq("id", id_post).execute()
-                            st.rerun()
-
-                    # === SECÇÃO DE COMENTÁRIOS INTEGRADA ===
-                    with st.expander(f"💬 Comentários para este post"):
-                        with st.form(key=f"form_coment_{chave_comp}", clear_on_submit=True):
-                            novo_coment = st.text_input("Escreve um comentário:", placeholder="Diz o que achas...")
-                            enviar_c = st.form_submit_button("Comentar ✉️")
-                            
-                            if enviar_c and novo_coment.strip():
-                                try:
-                                    supabase.table("comentarios_feed").insert({
-                                        "id_video": id_post,
-                                        "id_autor": user_atual["id"],
-                                        "username_autor": user_atual["username"],
-                                        "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                                        "comentario": novo_coment.strip()
-                                    }).execute()
-                                    if v.get("id_autor"):
-                                        criar_notificacao(v["id_autor"], "comentario", f"@{user_atual['username']} comentou no teu post!")
-                                    st.success("Comentário enviado!")
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error("Erro ao enviar comentário. Certifica-te de rodar o SQL corrigido no painel.")
-
-                        try:
-                            lista_c = supabase.table("comentarios_feed").select("*").eq("id_video", id_post).order("criado_em", descending=True).execute()
-                            if lista_c.data:
-                                for c in lista_c.data:
-                                    col_c1, col_c2 = st.columns([1, 8])
-                                    with col_c1:
-                                        renderizar_foto_com_banner(c.get("avatar_autor") or FOTO_PADRAO, c['username_autor'], tamanho=35)
-                                    with col_c2:
-                                        st.markdown(f"**{c['username_autor']}**: {c['comentario']}")
-                                        st.caption(f"Enviado em: {c['criado_em'][:16].replace('T', ' ')}")
-                            else:
-                                st.caption("Nenhum comentário por aqui ainda. Sê o primeiro!")
-                        except:
-                            st.caption("A carregar comentários...")
-
             try:
                 query_feed = supabase.table("feed_videos").select("*")
                 if termo_pesquisa: query_feed = query_feed.ilike("titulo", f"%{termo_pesquisa}%")
@@ -452,6 +460,23 @@ else:
                         else: st.info("Nenhum vídeo longo ou foto disponível.")
             except Exception as e: st.error(f"Erro ao ler feed: {e}")
 
+    # === 🛒 ABA LOJA DE BANNERS ===
+    with aba_loja:
+        st.header("🛒 Loja de Banners e Cosméticos")
+        if user_atual["username"] == NOME_DEVELOPER:
+            st.info("👑 Como Desenvolvedor principal, tu já tens a Coroa Suprema equipada permanentemente!")
+        else:
+            st.caption("Adquire novos visuais para a tua moldura usando as tuas moedas de interação.")
+            
+        st.markdown("---")
+        st.subheader("🥉 Bronze Estelar")
+        st.write("Preço: 🪙 150 moedas")
+        st.button("Comprar", key="buy_bronze", disabled=(user_atual["username"] == NOME_DEVELOPER), use_container_width=True)
+        
+        st.markdown("---")
+        st.subheader("🥈 Prata Lendária")
+        st.write("Preço: 🪙 300 moedas")
+        st.button("Comprar", key="buy_silver", disabled=(user_atual["username"] == NOME_DEVELOPER), use_container_width=True)
 
     # === 💬 ABA CHAT-EXV ===
     with aba_chat:
@@ -500,7 +525,8 @@ else:
                         with col_m1:
                             renderizar_foto_com_banner(m.get("url_foto_perfil") or FOTO_PADRAO, m['username'], tamanho=40)
                         with col_m2:
-                            st.markdown(f"**{m['username']}:** {m.get('mensagem') or ''}")
+                            selo_msg = obter_selo_texto(m['username'])
+                            st.markdown(f"**{m['username']}**{selo_msg}: {m.get('mensagem') or ''}")
                             if m.get("url_imagem_enviada"):
                                 if m["url_imagem_enviada"].lower().endswith(('.wav', '.mp3')): 
                                     st.audio(m["url_imagem_enviada"])
@@ -544,7 +570,7 @@ else:
                                 status_u = obter_status_emoji(u.get("ultimo_visto"))
                                 col_u1, col_u2, col_u3 = st.columns([1, 3, 2])
                                 with col_u1: renderizar_foto_com_banner(u.get("url_foto_perfil") or FOTO_PADRAO, u['username'], tamanho=40)
-                                with col_u2: write(f"**{u['username']}**\n{status_u}")
+                                with col_u2: st.write(f"**{u['username']}**\n{status_u}") # CORREÇÃO: st.write adicionado
                                 with col_u3:
                                     if st.button("Conversar 💬", key=f"chat_list_{u['username']}"):
                                         lista_nomes = sorted([user_atual['username'].upper(), u['username'].upper()])
