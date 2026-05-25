@@ -26,12 +26,6 @@ if supabase is None:
 CHAVE_SECRETA = "ChatPrivado2026"
 FOTO_PADRAO = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
 NOME_DEVELOPER = "Rafael_oficial"
-COMANDO_BOT_SECRETO = "/gerar_conteudo_bot"
-
-VIDEOS_BOT_BOTEY = [
-    {"titulo": "🔥 Edit Incrível de Anime (Vertical)", "url": "https://www.w3schools.com/html/mov_bbb.mp4", "formato": "vertical"},
-    {"titulo": "🌌 Gameplay Relaxante 4K (Horizontal)", "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", "formato": "horizontal"}
-]
 
 # --- FUNÇÕES AUXILIARES ---
 def obter_status_emoji(timestamp_str):
@@ -54,12 +48,9 @@ def obter_status_emoji(timestamp_str):
 def criar_notificacao(id_destinatario, tipo, mensagem):
     if not id_destinatario or st.session_state.usuario_logado is None:
         return
-    if str(id_destinatario) == str(st.session_state.usuario_logado["id"]):
-        return
     try:
         supabase.table("notificacoes").insert({
             "id_destinatario": id_destinatario,
-            "id_remetente": st.session_state.usuario_logado["id"],
             "username_remetente": st.session_state.usuario_logado["username"],
             "tipo": tipo,
             "mensagem": mensagem,
@@ -69,7 +60,7 @@ def criar_notificacao(id_destinatario, tipo, mensagem):
         pass
 
 def obter_selo_texto(username_alvo):
-    """Retorna o sufixo de texto/badge com base no cargo ou seguidores do usuário"""
+    """Retorna o sufixo de texto com base no cargo ou seguidores do usuário"""
     if username_alvo == NOME_DEVELOPER:
         return " 👑 DEV"
     try:
@@ -85,7 +76,7 @@ def obter_selo_texto(username_alvo):
     return ""
 
 def renderizar_foto_com_banner(url_foto, username_alvo, tamanho=90):
-    """Renderiza a foto com a borda dourada néon e coroa exclusivamente para o desenvolvedor"""
+    """Renderiza a foto com a borda dourada exclusivamente para o desenvolvedor"""
     if username_alvo == NOME_DEVELOPER:
         estilo_css = "border-radius: 50%; object-fit: cover; border: 4px solid #ffd700; box-shadow: 0 0 20px #ffd700;"
         coroa_html = f'<div style="position: absolute; top: -22px; left: 50%; transform: translateX(-50%); font-size: {int(tamanho*0.38)}px; z-index: 10;">👑</div>'
@@ -109,10 +100,6 @@ if "usuario_logado" not in st.session_state:
     st.session_state.usuario_logado = None
 if "sala_ativa" not in st.session_state:
     st.session_state.sala_ativa = None
-if "id_upload_chat" not in st.session_state:
-    st.session_state.id_upload_chat = str(uuid.uuid4())
-if "id_audio_chat" not in st.session_state:
-    st.session_state.id_audio_chat = str(uuid.uuid4())
 if "perfil_visitado" not in st.session_state:
     st.session_state.perfil_visitado = None
 
@@ -201,7 +188,7 @@ else:
             if v.get("tipo_formato") == "vertical":
                 st.markdown(f'<div style="display: flex; justify-content: center;"><video width="290" height="515" controls><source src="{video_url}" type="video/mp4"></video></div>', unsafe_allow_html=True)
             else:
-                if video_url.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                if str(video_url).lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
                     st.image(video_url, use_container_width=True)
                 else:
                     st.video(video_url)
@@ -211,22 +198,29 @@ else:
                 with st.form(key=f"form_c_{chave_comp}", clear_on_submit=True):
                     text_c = st.text_input("Adicionar comentário:")
                     if st.form_submit_button("Enviar") and text_c.strip():
-                        supabase.table("comentarios_feed").insert({
-                            "id_video": id_post, "id_autor": user_atual["id"],
-                            "username_autor": user_atual["username"], "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                            "comentario": text_c.strip()
-                        }).execute()
+                        try:
+                            supabase.table("comentarios_feed").insert({
+                                "id_video": id_post,
+                                "username_autor": user_atual["username"], 
+                                "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
+                                "comentario": text_c.strip()
+                            }).execute()
+                        except:
+                            st.error("Erro ao inserir comentário no banco.")
                         st.rerun()
 
-                c_dados = supabase.table("comentarios_feed").select("*").eq("id_video", id_post).execute()
-                if c_dados.data:
-                    for c in c_dados.data:
-                        col_c1, col_c2 = st.columns([1, 8])
-                        with col_c1:
-                            renderizar_foto_com_banner(c.get("avatar_autor") or FOTO_PADRAO, c['username_autor'], tamanho=30)
-                        with col_c2:
-                            s_com = obter_selo_texto(c['username_autor'])
-                            st.markdown(f"**{c['username_autor']}** {s_com}: {c['comentario']}")
+                try:
+                    c_dados = supabase.table("comentarios_feed").select("*").eq("id_video", id_post).execute()
+                    if c_dados.data:
+                        for c in c_dados.data:
+                            col_c1, col_c2 = st.columns([1, 8])
+                            with col_c1:
+                                renderizar_foto_com_banner(c.get("avatar_autor") or FOTO_PADRAO, c['username_autor'], tamanho=30)
+                            with col_c2:
+                                s_com = obter_selo_texto(c['username_autor'])
+                                st.markdown(f"**{c['username_autor']}** {s_com}: {c['comentario']}")
+                except:
+                    pass
 
     # === 📺 ABA SILVER TOK ===
     with aba_feed:
@@ -253,8 +247,9 @@ else:
                                 supabase.table("seguidores").delete().eq("id_seguidor", user_atual["id"]).eq("id_seguido", p_info["id"]).execute()
                                 st.rerun()
                         else:
+                            # CORREÇÃO CRÍTICA DO ERRO DA LINHA 257 (Trocado ',' por ':')
                             if st.button("Seguir ➕", type="primary"):
-                                supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido", p_info["id"]}).execute()
+                                supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": p_info["id"]}).execute()
                                 st.rerun()
 
                 st.write("### Publicações do Usuário")
@@ -263,9 +258,10 @@ else:
                     renderizar_lista_filtrada(reversed(v_dados.data), "perfil")
                 else:
                     st.info("Nenhuma publicação encontrada.")
+            else:
+                st.error("Perfil não encontrado.")
         else:
             exibir_logo()
-            # Upload de Mídia
             with st.expander("➕ Publicar Novo Conteúdo"):
                 t_pub = st.text_input("Legenda:")
                 f_midia = st.file_uploader("Arquivo de Vídeo ou Imagem:", type=["mp4", "png", "jpg", "jpeg"])
@@ -286,9 +282,12 @@ else:
                     st.success("Publicado!")
                     st.rerun()
 
-            f_dados = supabase.table("feed_videos").select("*").execute()
-            if f_dados.data:
-                renderizar_lista_filtrada(reversed(f_dados.data), "global")
+            try:
+                f_dados = supabase.table("feed_videos").select("*").execute()
+                if f_dados.data:
+                    renderizar_lista_filtrada(reversed(f_dados.data), "global")
+            except:
+                st.info("Nenhuma publicação no feed global.")
 
     # === 🛒 ABA LOJA DE BANNERS ===
     with aba_loja:
@@ -317,21 +316,24 @@ else:
                 m_txt = st.text_input("Mensagem:")
                 if st.form_submit_button("Enviar ✉️") and m_txt.strip():
                     supabase.table("bate-papo_profissional").insert({
-                        "id_usuario": user_atual["id"], "username": user_atual["username"],
+                        "username": user_atual["username"],
                         "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                         "mensagem": m_txt.strip(), "codigo_sala": st.session_state.sala_ativa
                     }).execute()
                     st.rerun()
 
-            m_dados = supabase.table("bate-papo_profissional").select("*").eq("codigo_sala", st.session_state.sala_ativa).execute()
-            if m_dados.data:
-                for m in reversed(m_dados.data[-30:]):
-                    col_m1, col_m2 = st.columns([1, 6])
-                    with col_m1:
-                        renderizar_foto_com_banner(m.get("url_foto_perfil") or FOTO_PADRAO, m['username'], tamanho=40)
-                    with col_m2:
-                        s_msg = obter_selo_texto(m['username'])
-                        st.markdown(f"**{m['username']}** {s_msg}: {m['mensagem']}")
+            try:
+                m_dados = supabase.table("bate-papo_profissional").select("*").eq("codigo_sala", st.session_state.sala_ativa).execute()
+                if m_dados.data:
+                    for m in reversed(m_dados.data[-30:]):
+                        col_m1, col_m2 = st.columns([1, 6])
+                        with col_m1:
+                            renderizar_foto_com_banner(m.get("url_foto_perfil") or FOTO_PADRAO, m['username'], tamanho=40)
+                        with col_m2:
+                            s_msg = obter_selo_texto(m['username'])
+                            st.markdown(f"**{m['username']}** {s_msg}: {m['mensagem']}")
+            except:
+                pass
         else:
             st.title("🎛️ Painel Chat-Exv")
             t_chat = st.tabs(["💬 Privado", "👨‍👩‍👦 Grupos", "👥 Membros"])
@@ -351,22 +353,25 @@ else:
 
             with t_chat[2]:
                 st.subheader("Membros da Comunidade")
-                u_todos = supabase.table("perfis_usuarios").select("*").execute()
-                if u_todos.data:
-                    for u in u_todos.data:
-                        if u["username"] != user_atual["username"]:
-                            col_u1, col_u2, col_u3 = st.columns([1, 4, 2])
-                            with col_u1:
-                                renderizar_foto_com_banner(u.get("url_foto_perfil") or FOTO_PADRAO, u["username"], tamanho=40)
-                            with col_u2:
-                                s_u = obter_selo_texto(u["username"])
-                                st.write(f"**{u['username']}** {s_u}")
-                                st.caption(obter_status_emoji(u.get("ultimo_visto")))
-                            with col_u3:
-                                if st.button("Chat 💬", key=f"u_ch_{u['username']}"):
-                                    lista = sorted([user_atual['username'].upper(), u['username'].upper()])
-                                    st.session_state.sala_ativa = f"PRIV-{lista[0]}-{lista[1]}"
-                                    st.rerun()
+                try:
+                    u_todos = supabase.table("perfis_usuarios").select("*").execute()
+                    if u_todos.data:
+                        for u in u_todos.data:
+                            if u["username"] != user_atual["username"]:
+                                col_u1, col_u2, col_u3 = st.columns([1, 4, 2])
+                                with col_u1:
+                                    renderizar_foto_com_banner(u.get("url_foto_perfil") or FOTO_PADRAO, u["username"], tamanho=40)
+                                with col_u2:
+                                    s_u = obter_selo_texto(u["username"])
+                                    st.write(f"**{u['username']}** {s_u}")
+                                    st.caption(obter_status_emoji(u.get("ultimo_visto")))
+                                with col_u3:
+                                    if st.button("Chat 💬", key=f"u_ch_{u['username']}"):
+                                        lista = sorted([user_atual['username'].upper(), u['username'].upper()])
+                                        st.session_state.sala_ativa = f"PRIV-{lista[0]}-{lista[1]}"
+                                        st.rerun()
+                except:
+                    pass
 
     # === ✨ ABA STATUS ===
     with aba_status:
@@ -383,10 +388,13 @@ else:
     # === 🔔 ABA NOTIFICAÇÕES ===
     with aba_notif:
         st.header("🔔 Suas Notificações")
-        n_lista = supabase.table("notificacoes").select("*").eq("id_destinatario", user_atual["id"]).execute()
-        if n_lista.data:
-            for n in reversed(n_lista.data):
-                st.write(f"• {n['mensagem']}")
-        else:
-            st.info("Nenhuma notificação por aqui.")
+        try:
+            n_lista = supabase.table("notificacoes").select("*").eq("id_destinatario", user_atual["id"]).execute()
+            if n_lista.data:
+                for n in reversed(n_lista.data):
+                    st.write(f"• {n['mensagem']}")
+            else:
+                st.info("Nenhuma notificação por aqui.")
+        except:
+            st.info("Crie a tabela 'notificacoes' no painel SQL do seu Supabase para ativar este recurso.")
     
