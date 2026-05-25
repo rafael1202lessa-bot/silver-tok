@@ -229,29 +229,22 @@ else:
         st.markdown(f"🪙 **Saldo:** {user_atual.get('moedas', 0)} Moedas")
         
         # --- INVENTÁRIO (CORREÇÃO DE CONFLITO VISUAL) ---
-        with st.expander("🎒 Meu Inventário"):
+            with st.expander("🎒 Meu Inventário"):
         st.caption("Equipe suas customizações salvas:")
         st.write(f"Ativo no momento: **{user_atual.get('banner_ativo', 'Nenhum')}**")
         
-        # Lista padrão de itens
         opcoes_inventario = ["Nenhum", "残留 Banners", "🥉 Bronze Estelar", "🥈 Prata Lendária", "🔷 Balão Azul Moderno", "🔮 Balão Neon Cyber"]
         
-        # 🚀 TRAVA DO EVENTO DE ESTREIA: Válido até Domingo (31 de Maio de 2026)
         from datetime import datetime
         data_atual = datetime.now().date()
-        
-        # Define os limites: começa hoje (25) e vai até domingo (31)
         data_inicio = datetime.strptime("2026-05-25", "%Y-%m-%d").date()
         data_fim = datetime.strptime("2026-05-31", "%Y-%m-%d").date()
         
-        # Se estiver no período do evento, libera para todos
         if data_inicio <= data_atual <= data_fim:
             opcoes_inventario.insert(1, "🚀 Estreante Oficial")
-        # Se o evento já passou, só libera se o usuário já estiver usando ele (para não perder o item)
         elif user_atual.get('banner_ativo') == "🚀 Estreante Oficial":
             opcoes_inventario.insert(1, "🚀 Estreante Oficial")
             
-        # Suas regras de Administrador originais
         if is_admin:
             opcoes_inventario.insert(1, "👑 Coroa Suprema DEV")
             opcoes_inventario.insert(2, "👑 Balão Dourado DEV")
@@ -268,6 +261,7 @@ else:
                     st.toast("Falha ao equipar o cosmético.")
             except Exception:
                 st.toast("Falha ao conectar.")
+                
                 
                 
         # --- MENU EDITAR PERFIL ---
