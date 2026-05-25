@@ -170,11 +170,11 @@ if st.session_state.usuario_logado is None:
                 except:
                     st.error("Nome de usuário indisponível.")
 else:
-    # Sincronização e validação segura anti-NoneType
+    # Sincronização segura controlada por fluxo local resiliente
     try:
-        if st.session_state.usuario_logado and "id" in st.session_state.usuario_logado:
+        if st.session_state.usuario_logado and isinstance(st.session_state.usuario_logado, dict) and "id" in st.session_state.usuario_logado:
             atualizar_dados = supabase.table("perfis_usuarios").select("*").eq("id", st.session_state.usuario_logado.get("id")).execute()
-            if atualizar_dados.data:
+            if atualizar_dados.data and len(atualizar_dados.data) > 0:
                 st.session_state.usuario_logado = atualizar_dados.data[0]
             else:
                 st.session_state.usuario_logado = None
@@ -182,10 +182,10 @@ else:
         else:
             st.session_state.usuario_logado = None
             st.rerun()
-    except: 
+    except:
         pass
 
-    # Re-checagem absoluta pós-sincronização
+    # Validação absoluta pré-render
     if st.session_state.usuario_logado is None:
         st.rerun()
 
@@ -243,7 +243,7 @@ else:
                         "apelido": novo_apelido.strip(),
                         "url_foto_perfil": nova_foto.strip()
                     }).eq("id", u_id).execute()
-                    st.success("Perfil updated!")
+                    st.success("Perfil atualizado!")
                     st.rerun()
                 except: st.error("Erro ao salvar dados.")
 
@@ -388,10 +388,12 @@ else:
                     renderizar_lista_filtrada(reversed(posts_completos_h), "horizontal_global", busca_legenda, ordenar_por)
                 except: pass
 
-    # === 🛒 ABA LOJA ===
+    # === 🛒 ABA LOJA TRATADA CONTRA FALHA DE SESSÃO ===
     with aba_loja:
         st.header("🛒 Loja de Cosméticos Premium")
         st.caption("Adquira novas molduras e caixas de mensagens personalizadas.")
+        
+        saldo_atual = user_atual.get("moedas", 0) if user_atual else 0
         
         col_l1, col_l2 = st.columns(2)
         for idx, (chave, info) in enumerate(COSMETICOS.items()):
@@ -402,14 +404,15 @@ else:
                 st.markdown(f"### {info['nome']}")
                 st.write(f"Preço: 🪙 {info['preco']} moedas")
                 
-                if user_atual.get("moedas", 0) >= info['preco']:
+                if saldo_atual >= info['preco']:
                     if st.button(f"Comprar", key=f"loja_buy_{chave}", use_container_width=True):
-                        novo_saldo = user_atual["moedas"] - info['preco']
+                        # BLINDAGEM MÁXIMA: Recalculo seguro protegendo contra variações nulas
+                        novo_saldo = int(saldo_atual) - int(info['preco'])
                         try:
                             supabase.table("perfis_usuarios").update({"moedas": novo_saldo}).eq("id", u_id).execute()
                             st.success(f"Você adquiriu: {info['nome']}!")
                             st.rerun()
-                        except: st.error("Erro ao processar compra.")
+                        except: st.error("Erro ao processar compra no Supabase.")
                 else:
                     st.button("Saldo Insuficiente ❌", key=f"insuf_{chave}", disabled=True, use_container_width=True)
 
@@ -616,20 +619,18 @@ else:
                                 am_id = verif.data[0]["id"]
                                 supabase.table("seguidores").insert({"id_seguidor": u_id, "id_seguido": am_id}).execute()
                                 st.success(f"Você agora está seguindo {busca_amigo.strip()}!")
-                            else:
-                                am_id = verif.data[0]["id"]
                         except: st.error("Você já segue este usuário ou ocorreu uma falha.")
 
     # === ✨ ABA STATUS ===
     with aba_status:
         st.header("✨ Status Temporários")
-        stat_txt = st.text_input("O que você está thinking?")
+        stat_txt = st.text_input("O que você está pensando?")
         if st.button("Postar Status") and stat_txt.strip():
             supabase.table("feed_videos").insert({
                 "titulo": f"[STATUS] {stat_txt.strip()}", "url_video": "", "username_autor": u_name,
                 "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO, "curtidas": 0, "id_autor": u_id, "tipo_formato": "horizontal"
             }).execute()
-            st.success("Status updated!")
+            st.success("Status atualizado!")
             st.rerun()
 
     # === 🔔 ABA NOTIFICAÇÕES ===
@@ -644,4 +645,4 @@ else:
                 st.info("Nenhuma notificação por aqui.")
         except:
             st.info("Notificações indisponíveis no momento.")
-                     
+                   
