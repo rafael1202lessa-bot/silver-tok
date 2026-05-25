@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 import base64
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Silver Tok v3.0 Master", page_icon="🎬", layout="centered")
+st.set_page_config(page_title="Silver Tok v3.5 Master", page_icon="🎬", layout="centered")
 
 # --- CONEXÃO BANCO DE DADOS ---
 SUPABASE_URL = "https://ldjtqgeyorkzbvuichjj.supabase.co"
@@ -191,6 +191,11 @@ else:
 
     user_atual = st.session_state.usuario_logado
     u_id = user_atual.get("id", "")
+    
+    # Proteção Crítica: Impede que o ID vá nulo para o banco de dados em qualquer cenário
+    if not u_id:
+        u_id = str(uuid.uuid4())
+        
     u_name = user_atual.get("username", "Membro")
     is_admin = verificar_se_eh_dev(u_id)
 
@@ -213,7 +218,7 @@ else:
         st.write(f"**{user_atual.get('apelido') or u_name}** {selo_proprio}")
         st.markdown(f"🪙 **Saldo:** {user_atual.get('moedas', 0)} Moedas")
         
-        # --- INVENTÁRIO (CORREÇÃO DE CONFLITO VISUAL DO SEGUNDO BUG) ---
+        # --- INVENTÁRIO (CORREÇÃO DE CONFLITO VISUAL) ---
         with st.expander("🎒 Meu Inventário"):
             st.caption("Equipe suas customizações salvas:")
             estilo_atual = user_atual.get("banner_ativo", "Nenhum")
@@ -243,7 +248,7 @@ else:
                         "apelido": novo_apelido.strip(),
                         "url_foto_perfil": nova_foto.strip()
                     }).eq("id", u_id).execute()
-                    st.success("Perfil updated!")
+                    st.success("Perfil atualizado!")
                     st.rerun()
                 except: st.error("Erro ao salvar dados.")
 
@@ -259,7 +264,7 @@ else:
         "📺 Silver Tok (Feed)", "🛒 Loja & Caixas", "💬 Chat-Exv", "✨ Status", f"🔔 Notificações ({total_notif})"
     ])
 
-    # --- LISTAGEM DO FEED COM SEÇÃO DE COMENTÁRIOS CORRIGIDA ---
+    # --- LISTAGEM DO FEED COM SEÇÃO DE COMENTÁRIOS ---
     def renderizar_lista_filtrada(lista_posts, identificador_formato, termo_busca="", ordenacao=""):
         if termo_busca:
             lista_posts = [p for p in lista_posts if termo_busca.lower() in str(p.get("titulo", "")).lower()]
@@ -312,7 +317,7 @@ else:
                             except: pass
                         st.rerun()
 
-            # --- SEÇÃO DE COMENTÁRIOS INTEGRADA COM AVATARES, LOJA E SELO (PRIMEIRO BUG FIX) ---
+            # --- SEÇÃO DE COMENTÁRIOS BLINDADA E EXCLUSIVA (Evita quebra de tipo de dado) ---
             with st.expander(f"💬 Ver Comentários do Post"):
                 cod_discussao = f"POST-{id_post}"
                 
@@ -320,15 +325,16 @@ else:
                 if st.button("Comentar 💬", key=f"btn_coment_{chave_comp}"):
                     if novo_coment.strip():
                         try:
+                            # Inserção segura omitindo chaves bigint auto-geradas e garantindo strings puras
                             supabase.table("bate-papo_profissional").insert({
-                                "id_usuario": u_id,
                                 "username": u_name,
                                 "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                                 "mensagem": novo_coment.strip(),
                                 "codigo_sala": cod_discussao
                             }).execute()
                             st.rerun()
-                        except: pass
+                        except Exception as e:
+                            st.error(f"Erro ao salvar comentário estrutural: {e}")
 
                 try:
                     comentarios = supabase.table("bate-papo_profissional").select("*").eq("codigo_sala", cod_discussao).execute()
@@ -339,7 +345,6 @@ else:
                             if c_msg and str(c_msg).lower() != "none":
                                 col_c1, col_c2 = st.columns([1, 6])
                                 
-                                # Processamento dinâmico do autor do comentário para pegar foto atualizada e cosmético equipado
                                 try:
                                     estilo_c = supabase.table("perfis_usuarios").select("banner_ativo", "id", "url_foto_perfil").eq("username", c_user).execute()
                                     txt_caixa_c = estilo_c.data[0].get("banner_ativo", "Nenhum") if estilo_c.data else "Nenhum"
@@ -466,7 +471,7 @@ else:
                 else:
                     st.button("Saldo Insuficiente ❌", key=f"insuf_{chave}", disabled=True, use_container_width=True)
 
-    # === 💬 ABA CHAT-EXV ===
+    # === 💬 ABA CHAT-EXV BLINDADA (Correção Total dos Erros dos Prints) ===
     with aba_chat:
         sala_atual = st.session_state.sala_ativa
 
@@ -485,8 +490,8 @@ else:
                         supabase.storage.from_("imagens_chat").upload(nome_da_foto, arquivo_chat.read())
                         url_da_foto = supabase.storage.from_("imagens_chat").get_public_url(nome_da_foto)
                         
+                        # Inserção explícita de campos string limpos (Evita BigInt error e Nulos)
                         supabase.table("bate-papo_profissional").insert({
-                            "id_usuario": u_id,
                             "username": u_name,
                             "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                             "mensagem": url_da_foto, 
@@ -513,7 +518,6 @@ else:
                         url_publica_audio = supabase.storage.from_("audios_chat").get_public_url(nome_arquivo)
                         
                         supabase.table("bate-papo_profissional").insert({
-                            "id_usuario": u_id,
                             "username": u_name,
                             "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                             "mensagem": url_publica_audio, 
@@ -564,13 +568,13 @@ else:
             st.components.v1.html(gravador_html, height=85)
             st.markdown("---")
 
-            # --- INPUT DE TEXTO CHAT ---
+            # --- INPUT DE TEXTO CHAT BLINDADO ---
             m_txt = st.text_input("Mensagem:", key="input_texto_chat_direto", placeholder="Digite sua mensagem aqui...")
             if st.button("Enviar Mensagem ✉️", use_container_width=True):
                 if m_txt.strip():
                     try:
+                        # Inserção limpa sem forçar id_usuario ou colunas inexistentes no cache
                         supabase.table("bate-papo_profissional").insert({
-                            "id_usuario": u_id,
                             "username": u_name,
                             "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                             "mensagem": m_txt.strip(), 
@@ -689,4 +693,3 @@ else:
                 st.info("Nenhuma notificação por aqui.")
         except:
             st.info("Notificações indisponíveis no momento.")
-     
