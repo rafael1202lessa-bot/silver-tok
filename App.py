@@ -213,7 +213,7 @@ else:
         st.write(f"**{user_atual.get('apelido') or u_name}** {selo_proprio}")
         st.markdown(f"🪙 **Saldo:** {user_atual.get('moedas', 0)} Moedas")
         
-        # --- INVENTÁRIO (CORRIGIDO PARA EVITAR DUPLO STATUS VISUAL) ---
+        # --- INVENTÁRIO (CORREÇÃO DE CONFLITO VISUAL DO SEGUNDO BUG) ---
         with st.expander("🎒 Meu Inventário"):
             st.caption("Equipe suas customizações salvas:")
             estilo_atual = user_atual.get("banner_ativo", "Nenhum")
@@ -224,14 +224,14 @@ else:
                 opcoes_inventario.insert(1, "👑 Coroa Suprema DEV")
                 opcoes_inventario.insert(2, "👑 Balão Dourado DEV")
                 
-            escolha_custom = st.selectbox("Selecione para ativar:", opcoes_inventario)
-            if st.button("Equipar Cosmético 🛡️"):
+            escolha_custom = st.selectbox("Selecione para ativar:", opcoes_inventario, key="select_custom_inv")
+            if st.button("Equipar Cosmético 🛡️", key="btn_equipar_inv"):
                 try:
                     supabase.table("perfis_usuarios").update({"banner_ativo": escolha_custom}).eq("id", u_id).execute()
-                    st.toast("Item equipado com sucesso! 🛡️")
+                    st.toast(f"Item {escolha_custom} equipado com sucesso! 🛡️")
                     st.rerun()
                 except: 
-                    st.error("Falha ao equipar o cosmético.")
+                    st.toast("❌ Falha ao conectar/equipar cosmético.")
 
         # --- MENU EDITAR PERFIL ---
         with st.expander("⚙️ Editar Meu Perfil"):
@@ -243,7 +243,7 @@ else:
                         "apelido": novo_apelido.strip(),
                         "url_foto_perfil": nova_foto.strip()
                     }).eq("id", u_id).execute()
-                    st.success("Perfil atualizado!")
+                    st.success("Perfil updated!")
                     st.rerun()
                 except: st.error("Erro ao salvar dados.")
 
@@ -259,7 +259,7 @@ else:
         "📺 Silver Tok (Feed)", "🛒 Loja & Caixas", "💬 Chat-Exv", "✨ Status", f"🔔 Notificações ({total_notif})"
     ])
 
-    # --- LISTAGEM DO FEED COM SEÇÃO DE COMENTÁRIOS TOTALMENTE REFEITA ---
+    # --- LISTAGEM DO FEED COM SEÇÃO DE COMENTÁRIOS CORRIGIDA ---
     def renderizar_lista_filtrada(lista_posts, identificador_formato, termo_busca="", ordenacao=""):
         if termo_busca:
             lista_posts = [p for p in lista_posts if termo_busca.lower() in str(p.get("titulo", "")).lower()]
@@ -312,7 +312,7 @@ else:
                             except: pass
                         st.rerun()
 
-            # --- SEÇÃO DE COMENTÁRIOS COM FOTO, BALÃO E SELO (PRIMEIRA FALHA CORRIGIDA) ---
+            # --- SEÇÃO DE COMENTÁRIOS INTEGRADA COM AVATARES, LOJA E SELO (PRIMEIRO BUG FIX) ---
             with st.expander(f"💬 Ver Comentários do Post"):
                 cod_discussao = f"POST-{id_post}"
                 
@@ -338,18 +338,19 @@ else:
                             c_msg = c.get('mensagem')
                             if c_msg and str(c_msg).lower() != "none":
                                 col_c1, col_c2 = st.columns([1, 6])
+                                
+                                # Processamento dinâmico do autor do comentário para pegar foto atualizada e cosmético equipado
+                                try:
+                                    estilo_c = supabase.table("perfis_usuarios").select("banner_ativo", "id", "url_foto_perfil").eq("username", c_user).execute()
+                                    txt_caixa_c = estilo_c.data[0].get("banner_ativo", "Nenhum") if estilo_c.data else "Nenhum"
+                                    uid_c = estilo_c.data[0].get("id") if estilo_c.data else None
+                                    foto_c = estilo_c.data[0].get("url_foto_perfil") or FOTO_PADRAO
+                                except:
+                                    txt_caixa_c = "Nenhum"
+                                    uid_c = None
+                                    foto_c = FOTO_PADRAO
+                                    
                                 with col_c1:
-                                    # Busca os cosméticos do autor do comentário em tempo real
-                                    try:
-                                        estilo_c = supabase.table("perfis_usuarios").select("banner_ativo", "id", "url_foto_perfil").eq("username", c_user).execute()
-                                        txt_caixa_c = estilo_c.data[0].get("banner_ativo", "Nenhum") if estilo_c.data else "Nenhum"
-                                        uid_c = estilo_c.data[0].get("id") if estilo_c.data else None
-                                        foto_c = estilo_c.data[0].get("url_foto_perfil") or FOTO_PADRAO
-                                    except:
-                                        txt_caixa_c = "Nenhum"
-                                        uid_c = None
-                                        foto_c = FOTO_PADRAO
-                                        
                                     renderizar_foto_com_banner(foto_c, c_user, uid_c, tamanho=40, banner_equipado=txt_caixa_c)
                                 with col_c2:
                                     selo_c = obter_selo_texto(c_user, uid_c)
@@ -672,7 +673,7 @@ else:
                     "titulo": f"[STATUS] {stat_txt.strip()}", "url_video": "", "username_autor": u_name,
                     "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO, "curtidas": 0, "id_autor": u_id, "tipo_formato": "horizontal"
                 }).execute()
-                st.success("Status updated!")
+                st.success("Status atualizado!")
                 st.rerun()
             except: pass
 
@@ -688,4 +689,4 @@ else:
                 st.info("Nenhuma notificação por aqui.")
         except:
             st.info("Notificações indisponíveis no momento.")
-                        
+     
