@@ -58,6 +58,25 @@ def obtener_status_emoji(timestamp_str):
         pass
     return "⚪ Offline"
 
+# FUNÇÃO CENTRAL DE NOTIFICAÇÕES
+def criar_notificacao(id_destinatario, tipo, mensagem):
+    """Envia uma notificação para o banco de dados se o alvo não for o próprio usuário."""
+    if not id_destinatario or st.session_state.usuario_logado is None:
+        return
+    if str(id_destinatario) == str(st.session_state.usuario_logado["id"]):
+        return
+    try:
+        supabase.table("notificacoes").insert({
+            "id_destinatario": id_destinatario,
+            "id_remetente": st.session_state.usuario_logado["id"],
+            "username_remetente": st.session_state.usuario_logado["username"],
+            "tipo": tipo,
+            "mensagem": mensagem,
+            "lida": False
+        }).execute()
+    except:
+        pass
+
 if st.session_state.usuario_logado is None:
     exibir_logo()
     
@@ -117,6 +136,14 @@ else:
     except:
         pass
 
+    # Sistema de busca de notificações não lidas para o contador na barra lateral
+    total_notif = 0
+    try:
+        res_n = supabase.table("notificacoes").select("*", count="exact").eq("id_destinatario", user_atual["id"]).eq("lida", False).execute()
+        total_notif = res_n.count if (hasattr(res_n, "count") and res_n.count is not None) else len(res_n.data)
+    except:
+        pass
+
     st.sidebar.image(user_atual.get("url_foto_perfil") or FOTO_PADRAO, width=90)
     if user_atual["username"] == NOME_DEVELOPER:
         st.sidebar.write(f"Usuário: **{user_atual['username']}** 👑`DEV`")
@@ -124,16 +151,27 @@ else:
         st.sidebar.write(f"Usuário: **{user_atual['username']}** ✔️")
     else:
         st.sidebar.write(f"Usuário: **{user_atual['username']}**")
+    
     st.sidebar.write(f"👥 **{total_seg}** seguidores")
     st.sidebar.write("🟢 Status: **Online**")
     
+    if total_notif > 0:
+        st.sidebar.markdown(f"🔔 Notificações: **🔴 {total_notif} novas**")
+    else:
+        st.sidebar.write("🔔 Notificações: **0**")
+        
     if st.sidebar.button("Sair 🚪", use_container_width=True):
         st.session_state.usuario_logado = None
         st.session_state.sala_ativa = None
         st.session_state.perfil_visitado = None
         st.rerun()
 
-    aba_feed, aba_chat, aba_status = st.tabs(["📺 Silver Tok (Feed)", "💬 Chat-Exv", "✨ Status"])
+    aba_feed, aba_chat, aba_status, aba_notif = st.tabs([
+        "📺 Silver Tok (Feed)", 
+        "💬 Chat-Exv", 
+        "✨ Status", 
+        f"🔔 Notificações ({total_notif})"
+    ])
     
     # === ABA FEED ===
     with aba_feed:
@@ -177,6 +215,7 @@ else:
                             else:
                                 if st.button("Seguir ➕", key="btn_fol_perfil", use_container_width=True, type="primary"):
                                     supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor_vis}).execute()
+                                    criar_notificacao(id_autor_vis, "seguidor", f"@{user_atual['username']} começou a seguir o seu perfil!")
                                     st.rerun()
                                     
                     st.markdown("### 🎬 Publicações")
@@ -225,7 +264,8 @@ else:
                                     "url_video": link_final,
                                     "username_autor": user_atual["username"],
                                     "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                                    "curtidas": 0
+                                    "curtidas": 0,
+                                    "id_autor": user_atual["id"]
                                 }).execute()
                                 st.success("Postado com sucesso!")
                                 st.rerun()
@@ -241,7 +281,7 @@ else:
                             try:
                                 with st.spinner("Enviando vídeo..."):
                                     nome_video_bucket = f"videos/{uuid.uuid4()}.mp4"
-                                    supabase.storage.from_("videos_feed").upload(nome_video_bucket, file_v.read())
+                                    supabase.storage.from("videos_feed").upload(nome_video_bucket, file_v.read())
                                     url_video_final = supabase.storage.from_("videos_feed").get_public_url(nome_video_bucket)
                                     
                                     supabase.table("feed_videos").insert({
@@ -249,7 +289,8 @@ else:
                                         "url_video": url_video_final,
                                         "username_autor": user_atual["username"],
                                         "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                                        "curtidas": 0
+                                        "curtidas": 0,
+                                        "id_autor": user_atual["id"]
                                     }).execute()
                                     
                                 st.success("Vídeo enviado com sucesso!")
@@ -274,7 +315,8 @@ else:
                                         "url_video": url_foto_final,
                                         "username_autor": user_atual["username"],
                                         "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                                        "curtidas": 0
+                                        "curtidas": 0,
+                                        "id_autor": user_atual["id"]
                                     }).execute()
                                     
                                 st.success("Foto postada com sucesso!")
@@ -292,6 +334,7 @@ else:
                     autor = v.get('username_autor', 'Membro')
                     img_autor = v.get('avatar_autor') or FOTO_PADRAO
                     video_url = v["url_video"]
+                    id_autor_do_post = v.get("id_autor")
                     
                     if "shorts/" in video_url:
                         video_url = video_url.replace("shorts/", "watch?v=")
@@ -333,8 +376,8 @@ else:
                                         st.rerun()
                                 else:
                                     if st.button("Seguir ➕", key=f"fol_{chave_componente}", use_container_width=True, type="primary"):
-                                        # CORREÇÃO DA SINTAXE DE DICIONÁRIO AQUI:
                                         supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor}).execute()
+                                        criar_notificacao(id_autor, "seguidor", f"@{user_atual['username']} começou a seguir o seu perfil!")
                                         st.rerun()
                             except:
                                 pass
@@ -355,7 +398,20 @@ else:
                             except:
                                 if "id" in v:
                                     supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("id", v["id"]).execute()
+                            
+                            if id_autor_do_post:
+                                criar_notificacao(id_autor_do_post, "curtida", f"@{user_atual['username']} curtiu a sua publicação!")
                             st.rerun()
+                    with col_del:
+                        if autor == user_atual["username"]:
+                            if st.button("Excluir Post 🗑️", key=f"del_{chave_componente}"):
+                                try:
+                                    supabase.table("feed_videos").delete().eq("url_video", video_url).execute()
+                                except:
+                                    if "id" in v:
+                                        supabase.table("feed_videos").delete().eq("id", v["id"]).execute()
+                                st.success("Removido com sucesso!")
+                                st.rerun()
 
                     total_coment = 0
                     lista_comentarios = []
@@ -367,7 +423,6 @@ else:
                     except:
                         pass
 
-                    # CORREÇÃO AQUI: Mudado de 'id=' para 'key=' para evitar quebra no Streamlit
                     with st.expander(f"💬 Comentários ({total_coment})", key=f"exp_{chave_componente}"):
                         novo_coment = st.text_input("Escreva um comentário...", key=f"in_cm_{chave_componente}", placeholder="O que você achou?")
                         if st.button("Comentar 🚀", key=f"btn_cm_{chave_componente}"):
@@ -379,6 +434,10 @@ else:
                                         "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                                         "comentario": novo_coment.strip()
                                     }).execute()
+                                    
+                                    if id_autor_do_post:
+                                        criar_notificacao(id_autor_do_post, "comentario", f"@{user_atual['username']} comentou no seu post: '{novo_coment.strip()[:25]}...'")
+                                        
                                     st.success("Comentário publicado!")
                                     st.rerun()
                                 except Exception as err:
@@ -483,7 +542,6 @@ else:
                             supabase.storage.from_("imagens_chat").upload(nome_a, gravar_audio.read())
                             url_img = supabase.storage.from_("imagens_chat").get_public_url(nome_a)
                             
-                        # CORREÇÃO DA COLUNA AQUI: Mudado para 'url_imagem_enviada' conforme o cache do Supabase espera
                         supabase.table("bate-papo_profissional").insert({
                             "id_usuario": user_atual["id"], 
                             "username": user_atual["username"], 
@@ -576,6 +634,7 @@ else:
                                 st.write(f"Pedido de amizade de: **{dr.data[0]['username']}**")
                                 if st.button("Aceitar", key=f"ac_{p['id']}"):
                                     supabase.table("lista_amigos").update({"status": "aceito"}).eq("id", p["id"]).execute()
+                                    criar_notificacao(p["id_usuario_envio"], "amizade", f"@{user_atual['username']} aceitou o seu pedido de amizade! 🎉")
                                     st.rerun()
                     
                     conf = supabase.table("lista_amigos").select("*").or_(f"id_usuario_envio.eq.{user_atual['id']},id_usuario_recebe.eq.{user_atual['id']}").eq("status", "aceito").execute()
@@ -601,6 +660,7 @@ else:
                                 st.error("Você não pode adicionar a si mesmo!")
                             else:
                                 supabase.table("lista_amigos").insert({"id_usuario_envio": user_atual["id"], "id_usuario_recebe": alvo.data[0]["id"], "status": "pendente"}).execute()
+                                criar_notificacao(alvo.data[0]["id"], "amizade", f"@{user_atual['username']} enviou-te um pedido de amizade!")
                                 st.success("Pedido enviado com sucesso!")
                         else:
                             st.error("Usuário não encontrado.")
@@ -631,7 +691,8 @@ else:
                             "url_video": url_status_final,
                             "username_autor": user_atual["username"],
                             "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                            "curtidas": 0
+                            "curtidas": 0,
+                            "id_autor": user_atual["id"]
                         }).execute()
                         
                         st.success("Status postado com sucesso!")
@@ -675,3 +736,41 @@ else:
                 st.info("Nenhum status disponível.")
         except Exception as e:
             st.error(f"Erro ao carregar os status: {e}")
+
+    # === ABA NOTIFICAÇÕES ===
+    with aba_notif:
+        st.header("🔔 O que andam a dizer")
+        st.write("Acompanha todas as interações que os utilizadores fazem contigo.")
+        
+        try:
+            res_notificacoes = supabase.table("notificacoes").select("*").eq("id_destinatario", user_atual["id"]).order("created_at", desc=True).limit(30).execute()
+            
+            if res_notificacoes.data:
+                if st.button("Limpar Tudo / Marcar como Lidas ✓", use_container_width=True, key="btn_limpar_notifs"):
+                    supabase.table("notificacoes").update({"lida": True}).eq("id_destinatario", user_atual["id"]).execute()
+                    st.success("Notificações marcadas como lidas!")
+                    st.rerun()
+                    
+                st.markdown("---")
+                
+                for n in res_notificacoes.data:
+                    # Ícone de acordo com o tipo de alerta
+                    icone = "➕"
+                    if n["tipo"] == "curtida":
+                        icone = "❤️"
+                    elif n["tipo"] == "comentario":
+                        icone = "💬"
+                    elif n["tipo"] == "amizade":
+                        icone = "👥"
+                        
+                    estilo_linha = "**(Nova)**" if not n["lida"] else ""
+                    st.markdown(f"{icone} {n['mensagem']} {estilo_linha}")
+                    st.caption(f"Enviada em: {n['created_at'].split('T')[0]}")
+                    st.markdown("---")
+            else:
+                st.info("Ainda não tens nenhuma notificação por aqui.")
+        except Exception as e:
+            st.error(f"Erro ao carregar as tuas notificações: {e}")
+
+                            
+        
