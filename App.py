@@ -401,7 +401,7 @@ else:
                 else:
                     st.button("Saldo Insuficiente ❌", key=f"insuf_{chave}", disabled=True, use_container_width=True)
 
-    # === 💬 ABA CHAT-EXV CORRIGIDA CONTRA DUPLICIDADE ===
+    # === 💬 ABA CHAT-EXV REMOVIDO TODO ID CONFLITANTE ===
     with aba_chat:
         if st.session_state.sala_ativa:
             st.subheader(f"Sala: {st.session_state.sala_ativa}")
@@ -416,7 +416,6 @@ else:
                 
             audio_base64 = st.text_input("Dados do Gravador", type="password", value=st.session_state.b64_audio_data, label_visibility="collapsed", key="audio_b64_injector")
             
-            # Processamento do Áudio com UUID Único Garantido
             if st.button("Clique aqui se o áudio não subir automático ⚡", use_container_width=True, key="btn_hidden_upload") or (audio_base64 and audio_base64 != st.session_state.b64_audio_data):
                 if audio_base64:
                     try:
@@ -426,9 +425,8 @@ else:
                         supabase.storage.from_("audios_chat").upload(nome_arquivo, dados_audio)
                         url_publica_audio = supabase.storage.from_("audios_chat").get_public_url(nome_arquivo)
                         
-                        # Inserção de áudio com ID gerado manualmente contra falhas
+                        # Sem forçar campo de ID, deixando o Supabase processar livre
                         supabase.table("bate-papo_profissional").insert({
-                            "id": str(uuid.uuid4()),
                             "username": u_name,
                             "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                             "mensagem": url_publica_audio, 
@@ -504,13 +502,13 @@ else:
             st.components.v1.html(gravador_html, height=85)
             st.markdown("---")
 
-            # --- FORMULÁRIO DE TEXTO BLINDADO COM UUID ÚNICO (Solução do Erro!) ---
-            with st.form(key="chat_msg_form", clear_on_submit=True):
-                m_txt = st.text_input("Mensagem:")
-                if st.form_submit_button("Enviar ✉️") and m_txt.strip():
+            # --- ENVIO COMPACTO SEM PASSAR NENHUMA COLUNA DE ID SOLUCIONANDO O PROBLEMA ---
+            m_txt = st.text_input("Mensagem:", key="input_texto_chat_direto", placeholder="Digite sua mensagem aqui...")
+            if st.button("Enviar Mensagem ✉️", use_container_width=True):
+                if m_txt.strip():
                     try:
+                        # Deixamos o Supabase assumir o controle total dos campos gerados automaticamente
                         supabase.table("bate-papo_profissional").insert({
-                            "id": str(uuid.uuid4()), # Injeta chave primária única forçada para evitar DuplicateKeyError
                             "username": u_name,
                             "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                             "mensagem": m_txt.strip(), 
@@ -518,7 +516,7 @@ else:
                         }).execute()
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Erro ao enviar no banco: {e}")
+                        st.error(f"Erro ao salvar mensagem: {e}")
 
             try:
                 m_dados = supabase.table("bate-papo_profissional").select("*").eq("codigo_sala", st.session_state.sala_ativa).execute()
@@ -606,7 +604,7 @@ else:
     # === ✨ ABA STATUS ===
     with aba_status:
         st.header("✨ Status Temporários")
-        stat_txt = st.text_input("O que você está pensando?")
+        stat_txt = st.text_input("O que você está thinking?")
         if st.button("Postar Status") and stat_txt.strip():
             supabase.table("feed_videos").insert({
                 "titulo": f"[STATUS] {stat_txt.strip()}", "url_video": "", "username_autor": u_name,
@@ -627,4 +625,3 @@ else:
                 st.info("Nenhuma notificação por aqui.")
         except:
             st.info("Notificações indisponíveis no momento.")
-                    
