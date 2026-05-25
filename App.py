@@ -219,7 +219,7 @@ else:
         st.markdown(f"🪙 **Saldo:** {user_atual.get('moedas', 0)} Moedas")
         
         # --- INVENTÁRIO (CORREÇÃO DE CONFLITO VISUAL) ---
-            with st.expander("🎒 Meu Inventário"):
+with st.expander("🎒 Meu Inventário"):
         st.caption("Equipe suas customizações salvas:")
         estilo_atual = user_atual.get("banner_ativo", "Nenhum")
         st.write(f"Ativo no momento: **{estilo_atual}**")
@@ -245,7 +245,7 @@ else:
                 erro_ao_equipar = True
 
         if sucesso_ao_equipar:
-            st.success(f"Item {escolha_custom} équipé com sucesso! 🛡️")
+            st.success(f"Item {escolha_custom} equipado com sucesso! 🛡️")
             st.rerun()
         elif erro_ao_equipar:
             st.error("Falha ao conectar/equipar cosmético.")
