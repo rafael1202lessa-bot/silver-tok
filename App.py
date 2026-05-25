@@ -34,6 +34,11 @@ COSMETICOS = {
     "caixa_neon": {"nome": "🔮 Balão Neon Cyber", "preco": 250, "img": "https://cdn-icons-png.flaticon.com/512/2037/2037041.png"}
 }
 
+VIDEOS_BOT_BOTEY = [
+    {"id": "bot_1", "titulo": "⚡ Edit Suprema de Naruto!", "url_video": "https://www.w3schools.com/html/mov_bbb.mp4", "username_autor": "🤖 Bot_Animes", "avatar_autor": "https://cdn-icons-png.flaticon.com/512/4213/4213732.png", "curtidas": 142, "tipo_formato": "vertical"},
+    {"id": "bot_2", "titulo": "🌌 Relaxing Cinematic View 4K", "url_video": "https://media.w3.org/2010/05/sintel/trailer_hd.mp4", "username_autor": "🤖 Bot_Natureza", "avatar_autor": "https://cdn-icons-png.flaticon.com/512/4213/4213732.png", "curtidas": 98, "tipo_formato": "horizontal"}
+]
+
 # --- FUNÇÕES AUXILIARES ---
 def obter_status_emoji(timestamp_str):
     if not timestamp_str: return "⚪ Offline"
@@ -115,6 +120,7 @@ def renderizar_caixa_mensagem(username, mensagem, selo, estilo_caixa, eh_admin=F
 # --- ESTADOS DO STREAMLIT ---
 if "usuario_logado" not in st.session_state: st.session_state.usuario_logado = None
 if "sala_ativa" not in st.session_state: st.session_state.sala_ativa = None
+if "perfil_visitado" not in st.session_state: st.session_state.perfil_visitado = None
 
 # --- FLUXO AUTENTICAÇÃO ---
 if st.session_state.usuario_logado is None:
@@ -150,7 +156,6 @@ if st.session_state.usuario_logado is None:
                     st.success("Conta criada! Faça login.")
                 except: st.error("Nome de usuário indisponível.")
 else:
-    # Atualiza dados em tempo real
     try:
         atualizar_dados = supabase.table("perfis_usuarios").select("*").eq("id", st.session_state.usuario_logado.get("id")).execute()
         if atualizar_dados.data: st.session_state.usuario_logado = atualizar_dados.data[0]
@@ -161,12 +166,10 @@ else:
     u_name = user_atual.get("username", "Membro")
     is_admin = verificar_se_eh_dev(u_id)
 
-    # Atualiza Online/Offline
     try:
         supabase.table("perfis_usuarios").update({"ultimo_visto": datetime.now(timezone.utc).isoformat()}).eq("id", u_id).execute()
     except: pass
 
-    # Contagem de notificações
     total_notif = 0
     try:
         res_n = supabase.table("notificacoes").select("*", count="exact").eq("id_destinatario", u_id).eq("lida", False).execute()
@@ -192,8 +195,7 @@ else:
                     supabase.table("perfis_usuarios").update({"banner_ativo": escolha_custom}).eq("id", u_id).execute()
                     st.success("Item equipado com sucesso!")
                     st.rerun()
-                except: 
-                    st.error("Falha ao equipar o cosmético.")
+                except: st.error("Falha ao equipar.")
 
         st.markdown("---")
         if st.button("Sair da Conta 🚪", use_container_width=True):
@@ -201,199 +203,210 @@ else:
             st.session_state.sala_ativa = None
             st.rerun()
 
-    # --- NAVEGAÇÃO COMPLETA RESTAURADA ---
+    # --- ABA DE NAVEGAÇÃO PRINCIPAL ---
     aba_feed, aba_loja, aba_chat, aba_status, aba_notif = st.tabs([
         "📺 Silver Tok (Feed)", "🛒 Loja & Caixas", "💬 Chat-Exv", "✨ Status", f"🔔 Notificações ({total_notif})"
     ])
 
-    # === 📺 ABA 1: FEED DE PUBLICAÇÕES (RESTAURADO) ===
+    # === 📺 ABA 1: SILVER TOK (FEED REAL) ===
     with aba_feed:
-        st.header("Feed de Publicações")
-        # Campo para criar publicação
-        nova_pub = st.text_area("O que você está pensando?", placeholder="Compartilhe algo com a comunidade...")
-        if st.button("Publicar 🚀"):
-            if nova_pub.strip():
-                st.success("Publicado com sucesso (Modo simulação)!")
-        st.markdown("---")
-        st.info("Nenhuma publicação global no momento. Seja o primeiro!")
+        st.markdown("### 📺 Silver Tok Global")
+        with st.expander("➕ Publicar Novo Conteúdo"):
+            t_pub = st.text_input("Legenda do post:", key="leg_feed_nova")
+            f_midia = st.file_uploader("Escolha um Vídeo ou Imagem:", type=["mp4", "png", "jpg", "jpeg"])
+            fmt = st.selectbox("Formato do Post:", ["Horizontal / Padrão", "Vertical / Shorts"])
+            fmt_db = "vertical" if "Vertical" in fmt else "horizontal"
+            
+            if st.button("Publicar no Feed 🚀") and f_midia and t_pub:
+                bucket = "videos_feed" if fmt_db == "vertical" or f_midia.name.endswith(".mp4") else "imagens_chat"
+                path_b = f"feed/{uuid.uuid4()}_{f_midia.name}"
+                try:
+                    supabase.storage.from_(bucket).upload(path_b, f_midia.read())
+                    url_f = supabase.storage.from_(bucket).get_public_url(path_b)
+                    
+                    supabase.table("feed_videos").insert({
+                        "titulo": t_pub, "url_video": url_f, "username_autor": u_name,
+                        "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO, "curtidas": 0,
+                        "id_autor": u_id, "tipo_formato": fmt_db
+                    }).execute()
+                    st.success("Conteúdo publicado com sucesso!")
+                    st.rerun()
+                except Exception as e: st.error(f"Erro no envio: {e}")
 
-    # === 🛒 ABA 2: LOJA PREMIUM (RESTAURADA) ===
+        # Carregar posts em tempo real do banco de dados
+        try:
+            f_dados = supabase.table("feed_videos").select("*").execute()
+            todos_posts = (f_dados.data or []) + VIDEOS_BOT_BOTEY
+            for idx, post in enumerate(reversed(todos_posts)):
+                if str(post.get("titulo", "")).startswith("[STATUS]"): continue
+                st.markdown("---")
+                col_p1, col_p2 = st.columns([1, 5])
+                with col_p1:
+                    renderizar_foto_com_banner(post.get("avatar_autor") or FOTO_PADRAO, post.get("username_autor"), post.get("id_autor"), tamanho=50)
+                with col_p2:
+                    st.markdown(f"**{post.get('username_autor')}** {obter_selo_texto(post.get('username_autor'), post.get('id_autor'))}")
+                    st.caption(post.get("titulo", ""))
+                
+                v_url = post.get("url_video", "")
+                if post.get("tipo_formato") == "vertical":
+                    st.markdown(f'<div style="text-align:center;"><video width="280" height="490" controls><source src="{v_url}" type="video/mp4"></video></div>', unsafe_allow_html=True)
+                else:
+                    if any(ext in str(v_url).lower() for ext in ['.png', '.jpg', '.jpeg', '.webp']):
+                        st.image(v_url, use_container_width=True)
+                    elif v_url: st.video(v_url)
+        except: st.info("Nenhum post disponível no feed no momento.")
+
+    # === 🛒 ABA 2: LOJA PREMIUM (REAL) ===
     with aba_loja:
-        st.header("Loja Premium")
-        st.write("Adquira personalizações exclusivas usando suas moedas!")
-        
-        col_loja1, col_loja2 = st.columns(2)
-        for idx, (chave, item) in enumerate(COSMETICOS.items()):
-            alvo_col = col_loja1 if idx % 2 == 0 else col_loja2
-            with alvo_col:
+        st.header("🛒 Loja de Cosméticos")
+        col_l1, col_l2 = st.columns(2)
+        for idx, (chave, info) in enumerate(COSMETICOS.items()):
+            coluna_foco = col_l1 if idx % 2 == 0 else col_l2
+            with coluna_foco:
                 st.markdown(f"""
-                <div style="background-color:#f9f9f9; padding:15px; border-radius:10px; border:1px solid #ddd; text-align:center; margin-bottom:15px;">
-                    <img src="{item['img']}" width="50"><br>
-                    <strong>{item['nome']}</strong><br>
-                    Preço: 🪙 {item['preco']} Moedas
+                <div style="background-color:#fafafa; padding:12px; border-radius:8px; border:1px solid #eee; text-align:center;">
+                    <img src="{info['img']}" width="50"><br>
+                    <strong>{info['nome']}</strong><br>
+                    Saldo necessário: 🪙 {info['preco']} moedas
                 </div>
                 """, unsafe_allow_html=True)
-                if st.button(f"Comprar {item['nome']}", key=f"buy_{chave}"):
-                    st.warning("Funcionalidade de compra em manutenção.")
+                if user_atual.get("moedas", 0) >= info['preco']:
+                    if st.button(f"Adquirir {info['nome']}", key=f"loja_b_{chave}", use_container_width=True):
+                        try:
+                            supabase.table("perfis_usuarios").update({"moedas": user_atual["moedas"] - info['preco']}).eq("id", u_id).execute()
+                            st.success("Adquirido!")
+                            st.rerun()
+                        except: st.error("Erro na transação.")
+                else:
+                    st.button("Saldo Insuficiente", key=f"inv_{chave}", disabled=True, use_container_width=True)
 
-    # === 💬 ABA 3: CHAT-EXV COM GRAVADOR DE ONDAS E FIX DE COLUNA ===
+    # === 💬 ABA 3: CHAT-EXV (GRAVAÇÃO E ENVIO DIRETO SEM PASSOS EXTRAS) ===
     with aba_chat:
-        st.markdown("## 📟 Painel Chat-Exv")
-        
         if st.session_state.sala_ativa:
-            st.subheader(f"Sala Ativa: {st.session_state.sala_ativa}")
-            if st.button("⬅️ Sair da Sala"):
+            st.subheader(f"Sala: {st.session_state.sala_ativa}")
+            if st.button("⬅️ Voltar para a Lista de Salas"):
                 st.session_state.sala_ativa = None
                 st.rerun()
 
-            # --- O GRAVADOR ESTILO ONDAS IDENTICO ---
-            st.markdown("### Gravar Mensagem de Voz 🎙️")
+            # GRAVADOR DE ÁUDIO DE UM CLIQUE INTEGRADO
+            st.markdown("### 🎙️ Enviar Áudio Gravado")
             
-            Componente_Gravador = """
-            <div style="background-color: #f1f3f4; padding: 20px; border-radius: 12px; text-align: center; border: 1px dashed #b0bec5; margin-bottom: 15px;">
-                <div style="margin-bottom: 12px; font-weight: bold; color: #37474f;" id="status">Pressione para falar</div>
-                <button id="recordBtn" style="background-color: #e53935; color: white; border: none; border-radius: 50%; width: 55px; height: 55px; cursor: pointer; font-size: 20px; box-shadow: 0px 4px 8px rgba(0,0,0,0.2);">🎤</button>
-                <button id="stopBtn" style="background-color: #37474f; color: white; border: none; border-radius: 50%; width: 55px; height: 55px; cursor: pointer; font-size: 20px; margin-left: 10px; display: none;">⏹️</button>
-                <div id="waveDisplay" style="display:none; margin-top:10px; font-size:24px; color:#e53935; letter-spacing: 4px;">☊ ▮▮▯▯▮▮▯ Grafico...</div>
-                <audio id="audioPlayback" controls style="display:none; margin-top: 15px; width: 100%;"></audio>
+            # Novo script de gravação direta: grava o áudio e ejeta direto para o processamento do Streamlit
+            gravador_completo_html = """
+            <div style="background-color: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #e0e0e0; text-align: center;">
+                <button id="startRec" style="background-color: #2e7d32; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer;">🎙️ Iniciar Gravação</button>
+                <button id="stopRec" style="background-color: #d32f2f; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; display: none; margin-left: 8px;">⏹️ Parar e Enviar</button>
+                <div id="statusTxt" style="margin-top: 8px; font-size: 13px; color: #666;">Clique para começar a falar...</div>
             </div>
-
             <script>
-            let mediaRecorder;
-            let audioChunks = [];
-            const recordBtn = document.getElementById('recordBtn');
-            const stopBtn = document.getElementById('stopBtn');
-            const statusDiv = document.getElementById('status');
-            const audioPlayback = document.getElementById('audioPlayback');
-            const waveDisplay = document.getElementById('waveDisplay');
+            let chunks = [];
+            let recorder;
+            const startBtn = document.getElementById('startRec');
+            const stopBtn = document.getElementById('stopRec');
+            const statusTxt = document.getElementById('statusTxt');
 
-            recordBtn.onclick = async () => {
-                audioChunks = [];
+            startBtn.onclick = async () => {
+                chunks = [];
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+                recorder = new MediaRecorder(stream);
+                recorder.ondataavailable = e => chunks.push(e.data);
+                recorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'audio/mp3' });
                     const reader = new FileReader();
-                    reader.readAsDataURL(audioBlob);
+                    reader.readAsDataURL(blob);
                     reader.onloadend = () => {
-                        window.parent.postMessage({type: 'AUDIO_GRAVADO', data: reader.result}, '*');
+                        window.parent.postMessage({ type: 'ENVIO_AUDIO_DIRETO', data: reader.result }, '*');
                     };
-                    audioPlayback.src = URL.createObjectURL(audioBlob);
-                    audioPlayback.style.display = 'block';
-                    waveDisplay.style.display = 'none';
-                    statusDiv.innerText = "Áudio pronto! Use o seletor de arquivos caso queira anexar.";
+                    statusTxt.innerText = "Processando arquivo de áudio...";
                 };
-                mediaRecorder.start();
-                recordBtn.style.display = 'none';
+                recorder.start();
+                startBtn.style.display = 'none';
                 stopBtn.style.display = 'inline-block';
-                waveDisplay.style.display = 'block';
-                statusDiv.innerText = "🔴 Gravando som ambiente...";
+                statusTxt.innerText = "🔴 Gravando áudio do dispositivo...";
             };
 
             stopBtn.onclick = () => {
-                mediaRecorder.stop();
-                recordBtn.style.display = 'inline-block';
+                recorder.stop();
+                startBtn.style.display = 'inline-block';
                 stopBtn.style.display = 'none';
+                statusTxt.innerText = "Enviado com sucesso!";
             };
             </script>
             """
-            st.components.v1.html(Componente_Gravador, height=170)
+            st.components.v1.html(gravador_completo_html, height=110)
 
-            # Entrada de Arquivos e Textos normais
-            audio_recebido = st.file_uploader("Confirmar envio de áudio gravado:", type=["mp3", "wav", "m4a", "webm"])
-            m_txt = st.text_input("Mensagem de texto:")
-            img_upload = st.file_uploader("Enviar Imagem 📸", type=["png", "jpg", "jpeg", "gif"])
+            # Input tradicional alternativo
+            m_txt = st.text_input("Mensagem de texto complementar:", placeholder="Ou digite sua mensagem aqui...")
+            img_f = st.file_uploader("Enviar uma Foto 📸", type=["png", "jpg", "jpeg", "gif"])
             
-            if st.button("Enviar Conteúdo ✉️", use_container_width=True):
-                url_final = None
-                if audio_recebido:
-                    path_b = f"chat/audios/{uuid.uuid4()}.mp3"
-                    supabase.storage.from_("audios_chat").upload(path_b, audio_recebido.read())
-                    url_final = supabase.storage.from_("audios_chat").get_public_url(path_b)
-                elif img_upload:
-                    path_b = f"chat/fotos/{uuid.uuid4()}_{img_upload.name}"
-                    supabase.storage.from_("imagens_chat").upload(path_b, img_upload.read())
-                    url_final = supabase.storage.from_("imagens_chat").get_public_url(path_b)
-                else:
-                    url_final = m_txt.strip()
+            if st.button("Enviar Mensagem ✉️", use_container_width=True):
+                url_banco = None
+                if img_f:
+                    p_b = f"chat/fotos/{uuid.uuid4()}_{img_f.name}"
+                    supabase.storage.from_("imagens_chat").upload(p_b, img_f.read())
+                    url_banco = supabase.storage.from_("imagens_chat").get_public_url(p_b)
+                elif m_txt.strip():
+                    url_banco = m_txt.strip()
 
-                if url_final:
-                    # SALVANDO NA COLUNA CORRETA ('mensagem') PARA EVITAR ERROS DE BANCO
-                    try:
-                        supabase.table("bate-papo_profissional").insert({
-                            "username": u_name,
-                            "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                            "mensagem": url_final, 
-                            "codigo_sala": st.session_state.sala_ativa
-                        }).execute()
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro ao enviar mensagem: {e}")
+                if url_banco:
+                    supabase.table("bate-papo_profissional").insert({
+                        "username": u_name, "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
+                        "mensagem": url_banco, "codigo_sala": st.session_state.sala_ativa
+                    }).execute()
+                    st.rerun()
 
             # Renderização das mensagens enviadas
             try:
                 m_dados = supabase.table("bate-papo_profissional").select("*").eq("codigo_sala", st.session_state.sala_ativa).execute()
-                if m_dados.data:
-                    for m in reversed(m_dados.data[-30:]):
-                        col_m1, col_m2 = st.columns([1, 6])
-                        m_user = m.get('username', 'Membro')
-                        with col_m1:
-                            renderizar_foto_com_banner(m.get("url_foto_perfil") or FOTO_PADRAO, m_user, tamanho=40)
-                        with col_m2:
-                            try:
-                                estilo_u = supabase.table("perfis_usuarios").select("banner_ativo", "id").eq("username", m_user).execute()
-                                txt_caixa = estilo_u.data[0].get("banner_ativo", "Nenhum") if estilo_u.data else "Nenhum"
-                                uid_remetente = estilo_u.data[0].get("id") if estilo_u.data else ""
-                            except:
-                                txt_caixa = "Nenhum"
-                                uid_remetente = ""
-                            renderizar_caixa_mensagem(m_user, m.get('mensagem', ''), obter_selo_texto(m_user), txt_caixa, eh_admin=verificar_se_eh_dev(uid_remetente))
+                for m in reversed(m_dados.data[-35:]):
+                    col_m1, col_m2 = st.columns([1, 6])
+                    with col_m1:
+                        renderizar_foto_com_banner(m.get("url_foto_perfil") or FOTO_PADRAO, m.get("username"), tamanho=40)
+                    with col_m2:
+                        renderizar_caixa_mensagem(m.get("username"), m.get("mensagem"), obter_selo_texto(m.get("username")), "Nenhum")
             except: pass
         else:
-            t_chat = st.tabs(["💬 Privado", "👥 Grupos", "👥 Membros"])
+            t_chat = st.tabs(["💬 Privado", "👥 Grupos", "👥 Membros da Rede"])
             with t_chat[0]:
-                alvo = st.text_input("Username do amigo para iniciar privado:").strip()
-                if st.button("Iniciar Chat Privado") and alvo:
+                alvo = st.text_input("Username do amigo:").strip()
+                if st.button("Abrir Chat Privado") and alvo:
                     lista = sorted([u_name.upper(), alvo.upper()])
                     st.session_state.sala_ativa = f"PRIV-{lista[0]}-{lista[1]}"
                     st.rerun()
             with t_chat[1]:
                 g_nome = st.text_input("Nome do Grupo:").strip().upper()
-                if st.button("Criar / Entrar no Grupo 🔐") and g_nome:
+                if st.button("Entrar no Canal 🔐") and g_nome:
                     st.session_state.sala_ativa = g_nome
                     st.rerun()
             with t_chat[2]:
-                st.write("### Membros da Comunidade")
                 try:
                     u_todos = supabase.table("perfis_usuarios").select("*").execute()
                     for u in u_todos.data:
-                        m_username = u.get("username", "")
-                        if m_username != u_name:
-                            st.write(f"• **{m_username}** ({obter_status_emoji(u.get('ultimo_visto'))})")
+                        if u.get("username") != u_name:
+                            st.write(f"• **{u.get('username')}** ({obter_status_emoji(u.get('ultimo_visto'))})")
                 except: pass
 
-    # === ✨ ABA 4: STATUS (RESTAURADA) ===
+    # === ✨ ABA 4: STATUS TEMPORÁRIOS ===
     with aba_status:
-        st.header("Status Recentes")
-        st.write("Veja momentos rápidos compartilhados pelos seus amigos nas últimas 24 horas.")
-        upload_status = st.file_uploader("Adicionar novo Status (Foto) 📸", type=["png", "jpg", "jpeg"])
-        if st.button("Postar Status"):
-            if upload_status:
-                st.success("Status postado com sucesso!")
-        st.markdown("---")
-        st.info("Nenhum status ativo nas últimas 24 horas.")
+        st.header("✨ Status do Dia")
+        txt_st = st.text_input("Como está o seu dia hoje?")
+        if st.button("Atualizar Meu Status") and txt_st.strip():
+            try:
+                supabase.table("feed_videos").insert({
+                    "titulo": f"[STATUS] {txt_st.strip()}", "url_video": "", "username_autor": u_name,
+                    "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO, "curtidas": 0, "id_autor": u_id, "tipo_formato": "horizontal"
+                }).execute()
+                st.success("Status postado!")
+                st.rerun()
+            except: pass
 
-    # === 🔔 ABA 5: NOTIFICAÇÕES (RESTAURADA) ===
+    # === 🔔 ABA 5: NOTIFICAÇÕES (CONECTADA) ===
     with aba_notif:
-        st.header("Suas Notificações")
+        st.header("🔔 Suas Notificações")
         try:
-            dados_n = supabase.table("notificacoes").select("*").eq("id_destinatario", u_id).order("criado_em", descending=True).execute()
+            dados_n = supabase.table("notificacoes").select("*").eq("id_destinatario", u_id).execute()
             if dados_n.data:
-                for notif in dados_n.data:
-                    texto_n = notif.get("mensagem", "Nova interação recebida.")
-                    st.markdown(f"• {texto_n}")
-            else:
-                st.info("Você está totalmente atualizado! Nenhuma nova notificação por aqui.")
-        except:
-            st.info("Nenhuma nova notificação por aqui.")
+                for n in reversed(dados_n.data):
+                    st.markdown(f"• {n.get('mensagem')}")
+            else: st.info("Tudo limpo por aqui!")
+        except: st.info("Sem notificações recentes.")
