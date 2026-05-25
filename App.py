@@ -3,6 +3,8 @@ from supabase import create_client, Client
 import uuid
 from datetime import datetime, timedelta, timezone
 import base64
+MODO_MANUTENCAO = True  # Mude para False quando for inaugurar o app!
+ID_REAL_DEVELOPER = "04daaa3c-63ef-486c-b33e-54d4e80ee9e9"
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Silver Tok v3.5 Master", page_icon="🎬", layout="centered")
@@ -172,6 +174,14 @@ if st.session_state.usuario_logado is None:
                 except:
                     st.error("Nome de usuário indisponível.")
 else:
+    # --- TRAVA DE MANUTENÇÃO (Cole aqui com 4 espaços de recuo) ---
+    u_id = st.session_state.usuario_logado.get("id") if st.session_state.usuario_logado else None
+    
+    if MODO_MANUTENCAO and str(u_id) != ID_REAL_DEVELOPER:
+        st.markdown("<h1 style='text-align: center;'>🚧 Silver Tok & Chat 🚧</h1>", unsafe_allow_html=True)
+        st.error("O aplicativo está em manutenção para a implementação de novas funções! Voltamos em breve para a Grande Estreia. 🎬🚀")
+        st.info("Acompanhe as novidades no nosso grupo oficial.")
+        st.stop()  # Impede completamente o carregamento das abas e da barra lateral abaixo
     try:
         if st.session_state.usuario_logado and isinstance(st.session_state.usuario_logado, dict) and "id" in st.session_state.usuario_logado:
             atualizar_dados = supabase.table("perfis_usuarios").select("*").eq("id", st.session_state.usuario_logado.get("id")).execute()
