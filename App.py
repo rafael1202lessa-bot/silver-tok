@@ -173,20 +173,21 @@ if st.session_state.usuario_logado is None:
                     st.success("Conta criada! Faça login.")
                 except:
                     st.error("Nome de usuário indisponível.")
-eelse:
-    # 1. Deixe o código carregar as variáveis exatamente como ele já fazia antes
-    if "usuario_logado" in st.session_state and st.session_state.usuario_logado:
-        u_id = st.session_state.usuario_logado.get("id")
-        u_name = st.session_state.usuario_logado.get("username")
-        
-        # 🚧 TRAVA DE MANUTENÇÃO (Só barra se o MODO estiver True E não for seu ID)
-        if MODO_MANUTENCAO and str(u_id) != ID_REAL_DEVELOPER:
-            st.markdown("<h1 style='text-align: center;'>🚧 Silver Tok & Chat 🚧</h1>", unsafe_allow_html=True)
-            st.error("O aplicativo está em manutenção para a implementação de novas funções! Voltamos em breve para a Grande Estreia. 🎬🚀")
-            st.info("Acompanhe as novidades no nosso grupo oficial.")
-            st.stop()
+else:
+    # 🌟 Captura as variáveis originais da sessão exatamente como o app precisa
+    u_id = st.session_state.usuario_logado.get("id") if st.session_state.usuario_logado else None
+    u_name = st.session_state.usuario_logado.get("username") if st.session_state.usuario_logado else None
+    
+    # 🚧 TRAVA DE MANUTENÇÃO (Rápida e direta)
+    if MODO_MANUTENCAO and str(u_id) != ID_REAL_DEVELOPER:
+        st.markdown("<h1 style='text-align: center;'>🚧 Silver Tok & Chat 🚧</h1>", unsafe_allow_html=True)
+        st.error("O aplicativo está em manutenção para a implementação de novas funções! Voltamos em breve para a Grande Estreia. 🎬🚀")
+        st.info("Acompanhe as novidades no nosso grupo oficial.")
+        st.stop()
 
+    # Retorna exatamente para o seu try original sem inventar novas condições
     try:
+        if st.session_state.usuario_logado:
         if st.session_state.usuario_logado:
             # Daqui para baixo, mantenha o seu código original do 'try' igualzinho estava!
         
