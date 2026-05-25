@@ -173,7 +173,7 @@ if st.session_state.usuario_logado is None:
                     st.success("Conta criada! Faça login.")
                 except:
                     st.error("Nome de usuário indisponível.")
-else:
+eelse:
     # 1. Deixe o código carregar as variáveis exatamente como ele já fazia antes
     if "usuario_logado" in st.session_state and st.session_state.usuario_logado:
         u_id = st.session_state.usuario_logado.get("id")
@@ -189,19 +189,7 @@ else:
     try:
         if st.session_state.usuario_logado:
             # Daqui para baixo, mantenha o seu código original do 'try' igualzinho estava!
-            
-        # Impede completamente o carregamento das abas e da barra lateral abaixo
-    try:
-        if st.session_state.usuario_logado and isinstance(st.session_state.usuario_logado, dict) and "id" in st.session_state.usuario_logado:
-            atualizar_dados = supabase.table("perfis_usuarios").select("*").eq("id", st.session_state.usuario_logado.get("id")).execute()
-            if atualizar_dados.data and len(atualizar_dados.data) > 0:
-                st.session_state.usuario_logado = atualizar_dados.data[0]
-            else:
-                st.session_state.usuario_logado = None
-                st.rerun()
-        else:
-            st.session_state.usuario_logado = None
-            st.rerun()
+        
     except:
         pass
 
