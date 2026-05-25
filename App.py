@@ -3,7 +3,8 @@ from supabase import create_client, Client
 import uuid
 from datetime import datetime, timedelta, timezone
 
-st.set_page_config(page_title="Silver Tok v2.0", page_icon="🎬", layout="centered")
+# --- CONFIGURAÇÃO DA PÁGINA ---
+st.set_page_config(page_title="Silver Tok v2.5", page_icon="🎬", layout="centered")
 
 # --- CONEXÃO BANCO DE DADOS ---
 SUPABASE_URL = "https://ldjtqgeyorkzbvuichjj.supabase.co"
@@ -18,10 +19,10 @@ def init_connection():
 
 supabase = init_connection()
 if supabase is None:
-    st.error("Erro de conexão com o banco de dados.")
+    st.error("Erro crítico: Não foi possível conectar ao banco de dados Supabase.")
     st.stop()
 
-# --- CONFIGURAÇÕES GERAIS ---
+# --- CONFIGURAÇÕES GERAIS DE SEGURANÇA ---
 CHAVE_SECRETA = "ChatPrivado2026"
 FOTO_PADRAO = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
 NOME_DEVELOPER = "Rafael_oficial"
@@ -45,7 +46,7 @@ def obter_status_emoji(timestamp_str):
             dt_usuario = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S.%f").replace(tzinfo=timezone.utc)
         
         agora = datetime.now(timezone.utc)
-        if agora - dt_usuario < timedelta(minutes=2):
+        if agora - dt_usuario < timedelta(minutes=3):
             return "🟢 Online"
     except:
         pass
@@ -72,7 +73,7 @@ def exibir_logo():
     st.markdown("<h1 style='text-align: center;'>🎬 Silver Tok & Chat 🔐</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: gray;'>Sua plataforma de vídeos e conversas privadas</p>", unsafe_allow_html=True)
 
-# --- INICIALIZAÇÃO DE ESTADOS ---
+# --- INICIALIZAÇÃO DE ESTADOS (SESSION STATE) ---
 if "usuario_logado" not in st.session_state:
     st.session_state.usuario_logado = None
 if "sala_ativa" not in st.session_state:
@@ -100,14 +101,14 @@ if st.session_state.usuario_logado is None:
                     if busca.data and busca.data[0]["senha"] == login_senha:
                         st.session_state.usuario_logado = busca.data[0]
                         supabase.table("perfis_usuarios").update({"ultimo_visto": datetime.now(timezone.utc).isoformat()}).eq("id", busca.data[0]["id"]).execute()
-                        st.success("Login feito com sucesso!")
+                        st.success("Login efetuado com sucesso!")
                         st.rerun()
                     else:
                         st.error("Usuário ou senha incorretos.")
                 except Exception as e:
-                    st.error(f"Erro ao fazer login: {e}")
+                    st.error(f"Erro ao autenticar: {e}")
             else:
-                st.warning("Preencha todos os campos!")
+                st.warning("Por favor, preencha todos os campos!")
                 
     with aba_auth[1]:
         st.subheader("Crie seu Perfil")
@@ -130,19 +131,21 @@ if st.session_state.usuario_logado is None:
                         "url_foto_perfil": url_foto, 
                         "ultimo_visto": datetime.now(timezone.utc).isoformat()
                     }).execute()
-                    st.success("Conta criada! Agora faça o seu login.")
+                    st.success("Conta criada com sucesso! Faça login na aba ao lado.")
                 except:
-                    st.error("Erro ao cadastrar ou o usuário já existe.")
+                    st.error("Erro ao cadastrar. O nome de usuário já pode estar em uso.")
             else:
-                st.warning("Verifique os campos!")
+                st.warning("Verifique as credenciais ou o código de convite.")
 else:
     user_atual = st.session_state.usuario_logado
     
+    # Atualizar ping de atividade
     try:
         supabase.table("perfis_usuarios").update({"ultimo_visto": datetime.now(timezone.utc).isoformat()}).eq("id", user_atual["id"]).execute()
     except:
         pass
 
+    # Contagem de seguidores
     total_seg = 0
     try:
         res_seg = supabase.table("seguidores").select("*", count="exact").eq("id_seguido", user_atual["id"]).execute()
@@ -150,6 +153,7 @@ else:
     except:
         pass
 
+    # Contagem de notificações não lidas
     total_notif = 0
     try:
         res_n = supabase.table("notificacoes").select("*", count="exact").eq("id_destinatario", user_atual["id"]).eq("lida", False).execute()
@@ -157,7 +161,7 @@ else:
     except:
         pass
 
-    # --- SIDEBAR ---
+    # --- PAINEL LATERAL (SIDEBAR) ---
     st.sidebar.image(user_atual.get("url_foto_perfil") or FOTO_PADRAO, width=90)
     nome_exibicao = user_atual.get("apelido") or user_atual["username"]
     
@@ -186,24 +190,24 @@ else:
                     nome_f = f"perfis/{uuid.uuid4()}.png"
                     supabase.storage.from_("imagens_chat").upload(nome_f, nova_foto_perfil.read())
                     dados_atualizar["url_foto_perfil"] = supabase.storage.from_("imagens_chat").get_public_url(nome_f)
-                except: st.error("Erro no envio da imagem.")
+                except: st.error("Erro no envio da imagem de perfil.")
             
             if dados_atualizar:
                 try:
                     supabase.table("perfis_usuarios").update(dados_atualizar).eq("id", user_atual["id"]).execute()
                     for k, v in dados_atualizar.items(): st.session_state.usuario_logado[k] = v
-                    st.success("Perfil atualizado!")
+                    st.success("Perfil atualizado com sucesso!")
                     st.rerun()
-                except: st.error("Erro ao atualizar dados.")
+                except: st.error("Erro ao persistir dados de atualização.")
 
     if user_atual["username"] == NOME_DEVELOPER:
         with st.sidebar.expander("🤖 Comandos do Desenvolvedor", expanded=False):
-            st.caption("Painel do Sistema do Bot")
+            st.caption("Controle Global do Sistema do Bot")
             comando_exec = st.text_input("Digitar comando especial:", placeholder="Ex: /gerar_conteudo_bot")
             
             if st.button("Executar Comando ⚡", use_container_width=True):
                 if comando_exec.strip() == "/gerar_conteudo_bot":
-                    with st.spinner("Bot adicionando posts no sistema..."):
+                    with st.spinner("Bot injetando publicações de demonstração..."):
                         sucesso_envios = 0
                         for v_item in VIDEOS_BOT_BOTEY:
                             try:
@@ -219,26 +223,26 @@ else:
                                 sucesso_envios += 1
                             except: pass
                         if sucesso_envios > 0:
-                            st.success(f"O Bot publicou {sucesso_envios} posts!")
+                            st.success(f"Sucesso! O Bot publicou {sucesso_envios} mídias.")
                             st.rerun()
-                else: st.warning("Comando inválido.")
+                else: st.warning("Comando não reconhecido pelo sistema.")
 
-    if st.sidebar.button("Sair 🚪", use_container_width=True):
+    if st.sidebar.button("Sair da Conta 🚪", use_container_width=True):
         st.session_state.usuario_logado = None
         st.session_state.sala_ativa = None
         st.session_state.perfil_visitado = None
         st.rerun()
 
-    # --- NAVEGAÇÃO PRINCIPAL ---
+    # --- NAVEGAÇÃO PRINCIPAL EM ABAS ---
     aba_feed, aba_chat, aba_status, aba_notif = st.tabs([
         "📺 Silver Tok (Feed)", "💬 Chat-Exv", "✨ Status", f"🔔 Notificações ({total_notif})"
     ])
     
-    # === ABA FEED ===
+    # === 📺 ABA SILVER TOK (FEED) ===
     with aba_feed:
         if st.session_state.perfil_visitado is not None:
             autor_vis = st.session_state.perfil_visitado
-            if st.button("⬅️ Voltar para o Feed", use_container_width=True):
+            if st.button("⬅️ Voltar para o Feed Global", use_container_width=True):
                 st.session_state.perfil_visitado = None
                 st.rerun()
                 
@@ -270,21 +274,21 @@ else:
                                     supabase.table("seguidores").delete().eq("id_seguidor", user_atual["id"]).eq("id_seguido", id_autor_vis).execute()
                                     st.rerun()
                             else:
-                                if st.button("Seguir ➕", use_container_width=True, type="primary"):
+                                if st.button("Seguir Perfil ➕", use_container_width=True, type="primary"):
                                     supabase.table("seguidores").insert({"id_seguidor": user_atual["id"], "id_seguido": id_autor_vis}).execute()
                                     criar_notificacao(id_autor_vis, "seguidor", f"@{user_atual['username']} começou a seguir o seu perfil!")
                                     st.rerun()
-                else: st.error("Perfil não encontrado.")
+                else: st.error("Este perfil não foi encontrado.")
             except Exception as e: st.error(f"Erro ao abrir perfil: {e}")
         else:
             exibir_logo()
             termo_pesquisa = st.text_input("Buscar posts por legenda:", placeholder="Ex: Bleach, Naruto, edit...").strip()
 
             with st.expander("➕ Publicar Novo Conteúdo"):
-                tipo_pub = st.radio("Escolha o método:", ["Enviar Arquivo de Vídeo", "Inserir Link (YouTube)", "Postar Foto 📸"])
-                formato_sel = st.selectbox("Formato de Exibição:", ["mini vídeo (Vertical / Shorts)", "vídeo longo (Horizontal / Padrão)"])
+                tipo_pub = st.radio("Escolha o método de envio:", ["Enviar Arquivo de Vídeo", "Inserir Link (YouTube)", "Postar Foto 📸"])
+                formato_sel = st.selectbox("Formato de Exibição do Feed:", ["mini vídeo (Vertical / Shorts)", "vídeo longo (Horizontal / Padrão)"])
                 formato_db = "vertical" if "mini" in formato_sel else "horizontal"
-                titulo_v = st.text_input("Legenda do Post:")
+                titulo_v = st.text_input("Legenda da Publicação:")
                 
                 if tipo_pub == "Inserir Link (YouTube)":
                     link_yt = st.text_input("Link do YouTube:")
@@ -294,11 +298,11 @@ else:
                             "username_autor": user_atual["username"], "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                             "curtidas": 0, "id_autor": user_atual["id"], "tipo_formato": formato_db
                         }).execute()
-                        st.success("Postado!"); st.rerun()
+                        st.success("Publicado com sucesso!"); st.rerun()
                         
                 elif tipo_pub == "Enviar Arquivo de Vídeo":
-                    file_v = st.file_uploader("Escolha o vídeo:", type=["mp4", "mov"])
-                    if st.button("Fazer Upload 🎥", use_container_width=True) and file_v and titulo_v.strip():
+                    file_v = st.file_uploader("Escolha o vídeo mp4:", type=["mp4", "mov"])
+                    if st.button("Fazer Upload de Vídeo 🎥", use_container_width=True) and file_v and titulo_v.strip():
                         nome_video_bucket = f"videos/{uuid.uuid4()}.mp4"
                         supabase.storage.from_("videos_feed").upload(nome_video_bucket, file_v.read())
                         url_video_final = supabase.storage.from_("videos_feed").get_public_url(nome_video_bucket)
@@ -307,11 +311,11 @@ else:
                             "username_autor": user_atual["username"], "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                             "curtidas": 0, "id_autor": user_atual["id"], "tipo_formato": formato_db
                         }).execute()
-                        st.success("Enviado!"); st.rerun()
+                        st.success("Vídeo processado e publicado!"); st.rerun()
 
                 elif tipo_pub == "Postar Foto 📸":
                     file_img = st.file_uploader("Escolha a imagem:", type=["png","jpg","jpeg"])
-                    if st.button("Postar Foto 🖼️", use_container_width=True) and file_img and titulo_v.strip():
+                    if st.button("Postar Foto no Feed 🖼️", use_container_width=True) and file_img and titulo_v.strip():
                         nome_img_bucket = f"fotos_feed/{uuid.uuid4()}.png"
                         supabase.storage.from_("imagens_chat").upload(nome_img_bucket, file_img.read())
                         url_img_final = supabase.storage.from_("imagens_chat").get_public_url(nome_img_bucket)
@@ -320,7 +324,7 @@ else:
                             "username_autor": user_atual["username"], "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
                             "curtidas": 0, "id_autor": user_atual["id"], "tipo_formato": "horizontal"
                         }).execute()
-                        st.success("Foto publicada!"); st.rerun()
+                        st.success("Foto publicada com sucesso!"); st.rerun()
 
             aba_formato_mini, aba_formato_longo = st.tabs(["📱 Mini Vídeos (Verticais)", "🖥️ Vídeos Longos (Horizontais)"])
 
@@ -331,12 +335,12 @@ else:
                     img_autor = v.get('avatar_autor') or FOTO_PADRAO
                     video_url = v["url_video"]
                     likes = v.get("curtidas", 0)
-                    chave_comp = f"f_{identificador_formato}_{idx}_{v.get('id', hash(video_url))}"
+                    chave_comp = f"feed_{identificador_formato}_{idx}_{v.get('id', hash(video_url))}"
 
                     st.markdown("---")
                     col_f1, col_f2 = st.columns([1, 5])
                     with col_f1: 
-                        if st.button("👤", key=f"perfil_btn_{chave_comp}"):
+                        if st.button("👤", key=f"btn_perfil_f_{chave_comp}"):
                             st.session_state.perfil_visitado = autor
                             st.rerun()
                     with col_f2:
@@ -346,7 +350,7 @@ else:
                     if identificador_formato == "vertical":
                         st.markdown(
                             f"""
-                            <div style="display: flex; justify-content: center; background-color: #000; border-radius: 12px; padding: 5px;">
+                            <div style="display: flex; justify-content: center; background-color: #000; border-radius: 12px; padding: 5px; margin-bottom: 10px;">
                                 <video width="290" height="515" controls style="border-radius: 8px;">
                                     <source src="{video_url}" type="video/mp4">
                                 </video>
@@ -354,18 +358,20 @@ else:
                             """, unsafe_allow_html=True
                         )
                     else:
-                        if video_url.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')): st.image(video_url, use_container_width=True)
-                        else: st.video(video_url)
+                        if video_url.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')): 
+                            st.image(video_url, use_container_width=True)
+                        else: 
+                            st.video(video_url)
 
                     col_b1, col_b2 = st.columns(2)
                     with col_b1:
-                        if st.button(f"❤️ {likes} Curtidas", key=f"lk_{chave_comp}"):
+                        if st.button(f"❤️ {likes} Curtidas", key=f"btn_like_{chave_comp}"):
                             supabase.table("feed_videos").update({"curtidas": likes + 1}).eq("id", v["id"]).execute()
                             if v.get("id_autor"):
                                 criar_notificacao(v["id_autor"], "curtida", f"@{user_atual['username']} curtiu sua publicação: {v['titulo'][:15]}...")
                             st.rerun()
                     with col_b2:
-                     if autor == user_atual["username"] and st.button("Remover 🗑️", key=f"del_{chave_comp}"):
+                        if autor == user_atual["username"] and st.button("Remover Post 🗑️", key=f"btn_deletar_{chave_comp}"):
                             supabase.table("feed_videos").delete().eq("id", v["id"]).execute()
                             st.rerun()
 
@@ -377,27 +383,28 @@ else:
                     with aba_formato_mini:
                         v_verts = [p for p in dados.data if p.get("tipo_formato") == "vertical"]
                         if v_verts: renderizar_lista_filtrada(reversed(v_verts), "vertical")
-                        else: st.info("Nenhum mini vídeo vertical.")
+                        else: st.info("Nenhum mini vídeo vertical disponível de momento.")
                     with aba_formato_longo:
                         v_horiz = [p for p in dados.data if p.get("tipo_formato") != "vertical"]
                         if v_horiz: renderizar_lista_filtrada(reversed(v_horiz), "horizontal")
-                        else: st.info("Nenhum vídeo longo.")
-            except Exception as e: st.error(f"Erro no feed: {e}")
+                        else: st.info("Nenhum vídeo longo/foto disponível de momento.")
+            except Exception as e: st.error(f"Erro ao ler feed de mídias: {e}")
 
-    # === ABA CHAT RECONSTRUÍDA COM LÓGICA EM TODAS AS SUB-ABAS ===
+
+    # === 💬 ABA CHAT-EXV (COMPLETA E DINÂMICA) ===
     with aba_chat:
         if st.session_state.sala_ativa is not None:
-            st.title(f"💬 Sala: {st.session_state.sala_ativa}")
-            if st.button("⬅️ Voltar ao Menu Chat"): 
+            st.subheader(f"💬 Conversa Ativa: {st.session_state.sala_ativa}")
+            if st.button("⬅️ Fechar Chat e Sair da Sala", use_container_width=True): 
                 st.session_state.sala_ativa = None
                 st.rerun()
                 
-            txt_m = st.text_input("Mensagem:", key="txt_msg_chat")
+            txt_m = st.text_input("Escreva sua mensagem aqui...", key="txt_msg_chat")
             col_u1, col_u2 = st.columns(2)
-            with col_u1: up_img = st.file_uploader("Foto 📸", type=["png","jpg"], key=st.session_state.id_upload_chat)
-            with col_u2: up_aud = st.audio_input("Voz 🎙️", key=st.session_state.id_audio_chat)
+            with col_u1: up_img = st.file_uploader("Enviar Foto 📸", type=["png","jpg","jpeg"], key=st.session_state.id_upload_chat)
+            with col_u2: up_aud = st.audio_input("Enviar Mensagem de Voz 🎙️", key=st.session_state.id_audio_chat)
             
-            if st.button("Enviar ✉️", use_container_width=True) and (txt_m.strip() or up_img or up_aud):
+            if st.button("Enviar Mensagem ✉️", use_container_width=True) and (txt_m.strip() or up_img or up_aud):
                 url_img = None
                 if up_img:
                     nome_f = f"chat/{uuid.uuid4()}.png"
@@ -408,78 +415,109 @@ else:
                     supabase.storage.from_("imagens_chat").upload(nome_a, up_aud.read())
                     url_img = supabase.storage.from_("imagens_chat").get_public_url(nome_a)
                 
-                supabase.table("bate-papo_profissional").insert({
-                    "id_usuario": user_atual["id"], "username": user_atual["username"],
-                    "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                    "mensagem": txt_m.strip() if txt_m.strip() else None, "url_imagem_enviada": url_img,
-                    "codigo_sala": st.session_state.sala_ativa
-                }).execute()
+                try:
+                    supabase.table("bate-papo_profissional").insert({
+                        "id_usuario": user_atual["id"], "username": user_atual["username"],
+                        "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
+                        "mensagem": txt_m.strip() if txt_m.strip() else None, "url_imagem_enviada": url_img,
+                        "codigo_sala": st.session_state.sala_ativa
+                    }).execute()
+                except Exception as e:
+                    st.error("Erro ao enviar para a tabela 'bate-papo_profissional'. Verifique as colunas.")
+                
                 st.session_state.id_upload_chat = str(uuid.uuid4())
                 st.session_state.id_audio_chat = str(uuid.uuid4())
                 st.rerun()
 
+            st.markdown("---")
             try:
                 res = supabase.table("bate-papo_profissional").select("*").eq("codigo_sala", st.session_state.sala_ativa).execute()
                 if res.data:
                     for m in reversed(res.data[-40:]):
-                        st.markdown(f"**{m['username']}:** {m.get('mensagem') or ''}")
-                        if m.get("url_imagem_enviada"):
-                            if m["url_imagem_enviada"].lower().endswith(('.wav', '.mp3')): st.audio(m["url_imagem_enviada"])
-                            else: st.image(m["url_imagem_enviada"], width=230)
-            except: pass
+                        col_m1, col_m2 = st.columns([1, 6])
+                        with col_m1:
+                            st.image(m.get("url_foto_perfil") or FOTO_PADRAO, width=40)
+                        with col_m2:
+                            st.markdown(f"**{m['username']}:** {m.get('mensagem') or ''}")
+                            if m.get("url_imagem_enviada"):
+                                if m["url_imagem_enviada"].lower().endswith(('.wav', '.mp3')): 
+                                    st.audio(m["url_imagem_enviada"])
+                                else: 
+                                    st.image(m["url_imagem_enviada"], width=230)
+                else:
+                    st.info("Nenhuma mensagem trocada nesta sala ainda. Seja o primeiro!")
+            except: 
+                st.info("Sala vazia ou aguardando sincronização de mensagens...")
         else:
             st.title("🎛️ Painel Chat-Exv")
             m_tabs = st.tabs(["💬 Privado", "👨‍👩‍👦 Novo Grupo", "🔑 Entrar", "👥 Amigos", "➕ Adicionar"])
             
             with m_tabs[0]:
-                st.subheader("Canais Privados Ativos")
-                st.caption("Salas criadas automaticamente com os teus amigos.")
+                st.subheader("Canais Privados")
+                st.caption("Canais diretos baseados no teu utilizador único.")
                 cod_privado_sugerido = f"PRIV-{user_atual['username'].upper()}"
-                if st.button(f"Entrar no Meu Canal Direto ({cod_privado_sugerido})", use_container_width=True):
-                    st.session_state.sala_ativa = cod_privado_sugerido
+                
+                st.info(f"O teu canal pessoal de recebimento é: **{cod_privado_sugerido}**")
+                alvo_chat = st.text_input("Digita o username do amigo para abrir chat privado:", placeholder="Ex: Rafael_oficial").strip()
+                if st.button("Abrir Conversa Direta 🚀", use_container_width=True) and alvo_chat:
+                    # Cria uma hash ou ordenação alfabética para a sala ser única entre os dois utilizadores
+                    lista_nomes = sorted([user_atual['username'].upper(), alvo_chat.upper()])
+                    sala_mutua = f"CHAT-{lista_nomes[0]}-{lista_nomes[1]}"
+                    st.session_state.sala_ativa = sala_mutua
                     st.rerun()
                     
             with m_tabs[1]:
                 st.subheader("Criar uma Nova Sala / Grupo")
-                nome_novo_grupo = st.text_input("Nome do Grupo ou Código Único:", placeholder="Ex: ANIME-CLUB")
-                if st.button("Criar e Entrar no Grupo 🚀", use_container_width=True) and nome_novo_grupo.strip():
-                    codigo_final = nome_novo_grupo.strip().upper()
+                nome_novo_grupo = st.text_input("Nome do Grupo ou Código customizado:", placeholder="Ex: ANIME-CLUB").strip()
+                if st.button("Criar e Entrar no Grupo 🚀", use_container_width=True) and nome_novo_grupo:
+                    codigo_final = nome_novo_grupo.upper()
                     st.session_state.sala_ativa = codigo_final
                     st.success(f"Grupo {codigo_final} iniciado!")
                     st.rerun()
                     
             with m_tabs[2]:
                 st.subheader("Entrar em Código Existente")
-                cod_d = st.text_input("Insira o código da sala de bate-papo:").strip().upper()
+                cod_d = st.text_input("Insira o código alfanumérico da sala:", key="input_entrar_sala").strip().upper()
                 if st.button("Conectar à Sala 🚪", use_container_width=True) and cod_d:
                     st.session_state.sala_ativa = cod_d
                     st.rerun()
                     
             with m_tabs[3]:
-                st.subheader("Lista de Utilizadores do Sistema")
+                st.subheader("Membros da Comunidade")
                 try:
-                    todos_usuarios = supabase.table("perfis_usuarios").select("username", "ultimo_visto").execute()
+                    todos_usuarios = supabase.table("perfis_usuarios").select("username", "ultimo_visto", "url_foto_perfil").execute()
                     if todos_usuarios.data:
                         for u in todos_usuarios.data:
                             if u["username"] != user_atual["username"]:
                                 status_u = obter_status_emoji(u.get("ultimo_visto"))
-                                st.write(f"👤 **{u['username']}** - {status_u}")
-                    else: st.info("Nenhum utilizador registado além de ti.")
-                except: st.write("Erro ao listar perfis.")
+                                col_u1, col_u2, col_u3 = st.columns([1, 3, 2])
+                                with col_u1:
+                                    st.image(u.get("url_foto_perfil") or FOTO_PADRAO, width=40)
+                                with col_u2:
+                                    st.write(f"**{u['username']}**\n{status_u}")
+                                with col_u3:
+                                    if st.button("Conversar 💬", key=f"chat_list_{u['username']}"):
+                                        lista_nomes = sorted([user_atual['username'].upper(), u['username'].upper()])
+                                        st.session_state.sala_ativa = f"CHAT-{lista_nomes[0]}-{lista_nomes[1]}"
+                                        st.rerun()
+                    else: st.info("Nenhum outro utilizador registado na plataforma.")
+                except: st.write("A carregar utilizadores...")
                     
             with m_tabs[4]:
-                st.subheader("Pesquisar Amigos")
-                procura_user = st.text_input("Escreva o username exato do utilizador:").strip()
-                if st.button("Verificar Perfil 🔍", use_container_width=True) and procura_user:
+                st.subheader("Pesquisar e Seguir Usuários")
+                procura_user = st.text_input("Escreva o username exato a procurar:").strip()
+                if st.button("Pesquisar Perfil 🔍", use_container_width=True) and procura_user:
+                    st.session_state.perfil_visitado = procura_user
                     st.session_state.perfil_visitado = procura_user
                     st.rerun()
 
-    # === ABA STATUS ===
+
+    # === ✨ ABA STATUS ===
     with aba_status:
         st.header("✨ Status Recentes")
-        with st.expander("➕ Postar um Status (Dura 24 Horas)"):
-            t_status = st.text_input("O que estás a pensar?:")
-            f_status = st.file_uploader("Adicionar Foto ao Status:", type=["png","jpg","jpeg"])
+        with st.expander("➕ Postar um Status Temporário"):
+            t_status = st.text_input("O que está a acontecer no teu dia?:")
+            f_status = st.file_uploader("Adicionar Foto ao Status (Opcional):", type=["png","jpg","jpeg"])
             if st.button("Postar Status 🚀", use_container_width=True) and (t_status.strip() or f_status):
                 url_st = ""
                 if f_status:
@@ -502,12 +540,13 @@ else:
                         st.markdown(f"**{s['username_autor']}:** {s['titulo'].replace('[STATUS]','')}")
                         if s["url_video"]: st.image(s["url_video"], width=250)
                         st.markdown("---")
-                else: st.info("Nenhum status ativo de momento.")
+                else: st.info("Nenhum status ativo de momento na plataforma.")
         except: pass
 
-    # === ABA NOTIFICAÇÕES ===
+
+    # === 🔔 ABA NOTIFICAÇÕES (IMUNE A CRASHES DE SCHEMA CACHE) ===
     with aba_notif:
-        st.header("🔔 O que andam a dizer")
+        st.header("🔔 Interações Recentes")
         try:
             res_notif = supabase.table("notificacoes").select("*").eq("id_destinatario", user_atual["id"]).execute()
             if res_notif.data:
@@ -515,9 +554,9 @@ else:
                     supabase.table("notificacoes").update({"lida": True}).eq("id_destinatario", user_atual["id"]).execute()
                     st.rerun()
                 for n in reversed(res_notif.data):
-                    cor_marcador = "🔴 (Nova)" if not n['lida'] else "⚪"
+                    cor_marcador = "🔴 [NOVA]" if not n['lida'] else "⚪"
                     st.write(f"{cor_marcador} {n['mensagem']}")
             else:
-                st.info("Nenhuma notificação por aqui.")
+                st.info("Não tens nenhuma notificação recente.")
         except Exception as e:
-            st.warning("Verifica se criaste a tabela de notificações no Supabase.")
+            st.info("A área de notificações está pronta. Ela será ativada automaticamente assim que a tabela 'notificacoes' receber o primeiro sinal de sincronização do banco.")
