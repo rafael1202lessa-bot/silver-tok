@@ -219,37 +219,27 @@ else:
         st.markdown(f"🪙 **Saldo:** {user_atual.get('moedas', 0)} Moedas")
         
         # --- INVENTÁRIO (CORREÇÃO DE CONFLITO VISUAL) ---
-with st.expander("🎒 Meu Inventário"):
+    with st.expander("🎒 Meu Inventário"):
         st.caption("Equipe suas customizações salvas:")
-        estilo_atual = user_atual.get("banner_ativo", "Nenhum")
-        st.write(f"Ativo no momento: **{estilo_atual}**")
-        
+        st.write(f"Ativo no momento: **{user_atual.get('banner_ativo', 'Nenhum')}**")
         opcoes_inventario = ["Nenhum", "🥉 Bronze Estelar", "🥈 Prata Lendária", "🔷 Balão Azul Moderno", "🔮 Balão Neon Cyber"]
         if is_admin:
             opcoes_inventario.insert(1, "👑 Coroa Suprema DEV")
             opcoes_inventario.insert(2, "👑 Balão Dourado DEV")
-            
+        
         escolha_custom = st.selectbox("Selecione para ativar:", opcoes_inventario, key="select_custom_inv")
         
-        sucesso_ao_equipar = False
-        erro_ao_equipar = False
-
         if st.button("Equipar Cosmético 🛡️", key="btn_equipar_inv_fix"):
             try:
                 resposta = supabase.table("perfis_usuarios").update({"banner_ativo": escolha_custom}).eq("id", u_id).execute()
                 if resposta.data:
-                    sucesso_ao_equipar = True
+                    st.toast("Item equipado com sucesso! 🛡️")
+                    st.rerun()
                 else:
-                    erro_ao_equipar = True
+                    st.toast("Falha ao equipar o cosmético.")
             except Exception:
-                erro_ao_equipar = True
-
-        if sucesso_ao_equipar:
-            st.success(f"Item {escolha_custom} equipado com sucesso! 🛡️")
-            st.rerun()
-        elif erro_ao_equipar:
-            st.error("Falha ao conectar/equipar cosmético.")
-            
+                st.toast("Falha ao conectar.")
+                
         # --- MENU EDITAR PERFIL ---
         with st.expander("⚙️ Editar Meu Perfil"):
             novo_apelido = st.text_input("Alterar Apelido:", value=user_atual.get("apelido") or u_name)
