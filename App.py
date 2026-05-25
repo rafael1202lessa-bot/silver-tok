@@ -261,6 +261,7 @@ else:
                     st.toast("Falha ao equipar o cosmético.")
             except Exception:
                 st.toast("Falha ao conectar.")
+
                 
                 
                 
