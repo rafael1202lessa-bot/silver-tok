@@ -429,10 +429,8 @@ def renderizar_lista_filtrada(lista_posts):
                                 with col_c2:
                                     selo_c = obter_selo_texto(c_user, uid_c, cargo_adicional=cargo_c)
                                     renderizar_caixa_mensagem(c_user, c_msg, selo_c, txt_caixa_c, eh_admin=verificar_se_eh_dev(uid_c))
-        else:
-            st.caption("Ninguém comentou ainda.")
-    except Exception as e:
-        pass
+                # Código simplificado sem blocos try/else para não quebrar no celular
+        st.caption("Ninguém comentou ainda.")
 
 # --- NAVEGAÇÃO PRINCIPAL ---
 abas_principais = ["📺 Silver Tok (Feed)", "🛒 Loja", "💬 Chat", "🎮 Entretenimento", "🤓 Área Geek", "❓ Quiz"]
@@ -440,7 +438,6 @@ abas_principais = ["📺 Silver Tok (Feed)", "🛒 Loja", "💬 Chat", "🎮 Ent
 if is_admin:
     abas_principais.append("👑 Painel Admin Secreto")
 
-# Criar a estrutura de abas dinâmicas
 abas = st.tabs(abas_principais)
 
 # Distribuir as abas corretamente de acordo com o tamanho
