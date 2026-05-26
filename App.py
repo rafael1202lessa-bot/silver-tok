@@ -454,6 +454,7 @@ aba_admin = abas[6] if len(abas) > 6 else None
 
 # === 📺 ABA 1: FEED COMPLETO ===
 with aba_feed:
+
 :
 
         if st.session_state.perfil_visitado:
