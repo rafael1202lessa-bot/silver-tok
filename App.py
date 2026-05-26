@@ -15,7 +15,6 @@ except Exception as e:
     st.stop()
 
 # --- ESTADO DE DESENVOLVIMENTO (BLOQUEIO BETA) ---
-# Mude para False quando quiser liberar o aplicativo para todo mundo!
 ESTADO_DESENVOLVIMENTO = True 
 
 # --- INICIALIZAÇÃO DO ESTADO DA SESSÃO ---
@@ -32,6 +31,22 @@ TITULOS = {
     "rafael_oficial": "👑 Desenvolvedor",
     "rafael_secundario": "⚔️ Vice-Dev",
     "amiga_divulgadora": "📢 Divulgadora",
+}
+
+# --- BANCO DE DADOS LOCAL - SILVER STREAM (LINKS DOS VÍDEOS) ---
+# Você pode alterar esses links de exemplo pelos links reais dos episódios!
+CATALOGO_STREAM = {
+    "Animes": {
+        "Bleach (Dublado PT-BR)": {
+            "Episódio 01 - O Dia em que me tornei Shinigami": "https://www.w3schools.com/html/mov_bbb.mp4", # Link de teste, mude pelo real
+            "Episódio 02 - O Trabalho de um Shinigami": "https://www.w3schools.com/html/movie.mp4",
+            "Episódio 03 - O Desejo do Irmão Mais Velho": "https://www.w3schools.com/html/mov_bbb.mp4",
+        }
+    },
+    "Filmes": {},
+    "Séries": {},
+    "Desenhos": {},
+    "Doramas": {}
 }
 
 # --- FUNÇÕES DE AUTENTICAÇÃO ---
@@ -109,21 +124,18 @@ if not st.session_state.logado:
 # --- SE O USUÁRIO ESTÁ LOGADO, ENTRA NO APLICATIVO PRINCIPAL ---
 user_atual = st.session_state.user_data
 
-# 🚨 VERIFICAÇÃO DE BLOQUEIO DE DESENVOLVIMENTO 🚨
+# VERIFICAÇÃO DE BLOQUEIO DE DESENVOLVIMENTO
 if ESTADO_DESENVOLVIMENTO:
-    # Só permite a entrada se o título for Desenvolvedor ou Tester
     if user_atual["titulo"] not in ["👑 Desenvolvedor", "🧪 Tester"]:
         st.title("🚧 Aplicativo em Manutenção")
-        st.warning(f"Olá {user_atual['nickname']}, o Silver Tok v2 está atualmente em desenvolvimento exclusivo para a equipe de testes.")
-        st.info("Acesso negado para a sua conta no momento. Tente novamente mais tarde!")
-        
+        st.warning(f"Olá {user_atual['nickname']}, o Silver Tok v2 está atualmente em desenvolvimento.")
         if st.button("Sair da Conta"):
             st.session_state.logado = False
             st.session_state.user_data = None
             st.rerun()
-        st.stop() # Interrompe o código aqui para o usuário comum não ver o app
+        st.stop()
 
-# --- SE PASSOU NO TESTE OU NÃO ESTÁ EM MANUTENÇÃO, CARREGA O APP ---
+# --- CONFIGURAÇÃO DA SIDEBAR ---
 st.sidebar.title(f"Olá, {user_atual['nickname']}!")
 st.sidebar.write(f"**Cargo:** {user_atual['titulo']}")
 st.sidebar.write(f"**Seguidores:** {user_atual['seguidores']} 👥")
@@ -144,7 +156,6 @@ if user_atual['username'] == "rafael_oficial":
     abas.append("⚡ Painel Dev (God Mode)")
 
 aba_ativa = st.radio("Navegação", abas, horizontal=True)
-
 st.write("---")
 
 # --- CONTEÚDO DE CADA ABA ---
@@ -162,9 +173,29 @@ elif aba_ativa == "💬 Chat & Amigos":
     st.info("Área de conversas privadas, em grupo, amigos e seguidores.")
 
 elif aba_ativa == "📺 Stream (Filmes/Animes)":
-    st.header("Silver Stream 🍿")
-    st.subheader("Bleach (Todos os Episódios Dublados PT-BR)")
-    st.info("Área de streaming. Pronta para receber os links dos episódios.")
+    st.title("Silver Stream 🍿")
+    st.write("Assista aos seus conteúdos favoritos diretamente na plataforma.")
+    
+    # Menu de Categorias
+    categoria = st.selectbox("Escolha uma Categoria:", ["Animes", "Filmes", "Séries", "Desenhos", "Doramas"])
+    
+    conteudos_da_categoria = CATALOGO_STREAM.get(categoria, {})
+    
+    if conteudos_da_categoria:
+        titulo_escolhido = st.selectbox(f"Selecione o título em {categoria}:", list(conteudos_da_categoria.keys()))
+        
+        episodios = conteudos_da_categoria[titulo_escolhido]
+        ep_escolhido = st.selectbox("Selecione o Episódio:", list(episodios.keys()))
+        
+        url_video = episodios[ep_escolhido]
+        
+        # Player de Vídeo Nativo
+        st.write(f"### 🎬 Assistindo: {titulo_escolhido} - {ep_escolhido}")
+        st.video(url_video)
+    else:
+        st.warning(f"Nenhum título adicionado na categoria {categoria} ainda.")
+        if user_atual['titulo'] == "👑 Desenvolvedor":
+            st.info("💡 Como Desenvolvedor, você pode adicionar novos títulos diretamente editando a variável 'CATALOGO_STREAM' no código!")
 
 elif aba_ativa == "👤 Meu Perfil":
     st.header("Seu Perfil")
@@ -224,3 +255,4 @@ elif aba_ativa == "⚡ Painel Dev (God Mode)":
                 st.rerun()
     else:
         st.warning("Nenhum usuário cadastrado no banco de dados ainda.")
+    
