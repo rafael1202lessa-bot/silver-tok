@@ -4,14 +4,14 @@ from supabase import create_client, Client
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Silver Tok v2", page_icon="🚀", layout="wide")
 
-# --- CONEXÃO COM SUPABASE ---
-# O Streamlit já puxa isso dos Secrets automaticamente
+# --- CONEXÃO COM SUPABASE (DIRETO NO CÓDIGO) ---
+url = "https://ldjtqgeyorkzbvuichjj.supabase.co"
+key = "sb_publishable_ZWY9Hp6kQrhOzff6xc_DrA_8TlnrqQ_"
+
 try:
-    url = st.secrets["https://ldjtqgeyorkzbvuichjj.supabase.co"]
-    key = st.secrets["sb_publishable_ZWY9Hp6kQrhOzff6xc_DrA_8TlnrqQ_"]
     supabase: Client = create_client(url, key)
 except Exception as e:
-    st.error("Erro ao conectar ao banco de dados. Verifique os Secrets.")
+    st.error(f"Erro crítico na inicialização do Supabase: {str(e)}")
     st.stop()
 
 # --- INICIALIZAÇÃO DO ESTADO DA SESSÃO ---
@@ -123,7 +123,6 @@ if st.sidebar.button("Sair da Conta"):
     st.rerun()
 
 # --- ABAS PRINCIPAIS DO APLICATIVO ---
-# Criando a estrutura solicitada
 abas = ["📱 Silver Tok (Feed/Shorts)", "🎥 Gravar Vídeo", "💬 Chat & Amigos", "📺 Stream (Filmes/Animes)", "👤 Meu Perfil"]
 
 # Se for a sua conta principal, adiciona o Painel de Comando Dev
@@ -158,6 +157,59 @@ elif aba_ativa == "👤 Meu Perfil":
     st.json(user_atual)
 
 elif aba_ativa == "⚡ Painel Dev (God Mode)":
-    st.header("Painel Secreto do Desenvolvedor 👑")
-    st.write("Comandos para alterar saldo, seguidores, banir usuários e gerar itens.")
+    st.header("Painel Secreto do Desenvolvedor 👑 (God Mode)")
     
+    # Puxar todos os usuários do banco para escolher quem gerenciar
+    try:
+        usuarios_req = supabase.table("perfis_usuarios").select("username, nickname").execute()
+        lista_usuarios = [u["username"] for u in usuarios_req.data]
+    except Exception as e:
+        st.error("Erro ao carregar lista de usuários.")
+        lista_usuarios = []
+
+    if lista_usuarios:
+        # Interface para selecionar o alvo do comando
+        usuario_alvo = st.selectbox("Selecione o usuário para aplicar o comando:", lista_usuarios)
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.subheader("👥 Modificar Seguidores")
+            qtd_seguidores = st.number_input("Quantidade de Seguidores", min_value=0, value=1000, step=50)
+            if st.button("Definir Seguidores", use_container_width=True):
+                status_verificado = qtd_seguidores >= 1000
+                supabase.table("perfis_usuarios").update({
+                    "seguidores": qtd_seguidores,
+                    "verificado": status_verificado
+                }).eq("username", usuario_alvo).execute()
+                st.success(f"Seguidores de {usuario_alvo} atualizados para {qtd_seguidores}!")
+                st.rerun()
+
+        with col2:
+            st.subheader("💰 Modificar Dinheiro")
+            qtd_dinheiro = st.number_input("Quantidade de Dinheiro ($)", min_value=0, value=500, step=10)
+            if st.button("Definir Saldo", use_container_width=True):
+                supabase.table("perfis_usuarios").update({"dinheiro": qtd_dinheiro}).eq("username", usuario_alvo).execute()
+                st.success(f"Saldo de {usuario_alvo} alterado para ${qtd_dinheiro}!")
+                st.rerun()
+
+        with col3:
+            st.subheader("🎖️ Atribuir Títulos")
+            novo_titulo = st.selectbox("Escolha o Cargo/Título:", ["👑 Desenvolvedor", "⚔️ Vice-Dev", "📢 Divulgadora", "🧪 Tester", "Best friends of the dev", "Usuário"])
+            if st.button("Atualizar Cargo", use_container_width=True):
+                supabase.table("perfis_usuarios").update({"titulo": novo_titulo}).eq("username", usuario_alvo).execute()
+                st.success(f"Cargo de {usuario_alvo} alterado para: {novo_titulo}!")
+                st.rerun()
+        
+        st.write("---")
+        st.subheader("🚫 Zona de Punição")
+        if st.button("💥 Banir Usuário (Excluir Conta)", type="primary", use_container_width=True):
+            if usuario_alvo == "rafael_oficial":
+                st.error("Você não pode banir a sua própria conta de desenvolvedor!")
+            else:
+                supabase.table("perfis_usuarios").delete().eq("username", usuario_alvo).execute()
+                st.success(f"O usuário {usuario_alvo} foi banido com sucesso do Silver Tok!")
+                st.rerun()
+    else:
+        st.warning("Nenhum usuário cadastrado no banco de dados ainda.")
+                    
