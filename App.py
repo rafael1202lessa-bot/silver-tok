@@ -334,14 +334,14 @@ else:
             st.session_state.perfil_visitado = None
             st.rerun()
 
-    # --- LISTAGEM DO FEED TRATADA CONTRA FALHAS ---
-    def renderizar_lista_filtrada(lista_posts, identificador_formato, termo_busca="", ordenacao=""):
-      if termo_busca:
-            lista_posts = [p for p in lista_posts if termo_busca.lower() in str(p.get("titulo", "")).lower()]
+    # --- LISTAGEM DO FEED TRATADA CONTRA ERROS ---
+def renderizar_lista_filtrada(lista_posts):
+    if termo_busca:
+        lista_posts = [p for p in lista_posts if termo_busca.lower() in str(p.get("titulo", "")).lower()]
         if ordenacao == "🔥 Mais Populares":
-            lista_posts = sorted(lista_posts, key=lambda x: x.get("curtidas", 0), reverse=True)
+            lista_posts = sorted(lista_posts, key=lambda x: x.get("likes", 0), reverse=True)
 
-        for idx, v in enumerate(lista_posts):
+    for idx, v in enumerate(lista_posts):
             if str(v.get("titulo", "")).startswith("[STATUS]") or str(v.get("titulo", "")).startswith("[ANIMES]") or str(v.get("titulo", "")).startswith("[FILMES]") or str(v.get("titulo", "")).startswith("[SÉRIES / DESENHOS]") or str(v.get("titulo", "")).startswith("[DORAMAS]"): 
                 continue
             autor = v.get('username_autor', 'Membro')
