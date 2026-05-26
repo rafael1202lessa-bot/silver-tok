@@ -7,8 +7,8 @@ st.set_page_config(page_title="Silver Tok v2", page_icon="🚀", layout="wide")
 # --- CONEXÃO COM SUPABASE ---
 # O Streamlit já puxa isso dos Secrets automaticamente
 try:
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
+    url = st.secrets["https://ldjtqgeyorkzbvuichjj.supabase.co"]
+    key = st.secrets["sb_publishable_ZWY9Hp6kQrhOzff6xc_DrA_8TlnrqQ_""]
     supabase: Client = create_client(url, key)
 except Exception as e:
     st.error("Erro ao conectar ao banco de dados. Verifique os Secrets.")
