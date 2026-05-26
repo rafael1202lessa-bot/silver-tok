@@ -34,19 +34,20 @@ TITULOS = {
 }
 
 # --- BANCO DE DADOS LOCAL - SILVER STREAM (LINKS DOS VÍDEOS) ---
-# Você pode alterar esses links de exemplo pelos links reais dos episódios!
 CATALOGO_STREAM = {
     "Animes": {
         "Bleach (Dublado PT-BR)": {
-            "Episódio 01 - O Dia em que me tornei Shinigami": "https://www.w3schools.com/html/mov_bbb.mp4", 
-            "Episódio 02 - O Trabalho de um Shinigami": "https://www.w3schools.com/html/movie.mp4",
-            "Episódio 03 - O Desejo do Irmão Mais Velho": "https://www.w3schools.com/html/mov_bbb.mp4",
-}
+            "Episódio 01 - O Dia em que me tornei Shinigami": "COLE_AQUI_O_LINK_DO_EPISODIO_1",
+            "Episódio 02 - O Trabalho de um Shinigami": "COLE_AQUI_O_LINK_DO_EPISODIO_2",
+            "Episódio 03 - O Desejo do Irmão Mais Velho": "COLE_AQUI_O_LINK_DO_EPISODIO_3",
+        }
     },
     "Filmes": {},
     "Séries": {},
     "Desenhos": {},
     "Doramas": {}
+}
+
 }
 
 # --- FUNÇÕES DE AUTENTICAÇÃO ---
