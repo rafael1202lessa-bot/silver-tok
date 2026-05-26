@@ -48,7 +48,6 @@ CATALOGO_STREAM = {
     "Doramas": {}
 }
 
-}
 
 # --- FUNÇÕES DE AUTENTICAÇÃO ---
 def criar_conta(username, password, nickname, codigo):
