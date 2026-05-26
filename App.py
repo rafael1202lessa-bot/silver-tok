@@ -336,7 +336,7 @@ else:
 
     # --- LISTAGEM DO FEED TRATADA CONTRA FALHAS ---
     def renderizar_lista_filtrada(lista_posts, identificador_formato, termo_busca="", ordenacao=""):
-        if termo_busca:
+      if termo_busca:
             lista_posts = [p for p in lista_posts if termo_busca.lower() in str(p.get("titulo", "")).lower()]
         if ordenacao == "🔥 Mais Populares":
             lista_posts = sorted(lista_posts, key=lambda x: x.get("curtidas", 0), reverse=True)
@@ -430,20 +430,21 @@ else:
                                     selo_c = obter_selo_texto(c_user, uid_c, cargo_adicional=cargo_c)
                                     renderizar_caixa_mensagem(c_user, c_msg, selo_c, txt_caixa_c, eh_admin=verificar_se_eh_dev(uid_c))
                     else:
-                        st.caption("Ninguém comentou ainda.")
-                except: pass
+            st.caption("Ninguém comentou ainda.")
+    except:
+        pass
 
-    # --- NAVEGAÇÃO PRINCIPAL ---
-abas_principais = ["📺 Silver Tok (Feed)", "🛒 Loja", "💬 Chat", "🎮 Entretenimento", "🍿 Área Geek", "❓ Quiz", "⚙️ Admin"]
+# --- NAVEGAÇÃO PRINCIPAL ---
+abas_principais = ["📺 Silver Tok (Feed)", "🛒 Loja", "💬 Chat", "🎮 Entretenimento", "🤓 Área Geek", "❓ Quiz"]
 
-    if is_admin:
-        abas_principais.append("👑 Painel Admin Secreto")
-        
-    abas = st.tabs(abas_principais)
-    aba_feed, aba_loja, aba_chat, aba_entretenimento, aba_quiz, aba_status, aba_notif = abas[0], abas[1], abas[2], abas[3], abas[4], abas[5], abas[6]
+if is_admin:
+    abas_principais.append("👑 Painel Admin Secreto")
 
-    # === 📺 ABA 1: FEED COMPLETO ===
-    with aba_feed:
+abas = st.tabs(abas_principais)
+aba_feed, aba_loja, aba_chat, aba_entretenimento, aba_geek, aba_quiz, aba_admin = abas
+
+# === 📺 ABA 1: FEED COMPLETO ===
+with aba_feed:
         if st.session_state.perfil_visitado:
             autor_vis = st.session_state.perfil_visitado
             if st.button("⬅️ Voltar ao Feed Global"):
