@@ -434,7 +434,8 @@ else:
                 except: pass
 
     # --- NAVEGAÇÃO PRINCIPAL ---
-    abas_principais = ["📺 Silver Tok (Feed)", "🛒 Loja & Caixas", "💬 Chat-Exv", "🍿 Área Geek", "🧠 Super Quiz", "✨ Status", f"🔔 Notificações ({total_notif})"]
+abas_principais = ["📺 Silver Tok (Feed)", "🛒 Loja", "💬 Chat", "🎮 Entretenimento", "🍿 Área Geek", "❓ Quiz", "⚙️ Admin"]
+
     if is_admin:
         abas_principais.append("👑 Painel Admin Secreto")
         
