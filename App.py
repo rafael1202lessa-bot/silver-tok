@@ -37,12 +37,13 @@ TITULOS = {
 # Você pode alterar esses links de exemplo pelos links reais dos episódios!
 CATALOGO_STREAM = {
     "Animes": {
-        "Bleach (Dublado PT-BR)": {
-            "Episódio 01 - O Dia em que me tornei Shinigami": "https://www.w3schools.com/html/mov_bbb.mp4", # Link de teste, mude pelo real
+                "Bleach (Dublado PT-BR)": {
+            "Episódio 01 - O Dia em que me tornei Shinigami": "https://www.w3schools.com/html/mov_bbb.mp4", 
             "Episódio 02 - O Trabalho de um Shinigami": "https://www.w3schools.com/html/movie.mp4",
             "Episódio 03 - O Desejo do Irmão Mais Velho": "https://www.w3schools.com/html/mov_bbb.mp4",
-        }
-    },
+                }
+
+    }
     "Filmes": {},
     "Séries": {},
     "Desenhos": {},
