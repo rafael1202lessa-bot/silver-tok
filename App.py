@@ -8,13 +8,12 @@ import base64
 st.set_page_config(page_title="Silver Tok & Chat", layout="wide")
 
 # --- CONFIGURAÇÕES DE MANUTENÇÃO (MODO PRIVADO) ---
-MODO_MANUTENCAO = True  # Altere para False quando o app for lançado oficialmente!
+MODO_MANUTENCAO = True  # Altere para False para abrir o app para o público no lançamento!
 ID_REAL_DEVELOPER = "04daaa3c-63ef-486c-b33e-54d4e80ee9e9"
 
-# --- CONEXÃO BANCO DE DADOS (SUPABASE) ---
-# Adicione suas chaves reais aqui dentro das aspas abaixo:
-SUPABASE_URL = "https://ldjtqgeyorkzbvuixxxx.supabase.co"  
-SUPABASE_KEY = "sb_publishable_ZWy9Hp6kQxxxx..."         
+# --- CONEXÃO BANCO DE DADOS (SUPABASE AUTÊNTICO) ---
+SUPABASE_URL = "https://ldjtqgeyorkzbvuichjj.supabase.co"  
+SUPABASE_KEY = "sb_publishable_ZWY9Hp6kQrhOzff6xc_DrA_8TlnrqQ_"         
 
 @st.cache_resource
 def init_connection():
@@ -33,14 +32,15 @@ if supabase is None:
 def verificar_se_eh_dev(user_id):
     return str(user_id) == ID_REAL_DEVELOPER
 
-# 🚧 TRAVA ISOLADA DE MANUTENÇÃO (Roda no início para barrar o público)
+# 🚧 TRAVA DE MANUTENÇÃO INTELIGENTE (Libera a tela de login antes de bloquear)
 if MODO_MANUTENCAO:
-    id_verificacao = st.session_state.get("usuario_logado", {}).get("id") if st.session_state.get("usuario_logado") else None
-    if str(id_verificacao) != ID_REAL_DEVELOPER:
-        st.markdown("<h1 style='text-align: center;'>🚧 Silver Tok & Chat 🚧</h1>", unsafe_allow_html=True)
-        st.error("O aplicativo está em manutenção para a implementação de novas funções! Voltamos em breve para a Grande Estreia. 🎬🚀")
-        st.info("Acompanhe as novidades no nosso grupo oficial.")
-        st.stop()
+    if st.session_state.get("usuario_logado") is not None:
+        id_verificacao = st.session_state.usuario_logado.get("id")
+        if str(id_verificacao) != ID_REAL_DEVELOPER:
+            st.markdown("<h1 style='text-align: center;'>🚧 Silver Tok & Chat 🚧</h1>", unsafe_allow_html=True)
+            st.error("O aplicativo está em manutenção para a implementação de novas funções! Voltamos em breve para a Grande Estreia. 🎬🚀")
+            st.info("Acompanhe as novidades no nosso grupo oficial.")
+            st.stop()
 
 def obter_selo_texto(username_alvo, user_id_alvo):
     if verificar_se_eh_dev(user_id_alvo):
@@ -129,7 +129,7 @@ else:
         u_name = st.session_state.usuario_logado.get("username")
         is_admin = verificar_se_eh_dev(u_id)
         
-        # Atualiza atividade em tempo real
+        # Atualiza atividade em tempo real no Supabase
         try:
             supabase.table("perfis_usuarios").update({"ultima_atividade": datetime.now(timezone.utc).isoformat()}).eq("id", u_id).execute()
             busca_atual = supabase.table("perfis_usuarios").select("*").eq("id", u_id).execute()
@@ -186,18 +186,15 @@ else:
         
         with aba_feed:
             st.subheader("📺 Feed Recentes")
-            st.info("Espaço reservado para carregar seus vídeos do banco de dados.")
-            # Insira o código original do seu feed aqui mais tarde
+            st.info("Espaço pronto. Cole aqui as funções estruturadas do seu Feed de Vídeos.")
             
         with aba_loja:
             st.subheader("🛒 Loja de Cosméticos Premium")
-            st.info("Espaço reservado para o sistema de compra de Banners e Tags.")
-            # Insira o código original da sua loja aqui mais tarde
+            st.info("Espaço pronto. Cole aqui o sistema de compra de Banners e Tags por moedas.")
             
         with aba_chat:
             st.subheader("💬 Salas de Bate-papo Ativas")
-            st.info("Espaço reservado para o envio de mensagens, imagens e áudios.")
-            # Insira o código original do seu chat aqui mais tarde
+            st.info("Espaço pronto. Cole aqui o laço que busca as mensagens do chat e permite uploads.")
             
         with aba_comunidade:
             st.header("🗳️ Central da Comunidade")
@@ -235,4 +232,4 @@ else:
 
     except Exception as e:
         st.error(f"Erro na renderização do aplicativo: {e}")
-        
+            
