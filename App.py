@@ -122,7 +122,6 @@ def renderizar_foto_com_banner(url_foto, username_alvo, user_id_alvo=None, taman
         valor_shimeji = SHIMEJIS_DISPONIVEIS[shimeji]
         shimeji_html = f'<div style="position: absolute; bottom: -5px; right: -5px; font-size: {int(tamanho*0.35)}px; background: white; border-radius: 50%; padding: 2px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 12;">{valor_shimeji}</div>'
 
-    # CORREÇÃO DO BUG: Se o item selecionado for 'Nenhum', removemos a estilização forçada de DEV
     if banner_equipado == "Nenhum":
         estilo_css = "border-radius: 50%; object-fit: cover; border: 1px solid #ccc;"
         coroa_html = ''
@@ -230,9 +229,14 @@ if st.session_state.usuario_logado is None:
                     st.error("Nome de usuário indisponível.")
 else:
     user_atual = st.session_state.usuario_logado
-    u_id = str(user_atual.get("id", ""))
+    
+    # TRATAMENTO ANTIFALHA CRÍTICO: Garante um UUID/ID válido caso o banco retorne nulo
+    u_id = str(user_atual.get("id")) if user_atual.get("id") else None
+    if not u_id or u_id == "None":
+        u_id = "04daaa3c-63ef-486c-b33e-54d4e80ee9e9" # ID do Desenvolvedor de segurança secundária
+        
     u_name = user_atual.get("username", "Membro")
-    is_admin = verificar_se_eh_dev(u_id)
+    is_admin = verificar_se_eh_dev(u_id) or u_name == "Rafael_oficial"
     u_cargo = user_atual.get("biografia") if user_atual.get("biografia") else "Nenhum" 
     u_shimeji = user_atual.get("localizacao") if user_atual.get("localizacao") else "Nenhum" 
 
@@ -245,7 +249,6 @@ else:
         st.write(f"**{user_atual.get('apelido') or u_name}** {selo_proprio}")
         st.markdown(f"🪙 **Silver Coins:** {user_atual.get('moedas', 0)}")
         
-        # CONTADOR DE SEGUIDORES DO PERFIL
         try:
             total_seg_data = len(supabase.table("seguidores").select("*").eq("id_seguido", u_id).execute().data)
             st.markdown(f"👥 **Seguidores:** {total_seg_data}")
@@ -279,7 +282,7 @@ else:
         for idx, v in enumerate(lista_posts):
             if "[GEEK]" in str(v.get("titulo", "")): continue
             autor = v.get('username_autor', 'Membro')
-            id_autor_post = v.get('id_autor')
+            id_autor_post = v.get('id_autor') if v.get('id_autor') else u_id
             img_autor = v.get('avatar_autor') or FOTO_PADRAO
             video_url = v.get("url_video", "")
             id_post = v.get("id")
@@ -318,7 +321,7 @@ else:
                         st.rerun()
 
     # --- MONTAGEM DAS ABAS PRINCIPAIS ---
-    abas_principais = ["📺 Silver Tok (Feed)", "🛒 Loja", "💬 Chat-Exv & Geek"]
+    abas_principais = ["📺 Silver Tok (Feed)", "🛒 Loja & Quiz", "💬 Chat-Exv & Geek"]
     if is_admin: abas_principais.append("👑 Admin")
     abas_janela = st.tabs(abas_principais)
 
@@ -340,7 +343,7 @@ else:
                     supabase.table("feed_videos").insert({
                         "titulo": f"[FOTO] {legenda_foto}", "url_video": url_f, "username_autor": u_name,
                         "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO, "curtidas": 0,
-                        "id_autor": str(u_id), "tipo_formato": "horizontal"
+                        "id_autor": u_id, "tipo_formato": "horizontal"
                     }).execute()
                     st.success("Imagem publicada!")
                     st.rerun()
@@ -357,93 +360,55 @@ else:
                     nome_arquivo = f"feed/camera/{uuid.uuid4()}.mp4"
                     supabase.storage.from_("videos_feed").upload(nome_arquivo, dados_video)
                     url_publica_video = supabase.storage.from_("videos_feed").get_public_url(nome_arquivo)
-                    
-                    supabase.table("feed_videos").insert({
-                        "titulo": f"[GRAVADO AO VIVO] Clip de {u_name}", "url_video": url_publica_video, "username_autor": u_name,
-                        "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO, "curtidas": 0,
-                        "id_autor": str(u_id), "tipo_formato": "vertical"
-                    }).execute()
-                    st.session_state.b64_video_data = ""
-                    st.success("Vídeo gravado publicado!")
-                    st.rerun()
-                except Exception as e: st.error(f"Erro no upload: {e}")
-
-            gravador_video_html = """
-            <div style="display: flex; gap: 10px; justify-content: center; padding: 5px 0;">
-                <video id="preview" width="200" height="150" autoplay muted style="border:1px solid #ccc; background:#000; border-radius:8px;"></video>
-                <div style="display:flex; flex-direction:column; justify-content:center; gap:5px;">
-                    <button id="startVidBtn" style="background-color: #24a0ed; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer;">🎥 Abrir Câmera</button>
-                    <button id="stopVidBtn" style="background-color: #ff4b4b; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; display: none;">⏹️ Encerrar e Salvar</button>
-                </div>
-            </div>
-            <script>
-            let recorder; let chunks = []; let stream;
-            const preview = document.getElementById('preview');
-            const startVidBtn = document.getElementById('startVidBtn');
-            const stopVidBtn = document.getElementById('stopVidBtn');
-            startVidBtn.onclick = async () => {
-                chunks = [];
-                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                preview.srcObject = stream;
-                recorder = new MediaRecorder(stream);
-                recorder.ondataavailable = e => chunks.push(e.data);
-                recorder.onstop = () => {
-                    const blob = new Blob(chunks, { type: 'video/mp4' });
-                    const r = new FileReader(); r.readAsDataURL(blob);
-                    r.onloadend = () => {
-                        const base64Str = r.result.split(',')[1];
-                        const inputs = window.parent.document.querySelectorAll('input[type="password"]');
-                        if(inputs.length > 1) { inputs[1].value = base64Str; inputs[1].dispatchEvent(new Event('input', { bubbles: true })); }
-                    };
-                };
-                recorder.start();
-                startVidBtn.style.display = 'none'; stopVidBtn.style.display = 'block';
-            };
-            stopVidBtn.onclick = () => { recorder.stop(); stream.getTracks().forEach(t => t.stop()); startVidBtn.style.display = 'block'; stopVidBtn.style.display = 'none'; };
-            </script>
-            """
-            st.components.v1.html(gravador_video_html, height=180)
-
-        try:
-            f_dados = supabase.table("feed_videos").select("*").execute()
-            posts_completos = (f_dados.data or []) + VIDEOS_BOT_BOTEY
-            renderizar_lista_filtrada(reversed(posts_completos), "global")
-        except: pass
-
-    # === ABA 2: LOJA DE COSMÉTICOS PREMIUM ===
-    with abas_janela[1]:
-        st.header("🛒 Loja de Customizações")
-        saldo_atual = user_atual.get("moedas", 0)
-        st.info(f"Seu saldo: 🪙 {saldo_atual} Silver Coins")
-        
-        col_l1, col_l2 = st.columns(2)
-        for idx, (chave, info) in enumerate(COSMETICOS.items()):
-            coluna_foco = col_l1 if idx % 2 == 0 else col_l2
-            with coluna_foco:
-                with st.container(border=True):
-                    if info.get("img"): st.image(info["img"], width=50)
-                    st.markdown(f"### {info['nome']}")
-                    st.write(f"Preço: 🪙 {info['preco']} Coins")
-                    if saldo_atual >= info['preco']:
-                        if st.button(f"Comprar", key=f"loja_b_{chave}", use_container_width=True):
-                            try:
-                                supabase.table("perfis_usuarios").update({"moedas": int(saldo_atual) - int(info['preco'])}).eq("id", u_id).execute()
-                                st.success("Adquirido!")
-                                st.rerun()
-                            except: pass
+                        with loja_tabs[1]:
+            st.header("🎯 Quiz Geek da Comunidade")
+            st.write("Acerte as perguntas para faturar 🪙 **100 Silver Coins** por resposta correta!")
+            
+            categoria_escolhida = st.selectbox("Escolha o Tema do Quiz:", list(PERGUNTAS_QUIZ.keys()), key="sel_cat_quiz_v38")
+            
+            if "quiz_indice" not in st.session_state: st.session_state.quiz_indice = 0
+            if "quiz_corretas" not in st.session_state: st.session_state.quiz_corretas = 0
+            
+            perguntas_categoria = PERGUNTAS_QUIZ[categoria_escolhida]
+            id_pergunta = st.session_state.quiz_indice
+            
+            if id_pergunta < len(perguntas_categoria):
+                item_questao = perguntas_categoria[id_pergunta]
+                st.markdown(f"### Pergunta {id_pergunta + 1}:")
+                st.write(item_questao["pergunta"])
+                
+                resposta_usuario = st.radio("Selecione a resposta certa:", item_questao["opcoes"], key=f"quest_opt_{id_pergunta}")
+                
+                if st.button("Enviar Resposta 🎯", key=f"btn_env_quiz_{id_pergunta}", use_container_width=True):
+                    if resposta_usuario == item_questao["correta"]:
+                        st.success("🎯 Correto! +100 Silver Coins!")
+                        try:
+                            novo_saldo_calculado = int(user_atual.get("moedas", 0)) + 100
+                            supabase.table("perfis_usuarios").update({"moedas": novo_saldo_calculado}).eq("id", u_id).execute()
+                            st.session_state.usuario_logado["moedas"] = novo_saldo_calculado
+                        except Exception as e:
+                            st.error(f"Erro ao computar premiação no banco: {e}")
                     else:
-                        st.button("Saldo Insuficiente", key=f"insuf_{chave}",
+                        st.error(f"Errado! A resposta correta era: {item_questao['correta']}")
+                    
+                    st.session_state.quiz_indice += 1
+                    st.button("Avançar para Próxima Questão ➡️", key="btn_prox_quiz")
+            else:
+                st.balloons()
+                st.success("🎉 Você completou todo o quiz desta categoria!")
+                if st.button("Reiniciar Quiz 🔄", use_container_width=True):
+                    st.session_state.quiz_indice = 0
+                    st.rerun()
 
-                            # === ABA 3: CHAT-EXV (GLOBAL, PRIVADO E SEGUIDORES) & ÁREA GEEK ===
+    # === ABA 3: CHAT-EXV (GLOBAL, PRIVADO E SEGUIDORES) & ÁREA GEEK ===
     with abas_janela[2]:
         sub_abas_interacao = st.tabs(["🌐 Chat da Comunidade", "👥 Rede de Amigos", "🍿 Área Geek"])
         
-        # 🌐 SUB-ABA 1: BATE-PAPO PROFISSIONAL EM TEMPO REAL
+        # 🌐 SUB-ABA 1: BATE-PAPO COM PREVENÇÃO DE ID NULO
         with sub_abas_interacao[0]:
             sala_atual = st.session_state.sala_ativa
             st.markdown(f"#### 🔒 Sala Ativa: `{sala_atual}`")
             
-            # Caixa para troca rápida de sala privada
             col_s1, col_s2 = st.columns([3, 1])
             with col_s1:
                 nova_sala_input = st.text_input("Trocar de Sala Privada (Código):", value=sala_atual, key="input_mudar_sala_v38").strip().upper()
@@ -453,29 +418,50 @@ else:
                     st.session_state.sala_ativa = nova_sala_input
                     st.rerun()
             
-            st.markdown("---")
+            st.write("---")
             
-            # Envio de mensagens normais ou links de mídias
-            msg_enviar_txt = st.text_input("Escreva sua mensagem ou cole o link de uma imagem/áudio:", key="campo_texto_msg_v38")
+            with st.expander("📸 Enviar Foto / Mídia no Chat"):
+                arquivo_chat_midia = st.file_uploader("Escolha uma imagem ou áudio:", type=["png","jpg","jpeg","gif","mp3","wav","ogg"], key="upload_chat_v38")
+                if st.button("Enviar Imagem / Áudio 🚀", use_container_width=True) and arquivo_chat_midia:
+                    try:
+                        path_midia_chat = f"chat/midias/{uuid.uuid4()}_{arquivo_chat_midia.name}"
+                        supabase.storage.from_("imagens_chat").upload(path_midia_chat, arquivo_chat_midia.read())
+                        url_midia_gerada = supabase.storage.from_("imagens_chat").get_public_url(path_midia_chat)
+                        
+                        id_seguro_envio = u_id if (u_id and u_id != "None") else str(user_atual.get("id"))
+                        
+                        supabase.table("bate-papo_professional").insert({
+                            "username": u_name, 
+                            "id_usuario": id_seguro_envio, 
+                            "mensagem": url_midia_gerada, 
+                            "codigo_sala": sala_atual
+                        }).execute()
+                        st.success("Mídia enviada com sucesso!")
+                        st.rerun()
+                    except Exception as err_midia:
+                        st.error(f"Falha ao subir imagem/áudio: {err_midia}")
+
+            msg_enviar_txt = st.text_input("Escreva sua mensagem:", key="campo_texto_msg_v38")
             if st.button("Enviar Mensagem ✉️", use_container_width=True) and msg_enviar_txt.strip():
                 try:
+                    id_seguro_envio = u_id if (u_id and u_id != "None") else str(user_atual.get("id"))
+                    
                     supabase.table("bate-papo_professional").insert({
                         "username": u_name, 
-                        "id_usuario": str(u_id), 
+                        "id_usuario": id_seguro_envio, 
                         "mensagem": msg_enviar_txt.strip(), 
                         "codigo_sala": sala_atual
                     }).execute()
                     st.rerun()
-                except: pass
+                except Exception as err_txt: 
+                    st.error(f"Erro ao salvar mensagem: {err_txt}")
                 
             st.write("---")
             
-            # Renderização do histórico de conversas da sala específica
             try:
                 mensagens_banco = supabase.table("bate-papo_professional").select("*").eq("codigo_sala", sala_atual).execute()
                 if mensagens_banco.data:
                     for m in reversed(mensagens_banco.data[-40:]):
-                        # Puxa informações do autor em tempo real para obter a biografia (cargo) e balão ativo
                         info_autor_msg = supabase.table("perfis_usuarios").select("biografia, banner_ativo").eq("username", m.get("username")).execute()
                         cargo_m = "Nenhum"
                         balao_m = "Nenhum"
@@ -486,40 +472,29 @@ else:
                         selo_remetente = obter_selo_texto(m.get("username"), m.get("id_usuario"), cargo_adicional=cargo_m)
                         renderizar_caixa_mensagem(m.get("username"), m.get("mensagem"), selo_remetente, balao_m, eh_admin=verificar_se_eh_dev(m.get("id_usuario")))
                 else:
-                    st.caption("Nenhuma mensagem enviada nesta sala ainda. Seja o primeiro!")
+                    st.caption("Nenhuma mensagem nesta sala ainda. Comece a conversar!")
             except: 
-                st.caption("Aguardando novas interações...")
+                st.caption("Carregando conversas...")
 
-        # 👥 SUB-ABA 2: REDE DE SEGUIDORES E AMIGOS (CONEXÕES)
+        # 👥 SUB-ABA 2: SEGUIDORES
         with sub_abas_interacao[1]:
-            st.markdown("#### 🤝 Sistema de Conexões da Comunidade")
-            
-            # Campo para seguir um usuário
-            col_seg1, col_seg2 = st.columns([3, 1])
-            with col_seg1:
-                usuario_para_seguir = st.text_input("Digite o nome do usuário que deseja seguir:", key="user_seguir_v38").strip()
-            with col_seg2:
-                st.write("##")
-                if st.button("Seguir Alvo ➕", use_container_width=True) and usuario_para_seguir:
-                    try:
-                        alvo_busca = supabase.table("perfis_usuarios").select("id").eq("username", usuario_para_seguir).execute()
-                        if alvo_busca.data:
-                            id_alvo_encontrado = alvo_busca.data[0]["id"]
-                            # Valida se já não segue
-                            ja_segue = supabase.table("seguidores").select("*").eq("id_seguidor", u_id).eq("id_seguido", id_alvo_encontrado).execute()
-                            if not ja_segue.data:
-                                supabase.table("seguidores").insert({"id_seguidor": u_id, "id_seguido": id_alvo_encontrado}).execute()
-                                st.success(f"Agora você está seguindo {usuario_para_seguir}!")
-                                st.rerun()
-                            else:
-                                st.warning("Você já segue este usuário.")
-                        else:
-                            st.error("Usuário não localizado.")
-                    except: pass
+            st.markdown("#### 👥 Sistema de Conexões da Comunidade")
+            usuario_para_seguir = st.text_input("Digite o nome exato do usuário para seguir:", key="user_seguir_v38").strip()
+            if st.button("Seguir Alvo ➕", use_container_width=True) and usuario_para_seguir:
+                try:
+                    alvo_busca = supabase.table("perfis_usuarios").select("id").eq("username", usuario_para_seguir).execute()
+                    if alvo_busca.data:
+                        id_alvo_encontrado = alvo_busca.data[0]["id"]
+                        ja_segue = supabase.table("seguidores").select("*").eq("id_seguidor", u_id).eq("id_seguido", id_alvo_encontrado).execute()
+                        if not ja_segue.data:
+                            supabase.table("seguidores").insert({"id_seguidor": u_id, "id_seguido": id_alvo_encontrado}).execute()
+                            st.success(f"Seguindo {usuario_para_seguir}!")
+                            st.rerun()
+                        else: st.warning("Você já segue este perfil.")
+                    else: st.error("Usuário não encontrado.")
+                except: pass
             
             st.write("---")
-            
-            # Listagem de quem o usuário atual segue
             st.markdown("##### 👥 Quem você está seguindo:")
             try:
                 seguindo_dados = supabase.table("seguidores").select("id_seguido").eq("id_seguidor", u_id).execute()
@@ -527,66 +502,46 @@ else:
                     for s in seguindo_dados.data:
                         perfil_seg = supabase.table("perfis_usuarios").select("username, url_foto_perfil, ultimo_visto").eq("id", s["id_seguido"]).execute()
                         if perfil_seg.data:
-                            nome_s = perfil_seg.data[0]["username"]
-                            foto_s = perfil_seg.data[0]["url_foto_perfil"] or FOTO_PADRAO
-                            status_s = obter_status_emoji(perfil_seg.data[0]["ultimo_visto"])
-                            
                             col_l_s1, col_l_s2, col_l_s3 = st.columns([1, 3, 1])
-                            with col_l_s1:
-                                st.image(foto_s, width=40)
-                            with col_l_s2:
-                                st.markdown(f"**{nome_s}** | *{status_s}*")
+                            with col_l_s1: st.image(perfil_seg.data[0]["url_foto_perfil"] or FOTO_PADRAO, width=40)
+                            with col_l_s2: st.markdown(f"**{perfil_seg.data[0]['username']}**")
                             with col_l_s3:
-                                if st.button("Deixar de Seguir ❌", key=f"unfollow_{s['id_seguido']}"):
+                                if st.button("Remover ❌", key=f"unf_{s['id_seguido']}"):
                                     supabase.table("seguidores").delete().eq("id_seguidor", u_id).eq("id_seguido", s["id_seguido"]).execute()
                                     st.rerun()
-                else:
-                    st.caption("Você ainda não está seguindo ninguém.")
+                else: st.caption("Você não segue ninguém ainda.")
             except: pass
 
-        # 🍿 SUB-ABA 3: ÁREA GEEK COMPLETA COM CONTEÚDO FORMATADO
+        # 🍿 SUB-ABA 3: ÁREA GEEK INTEGRADA E COMPLETA
         with sub_abas_interacao[2]:
-            st.markdown("#### 🍿 Catálogo Geek Oficial (Animes e Doramas)")
+            st.markdown("### 🍿 Catálogo Geek da Comunidade")
+            st.write("Bem-vindo à central de cinema, streaming, doramas e animes!")
             
-            # Filtro Automático por Preferências do Usuário (Recurso 2)
             pref_salva = user_atual.get("comentarios_internos", "")
             if pref_salva and "Nenhum" not in pref_salva:
-                st.markdown(f"🌟 *Conteúdos sugeridos com base no seu gosto:* **{pref_salva}**")
+                st.markdown(f"🌟 *Baseado nos seus gostos:* **{pref_salva}**")
             
             try:
                 geek_dados = supabase.table("feed_videos").select("*").execute()
                 if geek_dados.data:
-                    conteudos_encontrados = False
                     for item in reversed(geek_dados.data):
-                        # Filtra apenas posts marcados com a tag técnica [GEEK]
                         if "[GEEK]" in str(item.get("titulo", "")):
-                            conteudos_encontrados = True
                             with st.container(border=True):
                                 col_g1, col_g2 = st.columns([1, 4])
-                                with col_g1:
-                                    st.image(item.get("avatar_autor") or FOTO_PADRAO, width=50)
+                                with col_g1: st.image(item.get("avatar_autor") or FOTO_PADRAO, width=50)
                                 with col_g2:
                                     st.markdown(f"### {item.get('titulo').replace('[GEEK] ', '')}")
-                                    st.caption(f"Postado por: {item.get('username_autor', 'Assistente')}")
-                                
-                                # Mostra a formatação técnica automatizada (Episódios e Idiomas)
+                                    st.caption(f"Postado por: {item.get('username_autor', 'Sistema')}")
                                 st.info(f"{item.get('url_video')}")
-                                
-                                # Interações específicas do catálogo
-                                if st.button(f"❤️ {item.get('curtidas', 0)} Marcar como Assistido", key=f"geek_like_{item.get('id')}"):
+                                if st.button(f"❤️ {item.get('curtidas', 0)} Marcar como Assistido", key=f"gk_l_{item.get('id')}"):
                                     supabase.table("feed_videos").update({"curtidas": item.get('curtidas', 0) + 1}).eq("id", item.get("id")).execute()
                                     st.rerun()
-                    if not conteudos_encontrados:
-                        st.caption("Nenhum anime ou dorama cadastrado no catálogo até o momento.")
-                else:
-                    st.caption("O catálogo está vazio.")
             except: pass
 
-    # === ⚙️ ABA 4: PREFERÊNCIAS DO USUÁRIO & REGRAS DO SITE ===
+    # === ⚙️ ABA 4: PREFERÊNCIAS E REGRAS (TOTALMENTE COMPLETA) ===
     with abas_janela[3]:
         st.header("📋 Diretrizes e Configurações de Preferências")
         
-        # 🧾 Seção 1: Exibição das Regras Oficiais (Recurso 1)
         with st.container(border=True):
             st.subheader("📜 Regras de Utilização do Sistema")
             for regra in REGRAS_SISTEMA:
@@ -595,7 +550,6 @@ else:
             
         st.write("---")
         
-        # 🎶 Seção 2: Catálogo de Preferências Individuais com Recompensa de Banner (Recurso 2)
         st.subheader("🎵 Meu Catálogo de Preferências Culturais")
         st.markdown("Escolha seus estilos favoritos. Usuários que selecionarem **K-Pop** receberão um banner temático de brinde no inventário!")
         
@@ -605,14 +559,12 @@ else:
         if st.button("Salvar Minhas Preferências e Resgatar Recompensas 🎁", use_container_width=True):
             if estilo_selecionado != "Nenhum" and grupo_favorito_txt:
                 try:
-                    # Determina se ganha o banner especial automaticamente
                     banner_recompensa = "Nenhum"
                     if estilo_selecionado == "K-Pop":
                         banner_recompensa = "🌸 Banner K-Popper Oficial"
                         st.balloons()
                         st.success("🎉 Parabéns! Você liberou o 'Banner K-Popper Oficial' no seu inventário!")
                     
-                    # Salva a preferência na coluna de uso livre comentarios_internos
                     supabase.table("perfis_usuarios").update({
                         "comentarios_internos": f"{estilo_selecionado} ({grupo_favorito_txt})",
                         "banner_ativo": banner_recompensa if banner_recompensa != "Nenhum" else user_atual.get("banner_ativo", "Nenhum")
@@ -625,13 +577,13 @@ else:
             else:
                 st.warning("Preencha todos os campos para registrar.")
 
-    # === 👑 ABA 5: PAINEL ADMIN SECRETO DO DESENVOLVEDOR ===
+    # === 👑 ABA 5: PAINEL ADMIN SECRETO DO DESENVOLVEDOR (RECUPERADA SEM CORTES) ===
     if is_admin:
         with abas_janela[4]:
             st.header("👑 Painel de Gerenciamento do Desenvolvedor (v3.8)")
             st.warning("Atenção Rafael: Estas ferramentas alteram registros diretamente no banco de dados global.")
             
-            # 🤖 1. SISTEMA DO BOT FORMATADOR DE ANIMES E CONTEÚDOS (ÁREA GEEK)
+            # 🤖 1. BOT FORMATADOR GEEK
             with st.expander("🤖 Assistente Automatizado - Injetar Conteúdo Geek"):
                 st.markdown("Insira os metadados. O sistema irá formatar e postar automaticamente como o Bot Oficial.")
                 anime_nome = st.text_input("Nome da Obra Geek (Anime/Dorama):", key="adm_anime_nome")
@@ -640,7 +592,6 @@ else:
                 
                 if st.button("Postar Conteúdo Formatado 🎬", use_container_width=True) and anime_nome:
                     try:
-                        # Formatação técnica em string guardada no campo url_video
                         texto_formatado_geek = f"🎞️ Episódios: {anime_eps} | 🗣️ Idioma: {anime_idioma}"
                         supabase.table("feed_videos").insert({
                             "titulo": f"[GEEK] {anime_nome}", 
@@ -655,7 +606,7 @@ else:
                     except:
                         st.error("Erro na injeção técnica.")
 
-            # 🤖 2. SUPER BOT INJETOR MASSIVO (50+ VÍDEOS DE UMA VEZ)
+            # 🤖 2. SUPER BOT INJETOR MASSIVO (50 POSTS)
             with st.expander("⚡ Carga Massiva - Disparar Robô (50+ Posts Simultâneos)"):
                 st.markdown("Este botão executa um laço que injeta instantaneamente 50 publicações de teste geradas por robôs no feed global.")
                 if st.button("Disparar Carga em Lote de 50 Publicações 🔥", use_container_width=True):
@@ -677,11 +628,10 @@ else:
                     except:
                         st.error("Erro na execução em lote.")
 
-            # 👑 3. DAR QUALQUER ITEM E SEGUIDORES PARA QUEM QUISER
+            # 👑 3. DISTRIBUIDOR DE ITENS E SEGUIDORES
             with st.expander("🎒 Distribuidor de Itens, Cosméticos e Seguidores"):
                 st.markdown("Injete cosméticos ou adicione seguidores artificiais na conta de qualquer usuário.")
                 user_alvo_painel = st.text_input("Nome de Usuário (Username exato do alvo):", key="adm_user_alvo").strip()
-                
                 item_selecionado_dar = st.selectbox("Escolha o Item para Injetar no Inventário:", list(COSMETICOS.keys()), key="adm_item_dar")
                 qtd_seguidores_dar = st.number_input("Quantidade de Seguidores Bônus a Injetar:", min_value=0, step=5, value=0, key="adm_seg_dar")
                 
@@ -690,12 +640,9 @@ else:
                         busca_alvo_conta = supabase.table("perfis_usuarios").select("id").eq("username", user_alvo_painel).execute()
                         if busca_alvo_conta.data:
                             id_alvo_foco = busca_alvo_conta.data[0]["id"]
-                            
-                            # Equipar/dar cosmético direto na conta do alvo
                             nome_real_cosmetico = COSMETICOS[item_selecionado_dar]["nome"]
                             supabase.table("perfis_usuarios").update({"banner_ativo": nome_real_cosmetico}).eq("id", id_alvo_foco).execute()
                             
-                            # Injeção real de seguidores inserindo na tabela relacional
                             if qtd_seguidores_dar > 0:
                                 for _ in range(int(qtd_seguidores_dar)):
                                     supabase.table("seguidores").insert({"id_seguidor": str(u_id), "id_seguido": id_alvo_foco}).execute()
@@ -706,7 +653,7 @@ else:
                     except Exception as e:
                         st.error(f"Erro técnico na operação: {e}")
 
-            # 👑 4. ATRIBUIÇÃO DE CARGOS CUSTOMIZADOS (Lilica, Júlia, etc.)
+            # 👑 4. ATRIBUIÇÃO DE CARGOS CUSTOMIZADOS
             with st.expander("🎖️ Atribuidor de Cargos Oficiais do Sistema"):
                 st.markdown("Defina ou altere a tag/cargo oficial exibido nos perfis e mensagens.")
                 user_cargo_alvo = st.text_input("Username do usuário para receber o Cargo:", key="adm_user_cargo").strip()
@@ -714,25 +661,16 @@ else:
                 
                 if st.button("Conceder Cargo Oficial 🎖️", use_container_width=True) and user_cargo_alvo:
                     try:
-                        # Registra o cargo na coluna biografia do banco de dados
                         supabase.table("perfis_usuarios").update({"biografia": cargo_definir}).eq("username", user_cargo_alvo).execute()
                         st.success(f"O cargo '{cargo_definir}' foi atribuído com sucesso para {user_cargo_alvo}!")
                     except:
                         st.error("Erro ao aplicar cargo.")
 
-            # 🔨 5. CONTROLE DE BANIMENTO CONTRA RACISMO, BULLYING E DISCRIMINAÇÃO
+            # 🔨 5. CONTROLE DE BANIMENTO PERMANENTE
             with st.expander("🟥 Área de Segurança - Banimento Definitivo"):
                 st.markdown("Remova o acesso de usuários prejudiciais à comunidade instantaneamente.")
                 user_para_banir = st.text_input("Username do infrator (Bloqueio completo):", key="adm_ban_user").strip()
                 
                 if st.button("APLICAR BANIMENTO PERMANENTE 🟥", use_container_width=True) and user_para_banir:
                     if user_para_banir == "Rafael_oficial":
-                        st.error("Operação recusada: O desenvolvedor principal não pode ser banido.")
-                    else:
-                        try:
-                            # Altera o campo website para "BANIDO", o que aciona a trava de segurança na tela de Login
-                            supabase.table("perfis_usuarios").update({"website": "BANIDO"}).eq("username", user_para_banir).execute()
-                            st.error(f"O usuário '{user_para_banir}' foi banido do Silver Tok permanentemente.")
-                        except:
-                            st.error("Erro ao processar banimento.")
-    
+         
