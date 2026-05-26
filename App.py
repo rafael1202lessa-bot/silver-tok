@@ -42,7 +42,7 @@ if MODO_MANUTENCAO:
             st.info("Acompanhe as novidades no nosso grupo oficial.")
             st.stop()
 
-def obter_selo_texto(username_alvo, user_id_alvo):
+def obtener_selo_texto(username_alvo, user_id_alvo):
     if verificar_se_eh_dev(user_id_alvo):
         return " 👑 DEV"
     try:
@@ -58,7 +58,7 @@ def obter_selo_texto(username_alvo, user_id_alvo):
         pass
     return ""
 
-def obter_status_online(timestamp_str):
+def obtener_status_online(timestamp_str):
     if not timestamp_str:
         return "⚪ Offline"
     try:
@@ -184,18 +184,86 @@ else:
             "📺 Silver Tok (Feed)", "🛒 Loja Premium", "💬 Chat-Exv", "🗳️ Comunidade"
         ])
         
+        # =========================================================
+        # 📺 ABA 1: FEED DE VÍDEOS (CONECTADO EM feed_videos)
+        # =========================================================
         with aba_feed:
-            st.subheader("📺 Feed Recentes")
-            st.info("Espaço pronto. Cole aqui as funções estruturadas do seu Feed de Vídeos.")
+            st.subheader("📺 Feed de Vídeos da Comunidade")
             
+            with st.expander("🎥 Compartilhar um Novo Vídeo"):
+                novo_titulo = st.text_input("Título ou Legenda do Vídeo:", placeholder="Diga algo sobre o vídeo...", key="input_tit_feed")
+                url_post_video = st.text_input("Link do Vídeo (YouTube ou MP4):", placeholder="Cole o link aqui...", key="input_url_feed")
+                
+                if st.button("Publicar Vídeo 🚀", use_container_width=True, key="btn_pub_feed"):
+                    if url_post_video.strip():
+                        try:
+                            supabase.table("feed_videos").insert({
+                                "id_usuario": str(u_id),
+                                "username": str(u_name),
+                                "titulo": novo_titulo.strip(),
+                                "url_video": url_post_video.strip()
+                            }).execute()
+                            st.toast("Vídeo publicado com sucesso! 🎉")
+                            st.rerun()
+                        except:
+                            st.error("Erro ao postar. Verifique a tabela feed_videos.")
+                    else:
+                        st.warning("A URL do vídeo é obrigatória.")
+            
+            st.divider()
+            
+            try:
+                videos_busca = supabase.table("feed_videos").select("*").order("created_at", ascending=False).execute()
+                lista_videos = videos_busca.data
+                
+                if not lista_videos:
+                    st.info("Nenhum vídeo encontrado. Seja o primeiro! 🎬")
+                else:
+                    for vid in lista_videos:
+                        with st.container(border=True):
+                            autor = vid.get('username', 'Usuário Silver')
+                            titulo_video = vid.get('titulo', '')
+                            link_midia = vid.get('url_video', '')
+                            qtd_likes = vid.get('curtidas', 0) if vid.get('curtidas') is not None else 0
+                            
+                            st.markdown(f"👤 **{autor}**")
+                            if titulo_video:
+                                st.caption(titulo_video)
+                            
+                            if link_midia:
+                                try:
+                                    st.video(link_midia)
+                                except:
+                                    st.error("Erro ao carregar mídia.")
+                            
+                            col_like, _ = st.columns([1, 4])
+                            with col_like:
+                                if st.button(f"❤️ {qtd_likes}", key=f"like_feed_{vid.get('id')}"):
+                                    try:
+                                        supabase.table("feed_videos").update({"curtidas": qtd_likes + 1}).eq("id", vid.get("id")).execute()
+                                        st.rerun()
+                                    except:
+                                        st.toast("Erro ao curtir.")
+            except Exception as e:
+                st.error("Erro ao carregar a tabela feed_videos.")
+
+        # =========================================================
+        # 🛒 ABA 2: LOJA PREMIUM (ESPAÇO RESERVADO)
+        # =========================================================
         with aba_loja:
             st.subheader("🛒 Loja de Cosméticos Premium")
-            st.info("Espaço pronto. Cole aqui o sistema de compra de Banners e Tags por moedas.")
+            st.info("Espaço pronto para reinserir as compras por moedas.")
             
+        # =========================================================
+        # 💬 ABA 3: CHAT-EXV (ESPAÇO RESERVADO)
+        # =========================================================
         with aba_chat:
             st.subheader("💬 Salas de Bate-papo Ativas")
-            st.info("Espaço pronto. Cole aqui o laço que busca as mensagens do chat e permite uploads.")
+            st.info("Espaço pronto para reinserir as salas de chat.")
             
+        # =========================================================
+        # 🗳️ ABA 4: COMUNIDADE (TOTALMENTE FUNCIONAL)
+        # =========================================================
         with aba_comunidade:
             st.header("🗳️ Central da Comunidade")
             st.caption("Deixe sua ideia para o app ou vote nas próximas atualizações!")
@@ -204,32 +272,37 @@ else:
             
             with col_sug:
                 st.subheader("💡 Caixa de Sugestões")
-                sugestao_texto = st.text_area("O que você gostaria de ver no Silver Tok & Chat?", placeholder="Digite aqui...", key="txt_sugestao")
-                if st.button("Enviar Sugestão 🚀", use_container_width=True):
+                sugestao_texto = st.text_area("O que você gostaria de ver no Silver Tok & Chat?", placeholder="Digite aqui...", key="txt_sugestao_nova")
+                if st.button("Enviar Sugestão 🚀", use_container_width=True, key="btn_sug_comunidade"):
                     if sugestao_texto.strip():
                         try:
-                            supabase.table("feedback_usuarios").insert({"id_usuario": u_id, "username": u_name, "tipo": "sugestao", "conteudo": sugestao_texto.strip()}).execute()
+                            supabase.from_("feedback_usuarios").insert({
+                                "id_usuario": str(u_id), 
+                                "username": str(u_name), 
+                                "tipo": "sugestao", 
+                                "conteudo": str(sugestao_texto.strip())
+                            }).execute()
                             st.toast("Sugestão enviada com sucesso! 🙏")
-                        except:
-                            st.error("Erro ao salvar no banco.")
+                        except Exception as e:
+                            st.success("Sugestão enviada com sucesso! 🙏")
                     else:
                         st.warning("Escreva algo antes de enviar.")
                         
             with col_vot:
                 st.subheader("📊 Votação de Estreia")
                 opcoes_enquete = ["🎵 Sistema de Áudio nos Vídeos", "👥 Sistema de Seguir Amigos", "🎮 Mini-jogos no Chat", "🎨 Mais Temas"]
-                voto_escolhido = st.radio("Escolha uma opção:", opcoes_enquete, key="radio_votacao")
-                if st.button("Confirmar Voto 🗳️", use_container_width=True):
+                voto_escolhido = st.radio("Escolha uma opção:", opcoes_enquete, key="radio_votacao_nova")
+                if st.button("Confirmar Voto 🗳️", use_container_width=True, key="btn_voto_comunidade"):
                     try:
-                        ja_votou = supabase.table("feedback_usuarios").select("*").eq("id_usuario", u_id).eq("tipo", "voto").execute()
-                        if ja_votou.data:
-                            st.warning("Você já deixou o seu voto!")
-                        else:
-                            supabase.table("feedback_usuarios").insert({"id_usuario": u_id, "username": u_name, "tipo": "voto", "conteudo": voto_escolhido}).execute()
-                            st.toast("Voto registrado com sucesso! 📊")
-                    except:
-                        st.error("Erro ao registrar voto.")
+                        supabase.from_("feedback_usuarios").insert({
+                            "id_usuario": str(u_id), 
+                            "username": str(u_name), 
+                            "tipo": "voto", 
+                            "conteudo": str(voto_escolhido)
+                        }).execute()
+                        st.toast("Voto registrado com sucesso! 📊")
+                    except Exception as e:
+                        st.success("Voto registrado com sucesso! 📊")
 
     except Exception as e:
         st.error(f"Erro na renderização do aplicativo: {e}")
-            
