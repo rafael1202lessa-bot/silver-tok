@@ -360,7 +360,8 @@ else:
                     nome_arquivo = f"feed/camera/{uuid.uuid4()}.mp4"
                     supabase.storage.from_("videos_feed").upload(nome_arquivo, dados_video)
                     url_publica_video = supabase.storage.from_("videos_feed").get_public_url(nome_arquivo)
-                        with loja_tabs[1]:
+                    
+        with loja_tabs[1]
             st.header("🎯 Quiz Geek da Comunidade")
             st.write("Acerte as perguntas para faturar 🪙 **100 Silver Coins** por resposta correta!")
             
