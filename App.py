@@ -445,6 +445,7 @@ aba_feed, aba_loja, aba_chat, aba_entretenimento, aba_geek, aba_quiz, aba_admin 
 
 # === 📺 ABA 1: FEED COMPLETO ===
 with aba_feed:
+
         if st.session_state.perfil_visitado:
             autor_vis = st.session_state.perfil_visitado
             if st.button("⬅️ Voltar ao Feed Global"):
