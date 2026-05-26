@@ -429,7 +429,7 @@ def renderizar_lista_filtrada(lista_posts):
                                 with col_c2:
                                     selo_c = obter_selo_texto(c_user, uid_c, cargo_adicional=cargo_c)
                                     renderizar_caixa_mensagem(c_user, c_msg, selo_c, txt_caixa_c, eh_admin=verificar_se_eh_dev(uid_c))
-       else:
+        else:
             st.caption("Ninguém comentou ainda.")
     except Exception as e:
         pass
@@ -454,8 +454,7 @@ aba_admin = abas[6] if len(abas) > 6 else None
 
 # === 📺 ABA 1: FEED COMPLETO ===
 with aba_feed:
-
-:
+    if st.session_state.perfil_visited:
 
         if st.session_state.perfil_visitado:
             autor_vis = st.session_state.perfil_visitado
