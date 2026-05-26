@@ -8,7 +8,7 @@ import base64
 st.set_page_config(page_title="Silver Tok v3.5 Master", page_icon="🎬", layout="centered")
 
 # --- CONFIGURAÇÕES DE MANUTENÇÃO (MODO PRIVADO) ---
-MODO_MANUTENCAO = False  # Alterado para False para liberar o acesso da galera!
+MODO_MANUTENCAO = False  
 ID_REAL_DEVELOPER = "04daaa3c-63ef-486c-b33e-54d4e80ee9e9"
 
 # --- CONEXÃO BANCO DE DADOS ---
@@ -31,13 +31,22 @@ if supabase is None:
 CHAVE_SECRETA = "ChatPrivado2026"
 FOTO_PADRAO = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
 
-# --- CONFIGURAÇÃO DE COSMÉTICOS (LOJA EXPANDIDA COM BANNERS DE ANIMES/SÉRIES) ---
+# --- BANCO DE DADOS LOCAL DE SHIMEJIS / MASCOTES ---
+SHIMEJIS_DISPONIVEIS = {
+    "Nenhum": "",
+    "Mascote Espadachim (Livro)": "⚔️",
+    "Mago Ancestral (Livro)": "🔮",
+    "Raposa de Fogo": "🦊",
+    "Mini Robô": "🤖",
+    "Gatinho Chibi": "🐱"
+}
+
+# --- CONFIGURAÇÃO DE COSMÉTICOS ---
 COSMETICOS = {
     "bronze": {"nome": "🥉 Bronze Estelar", "preco": 150, "img": "https://cdn-icons-png.flaticon.com/512/5243/5243422.png"},
     "prata": {"nome": "🥈 Prata Lendária", "preco": 300, "img": "https://cdn-icons-png.flaticon.com/512/5243/5243444.png"},
     "caixa_azul": {"nome": "🔷 Balão Azul Moderno", "preco": 100, "img": "https://cdn-icons-png.flaticon.com/512/2460/2460884.png"},
     "caixa_neon": {"nome": "🔮 Balão Neon Cyber", "preco": 250, "img": "https://cdn-icons-png.flaticon.com/512/2037/2037041.png"},
-    # Banners Temáticos liberados para a galera curtir:
     "banner_otaku": {"nome": "🔥 Mestre Otaku (Anime)", "preco": 400, "img": "https://cdn-icons-png.flaticon.com/512/2206/2206241.png"},
     "banner_hollywood": {"nome": "🎬 Cinéfilo de Carteirinha", "preco": 400, "img": "https://cdn-icons-png.flaticon.com/512/3172/3172554.png"},
     "banner_dorama": {"nome": "🌸 Dorama Lover", "preco": 450, "img": "https://cdn-icons-png.flaticon.com/512/4230/4230633.png"}
@@ -48,7 +57,7 @@ VIDEOS_BOT_BOTEY = [
     {"id": "bot_2", "titulo": "🌌 Relaxing Cinematic View 4K", "url_video": "https://media.w3.org/2010/05/sintel/trailer_hd.mp4", "username_autor": "🤖 Bot_Natureza", "avatar_autor": "https://cdn-icons-png.flaticon.com/512/4213/4213732.png", "curtidas": 98, "tipo_formato": "horizontal"}
 ]
 
-# --- PERGUNTAS DO QUIZ GEK ---
+# --- PERGUNTAS DO QUIZ GEEK ---
 PERGUNTAS_QUIZ = {
     "Anime e Animações": [
         {"pergunta": "Qual é o objetivo principal de Luffy em One Piece?", "opcoes": ["Se tornar Hokage", "Encontrar o All Blue", "Ser o Rei dos Piratas", "Derrotar Madara"], "correta": "Ser o Rei dos Piratas"},
@@ -83,9 +92,11 @@ def obter_status_emoji(timestamp_str):
 def verificar_se_eh_dev(user_id):
     return str(user_id) == ID_REAL_DEVELOPER
 
-def obter_selo_texto(username_alvo, user_id_alvo=None):
+def obter_selo_texto(username_alvo, user_id_alvo=None, cargo_adicional="Nenhum"):
     if verificar_se_eh_dev(user_id_alvo) or username_alvo == "Rafael_oficial":
         return " 👑 DEV"
+    if cargo_adicional and cargo_adicional != "Nenhum":
+        return f" 🎖️ {cargo_adicional}"
     try:
         dados = supabase.table("perfis_usuarios").select("id").eq("username", username_alvo).execute()
         if dados.data:
@@ -98,11 +109,15 @@ def obter_selo_texto(username_alvo, user_id_alvo=None):
     except: pass
     return ""
 
-def renderizar_foto_com_banner(url_foto, username_alvo, user_id_alvo=None, tamanho=90, banner_equipado="Nenhum"):
+def renderizar_foto_com_banner(url_foto, username_alvo, user_id_alvo=None, tamanho=90, banner_equipado="Nenhum", shimeji="Nenhum"):
     if not url_foto:
         url_foto = FOTO_PADRAO
     
-    # Customizações Estilizadas para Banners Temáticos Geek
+    # Renderização de Shimejis/Mascotes Flutuantes
+    shimeji_html = ""
+    if shimeji in SHIMEJIS_DISPONIVEIS and SHIMEJIS_DISPONIVEIS[shimeji] != "":
+        shimeji_html = f'<div style="position: absolute; bottom: -5px; right: -5px; font-size: {int(tamanho*0.35)}px; background: white; border-radius: 50%; padding: 2px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 12;">{SHIMEJIS_DISPONIVEIS[shimeji]}</div>'
+
     if verificar_se_eh_dev(user_id_alvo) or username_alvo == "Rafael_oficial" or banner_equipado == "👑 Coroa Suprema DEV":
         estilo_css = f"border-radius: 50%; object-fit: cover; border: 4px solid #ffd700; box-shadow: 0 0 20px #ffd700;"
         coroa_html = f'<div style="position: absolute; top: -22px; left: 50%; transform: translateX(-50%); font-size: {int(tamanho*0.38)}px; z-index: 10;">👑</div>'
@@ -129,6 +144,7 @@ def renderizar_foto_com_banner(url_foto, username_alvo, user_id_alvo=None, taman
     <div style="position: relative; display: inline-block; text-align: center; margin-top: 10px;">
         {coroa_html}
         <img src="{url_foto}" width="{tamanho}" height="{tamanho}" style="{estilo_css}">
+        {shimeji_html}
     </div>
     """
     st.markdown(html, unsafe_allow_html=True)
@@ -236,6 +252,8 @@ else:
         
     u_name = user_atual.get("username", "Membro")
     is_admin = verificar_se_eh_dev(u_id)
+    u_cargo = user_atual.get("biografia") if user_atual.get("biografia") else "Nenhum" # Utilizando biografia temporariamente como storage de cargos injetados
+    u_shimeji = user_atual.get("localizacao") if user_atual.get("localizacao") else "Nenhum" # Utilizando localizacao temporariamente como storage do shimeji ativo
 
     try:
         supabase.table("perfis_usuarios").update({"ultimo_visto": datetime.now(timezone.utc).isoformat()}).eq("id", u_id).execute()
@@ -250,13 +268,23 @@ else:
     # --- BARRA LATERAL (Sidebar unificada) ---
     with st.sidebar:
         banner_v = user_atual.get("banner_ativo", "Nenhum")
-        renderizar_foto_com_banner(user_atual.get("url_foto_perfil") or FOTO_PADRAO, u_name, u_id, tamanho=90, banner_equipado=banner_v)
+        renderizar_foto_com_banner(user_atual.get("url_foto_perfil") or FOTO_PADRAO, u_name, u_id, tamanho=90, banner_equipado=banner_v, shimeji=u_shimeji)
         
-        selo_proprio = obter_selo_texto(u_name, u_id)
+        selo_proprio = obter_selo_texto(u_name, u_id, cargo_adicional=u_cargo)
         st.write(f"**{user_atual.get('apelido') or u_name}** {selo_proprio}")
         st.markdown(f"🪙 **Silver Coins:** {user_atual.get('moedas', 0)}")
         
-        # --- INVENTÁRIO ATUALIZADO COM OS NOVOS BANNERS ---    
+        # --- SELETOR DE SHIMEJIS PROPRIOS ---
+        with st.expander("🦊 Meus Shimejis / Mascotes"):
+            escolha_shim = st.selectbox("Escolha seu Acompanhante:", list(SHIMEJIS_DISPONIVEIS.keys()), index=list(SHIMEJIS_DISPONIVEIS.keys()).index(u_shimeji) if u_shimeji in SHIMEJIS_DISPONIVEIS else 0)
+            if st.button("Ativar Mascote ✨", use_container_width=True):
+                try:
+                    supabase.table("perfis_usuarios").update({"localizacao": escolha_shim}).eq("id", u_id).execute()
+                    st.toast("Mascote invocado!")
+                    st.rerun()
+                except: pass
+
+        # --- INVENTÁRIO ---    
         with st.expander("🎒 Meu Inventário"):
             st.caption("Equipe suas customizações salvas:")
             st.write(f"Ativo no momento: **{user_atual.get('banner_ativo', 'Nenhum')}**")
@@ -281,7 +309,6 @@ else:
                 opcoes_inventario.insert(2, "👑 Balão Dourado DEV")
                 
             escolha_custom = st.selectbox("Selecione para ativar:", opcoes_inventario, key="select_custom_inv")
-            
             if st.button("Equipar Cosmético 🛡️", key="btn_equipar_inv_fix"):
                 try:
                     resposta = supabase.table("perfis_usuarios").update({"banner_ativo": escolha_custom}).eq("id", u_id).execute()
@@ -312,10 +339,13 @@ else:
             st.session_state.perfil_visitado = None
             st.rerun()
 
-    # --- NAVEGAÇÃO PRINCIPAL (ABAS EXTENDIDAS) ---
-    aba_feed, aba_loja, aba_chat, aba_entretenimento, aba_quiz, aba_status, aba_notif = st.tabs([
-        "📺 Silver Tok (Feed)", "🛒 Loja & Caixas", "💬 Chat-Exv", "🍿 Área Geek", "🧠 Super Quiz", "✨ Status", f"🔔 Notificações ({total_notif})"
-    ])
+    # --- NAVEGAÇÃO PRINCIPAL ---
+    abas_principais = ["📺 Silver Tok (Feed)", "🛒 Loja & Caixas", "💬 Chat-Exv", "🍿 Área Geek", "🧠 Super Quiz", "✨ Status", f"🔔 Notificações ({total_notif})"]
+    if is_admin:
+        abas_principais.append("👑 Painel Admin Secreto")
+        
+    abas = st.tabs(abas_principais)
+    aba_feed, aba_loja, aba_chat, aba_entretenimento, aba_quiz, aba_status, aba_notif = abas[0], abas[1], abas[2], abas[3], abas[4], abas[5], abas[6]
 
     # --- LISTAGEM DO FEED COM SEÇÃO DE COMENTÁRIOS ---
     def renderizar_lista_filtrada(lista_posts, identificador_formato, termo_busca="", ordenacao=""):
@@ -395,19 +425,21 @@ else:
                             if c_msg and str(c_msg).lower() != "none":
                                 col_c1, col_c2 = st.columns([1, 6])
                                 try:
-                                    estilo_c = supabase.table("perfis_usuarios").select("banner_ativo", "id", "url_foto_perfil").eq("username", c_user).execute()
+                                    estilo_c = supabase.table("perfis_usuarios").select("banner_ativo", "id", "url_foto_perfil", "biografia").eq("username", c_user).execute()
                                     txt_caixa_c = estilo_c.data[0].get("banner_ativo", "Nenhum") if estilo_c.data else "Nenhum"
                                     uid_c = estilo_c.data[0].get("id") if estilo_c.data else None
                                     foto_c = estilo_c.data[0].get("url_foto_perfil") or FOTO_PADRAO
+                                    cargo_c = estilo_c.data[0].get("biografia") if estilo_c.data else "Nenhum"
                                 except:
                                     txt_caixa_c = "Nenhum"
                                     uid_c = None
                                     foto_c = FOTO_PADRAO
+                                    cargo_c = "Nenhum"
                                     
                                 with col_c1:
                                     renderizar_foto_com_banner(foto_c, c_user, uid_c, tamanho=40, banner_equipado=txt_caixa_c)
                                 with col_c2:
-                                    selo_c = obter_selo_texto(c_user, uid_c)
+                                    selo_c = obter_selo_texto(c_user, uid_c, cargo_adicional=cargo_c)
                                     renderizar_caixa_mensagem(c_user, c_msg, selo_c, txt_caixa_c, eh_admin=verificar_se_eh_dev(uid_c))
                     else:
                         st.caption("Ninguém comentou ainda.")
@@ -427,9 +459,9 @@ else:
                 vis_id = p_info.get("id", "")
                 col_p1, col_p2 = st.columns([1, 3])
                 with col_p1:
-                    renderizar_foto_com_banner(p_info.get("url_foto_perfil") or FOTO_PADRAO, autor_vis, vis_id, tamanho=80, banner_equipado=p_info.get("banner_ativo", "Nenhum"))
+                    renderizar_foto_com_banner(p_info.get("url_foto_perfil") or FOTO_PADRAO, autor_vis, vis_id, tamanho=80, banner_equipado=p_info.get("banner_ativo", "Nenhum"), shimeji=p_info.get("localizacao", "Nenhum"))
                 with col_p2:
-                    s_vis = obter_selo_texto(autor_vis, vis_id)
+                    s_vis = obter_selo_texto(autor_vis, vis_id, cargo_adicional=p_info.get("biografia", "Nenhum"))
                     st.subheader(f"{p_info.get('apelido') or autor_vis} {s_vis}")
                     
                     if autor_vis != u_name and vis_id:
@@ -689,7 +721,7 @@ else:
                                 with col_u1:
                                     renderizar_foto_com_banner(u.get("url_foto_perfil") or FOTO_PADRAO, m_username, u.get("id"), tamanho=50, banner_equipado=u.get("banner_ativo", "Nenhum"))
                                 with col_u2:
-                                    s_u = obter_selo_texto(m_username, u.get("id"))
+                                    s_u = obter_selo_texto(m_username, u.get("id"), cargo_adicional=u.get("biografia", "Nenhum"))
                                     st.markdown(f"**{m_username}** {s_u}")
                                     st.caption(obter_status_emoji(u.get("ultimo_visto")))
                                 with col_u3:
@@ -712,75 +744,43 @@ else:
                                 st.success(f"Você agora está seguindo {busca_amigo.strip()}!")
                         except: st.error("Incompatibilidade ou falha ao seguir.")
 
-    # === 🍿 NOVA ABA: ÁREA GEEK (CATÁLOGO DE ENTRETENIMENTO) ===
+    # === 🍿 ABA: ÁREA GEEK (CATÁLOGO EXPANDIDO COM LIVROS E MANGÁS) ===
     with aba_entretenimento:
-        st.header("🍿 Catálogo Geek da Comunidade")
-        st.caption("Indique obras, compartilhe links e veja o que a galera está assistindo!")
+        st.header("🍿 Central Geek & Literária")
+        st.caption("Veja as obras oficiais adicionadas pelo Admin e pela comunidade!")
         
-        with st.expander("🎬 Adicionar Recomendação no Catálogo"):
-            cat_tipo = st.selectbox("Categoria:", ["Animes", "Filmes", "Séries e Desenhos", "Doramas"])
-            cat_titulo = st.text_input("Título da Obra:")
-            cat_url = st.text_input("Link de imagem do Poster ou Trailer (Opcional):")
-            cat_desc = st.text_area("O que você achou dessa obra?")
-            
-            if st.button("Adicionar ao Catálogo 🚀", use_container_width=True):
-                if cat_titulo.strip() and cat_desc.strip():
-                    try:
-                        # Salva na tabela estruturada do chat usando o prefixo CATALOGO para organização limpa
-                        cod_catalogo = f"CATALOGO-{cat_tipo.upper()}"
-                        mensagem_estruturada = f"**{cat_titulo.strip()}**\n\n{cat_desc.strip()}"
-                        if cat_url.strip():
-                            mensagem_estruturada += f"\n\n{cat_url.strip()}"
-                            
-                        supabase.table("bate-papo_profissional").insert({
-                            "username": u_name,
-                            "url_foto_perfil": user_atual.get("url_foto_perfil") or FOTO_PADRAO,
-                            "mensagem": mensagem_estruturada,
-                            "codigo_sala": cod_catalogo
-                        }).execute()
-                        st.success("Recomendação compartilhada com sucesso!")
-                        st.rerun()
-                    except:
-                        st.error("Erro ao publicar indicação.")
-                else:
-                    st.warning("Título e descrição são obrigatórios.")
+        tabs_geek = st.tabs(["⛩️ Animes", "🎬 Filmes", "📺 Séries & Desenhos", "🌸 Doramas", "📖 Livros & Mangás"])
+        categorias_mapeamento = ["Animes", "Filmes", "Séries e Desenhos", "Doramas", "Livros e Mangás"]
         
-        st.divider()
-        tabs_geek = st.tabs(["⛩️ Animes", "🎬 Filmes", "📺 Séries / Desenhos", "🌸 Doramas"])
-        
-        categorias_mapeamento = ["Animes", "Filmes", "Séries e Desenhos", "Doramas"]
         for idx_t, nome_cat in enumerate(categorias_mapeamento):
             with tabs_geek[idx_t]:
-                st.subheader(f"Indicações de {nome_cat}")
+                st.subheader(f"Catálogo de {nome_cat}")
                 try:
                     dados_cat = supabase.table("bate-papo_profissional").select("*").eq("codigo_sala", f"CATALOGO-{nome_cat.upper()}").execute()
                     if dados_cat.data:
                         for item in reversed(dados_cat.data):
                             with st.container(border=True):
-                                st.caption(f"Indicado por: @{item.get('username')}")
+                                st.caption(f"📌 Postado por: @{item.get('username')}")
                                 msg_completa = item.get('mensagem', '')
                                 
-                                # Verifica se tem link de imagem no final e renderiza elegantemente
                                 linhas = msg_completa.split("\n\n")
                                 st.markdown(linhas[0])
                                 if len(linhas) > 1:
                                     st.write(linhas[1])
                                 if len(linhas) > 2 and linhas[2].startswith("http"):
-                                    st.image(linhas[2], width=200)
+                                    st.image(linhas[2], width=180)
                     else:
-                        st.info(f"Nenhum conteúdo adicionado em {nome_cat} ainda. Comece agora!")
-                except:
-                    st.info("Catálogo pronto para receber as primeiras publicações.")
+                        st.info(f"Nenhum conteúdo em {nome_cat} por enquanto.")
+                except: pass
 
-    # === 🧠 NOVA ABA: SUPER QUIZ (RECOMPENSAS EM SILVER COINS) ===
+    # === 🧠 ABA: SUPER QUIZ (SISTEMA DE GANHO DE RECOMPENSAS) ===
     with aba_quiz:
         st.header("🧠 Desafio Quiz Silver Coins")
-        st.caption("Acerte as perguntas e ganhe 🪙 100 Silver Coins direto na sua carteira!")
+        st.caption("Acerte e leve 🪙 100 Silver Coins!")
         
         cat_quiz_escolhido = st.selectbox("Escolha um Tema para Jogar:", list(PERGUNTAS_QUIZ.keys()))
         perguntas_tema = PERGUNTAS_QUIZ[cat_quiz_escolhido]
         
-        # Define um índice simples na sessão para alternar as perguntas
         key_index_quiz = f"quiz_idx_{cat_quiz_escolhido.replace(' ', '_')}"
         if key_index_quiz not in st.session_state:
             st.session_state[key_index_quiz] = 0
@@ -797,18 +797,17 @@ else:
             if st.button("Enviar Resposta 🎯", use_container_width=True):
                 if resposta_usuario == item_quiz["correta"]:
                     st.balloons()
-                    st.success("🎯 Resposta Correta! Você ganhou +100 Silver Coins!")
+                    st.success("🎯 Correto! +100 Silver Coins!")
                     try:
                         saldo_atualizado = int(user_atual.get("moedas", 0)) + 100
                         supabase.table("perfis_usuarios").update({"moedas": saldo_atualizado}).eq("id", u_id).execute()
                         st.session_state[key_index_quiz] += 1
                         st.rerun()
-                    except:
-                        st.error("Erro ao computar premiação no banco.")
+                    except: st.error("Erro ao computar premiação.")
                 else:
                     st.error("❌ Resposta incorreta! Tente novamente.")
         else:
-            st.success(f"🎉 Parabéns! Você concluiu todas as perguntas de {cat_quiz_escolhido}!")
+            st.success(f"🎉 Você concluiu tudo de {cat_quiz_escolhido}!")
             if st.button("Reiniciar este Quiz 🔄"):
                 st.session_state[key_index_quiz] = 0
                 st.rerun()
@@ -823,7 +822,7 @@ else:
                     "titulo": f"[STATUS] {stat_txt.strip()}", "url_video": "", "username_autor": u_name,
                     "avatar_autor": user_atual.get("url_foto_perfil") or FOTO_PADRAO, "curtidas": 0, "id_autor": u_id, "tipo_formato": "horizontal"
                 }).execute()
-                st.success("Status atualizado!")
+                st.success("Status updated!")
                 st.rerun()
             except: pass
 
@@ -835,7 +834,74 @@ else:
             if n_lista.data:
                 for n in reversed(n_lista.data):
                     st.write(f"• {n.get('mensagem', '')}")
-            else:
-                st.info("Nenhuma notificação por aqui.")
-        except:
-            st.info("Notificações indisponíveis no momento.")
+            else: st.info("Nenhuma notificação por aqui.")
+        except: pass
+
+    # === 👑 ABA EXCLUSIVA DO RAFAEL: PAINEL ADMIN SECRETO ===
+    if is_admin:
+        aba_adm = abas[-1]
+        with aba_adm:
+            st.header("👑 Painel Secreto de Controle do Rafael")
+            
+            # 1. BOT DE CADASTRO AUTOMÁTICO DE OBRAS
+            st.subheader("🤖 Bot Inteligente de Cadastro de Conteúdo")
+            with st.container(border=True):
+                bot_tipo = st.selectbox("Escolha onde Adicionar:", ["Animes", "Filmes", "Séries e Desenhos", "Doramas", "Livros e Mangás"], key="bot_tipo")
+                bot_nome = st.text_input("Nome exato da Obra / Título:", key="bot_nome")
+                
+                # Adaptação dinâmica de texto baseado na escolha
+                txt_contagem = "Quantidade de Páginas/Volumes:" if bot_tipo == "Livros e Mangás" else "Quantidade de Episódios/Temporadas:"
+                bot_caps = st.text_input(txt_contagem, placeholder="Ex: 24 episódios / 3 volumes", key="bot_caps")
+                
+                txt_dub = "Idioma / Editora:" if bot_tipo == "Livros e Mangás" else "Tipo de Dublagem / Idioma:"
+                bot_dub = st.text_input(txt_dub, placeholder="Ex: Dublado PT-BR / Panini", key="bot_dub")
+                bot_img = st.text_input("URL da Imagem de Capa/Poster (Opcional):", key="bot_img")
+                
+                if st.button("Executar Cadastro pelo Bot ⚡", use_container_width=True):
+                    if bot_nome.strip() and bot_caps.strip():
+                        try:
+                            cod_catalogo = f"CATALOGO-{bot_tipo.upper()}"
+                            msg_montada = f"### {bot_nome.strip()} ✨\n• **Info:** {bot_caps.strip()} | **Specs:** {bot_dub.strip()}"
+                            if bot_img.strip():
+                                msg_montada += f"\n\n{bot_img.strip()}"
+                                
+                            supabase.table("bate-papo_profissional").insert({
+                                "username": "🤖 Bot_Catalogador",
+                                "url_foto_perfil": "https://cdn-icons-png.flaticon.com/512/2206/2206241.png",
+                                "mensagem": msg_montada,
+                                "codigo_sala": cod_catalogo
+                            }).execute()
+                            st.success(f"🤖 Bot: '{bot_nome}' adicionado com sucesso à aba {bot_tipo}!")
+                        except: st.error("Falha na execução do bot.")
+                    else: st.warning("Preencha o nome e dados mínimos.")
+            
+            # 2. INJETOR DE DINHEIRO E CARGOS EM QUALQUER CONTA
+            st.subheader("💸 Gerenciador de Usuários, Moedas & Cargos")
+            try:
+                todos_usuarios = supabase.table("perfis_usuarios").select("*").execute()
+                if todos_usuarios.data:
+                    for u_comp in todos_usuarios.data:
+                        username_alvo = u_comp.get("username")
+                        id_alvo = u_comp.get("id")
+                        saldo_alvo = u_comp.get("moedas", 0)
+                        cargo_atual = u_comp.get("biografia") if u_comp.get("biografia") else "Tester"
+                        
+                        with st.container(border=True):
+                            st.write(f"👤 **Usuário:** @{username_alvo} | Saldo Atual: 🪙 {saldo_alvo} | Cargo: {cargo_atual}")
+                            
+                            c1, c2, c3 = st.columns(3)
+                            with c1:
+                                novo_money = st.number_input(f"Injetar Moedas em @{username_alvo}", min_value=0, max_value=999999, value=int(saldo_alvo), step=100, key=f"mon_{id_alvo}")
+                            with c2:
+                                cargo_novo = st.selectbox(f"Mudar Cargo", ["Tester", "Best Friends of the dev", "Vice-dev", "Membro Comum"], key=f"carg_{id_alvo}")
+                            with c3:
+                                st.write("##")
+                                if st.button("Aplicar Alterações ⚙️", key=f"save_adm_{id_alvo}", use_container_width=True):
+                                    supabase.table("perfis_usuarios").update({
+                                        "moedas": novo_money,
+                                        "biografia": cargo_novo
+                                    }).eq("id", id_alvo).execute()
+                                    st.toast("Modificações aplicadas!")
+                                    st.rerun()
+            except Exception as e:
+                st.error(f"Erro ao carregar painel de controle: {e}")
