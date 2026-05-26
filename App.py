@@ -345,7 +345,7 @@ else:
             if str(v.get("titulo", "")).startswith("[STATUS]") or str(v.get("titulo", "")).startswith("[ANIMES]") or str(v.get("titulo", "")).startswith("[FILMES]") or str(v.get("titulo", "")).startswith("[SÉRIES / DESENHOS]") or str(v.get("titulo", "")).startswith("[DORAMAS]"): 
                 continue
             autor = v.get('username_autor', 'Membro')
-            id_autor_post = v.get('('id_autor')
+            id_autor_post = v.get('id_autor')
             img_autor = v.get('avatar_autor') or FOTO_PADRAO
             video_url = v.get("url_video", "")
             id_post = v.get("id")
