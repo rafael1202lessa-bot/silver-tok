@@ -429,14 +429,17 @@ def renderizar_lista_filtrada(lista_posts):
                                 with col_c2:
                                     selo_c = obter_selo_texto(c_user, uid_c, cargo_adicional=cargo_c)
                                     renderizar_caixa_mensagem(c_user, c_msg, selo_c, txt_caixa_c, eh_admin=verificar_se_eh_dev(uid_c))
-                except Exception as e:
+                        except Exception as e:
         pass
 
-# --- NAVEGAÇÃO PRINCIPAL ---
-abas_principais = ["📺 Silver Tok (Feed)", "🛒 Loja", "💬 Chat", "🎮 Entretenimento", "🤓 Área Geek", "❓ Quiz"]
+    # --- NAVEGAÇÃO PRINCIPAL ---
+    abas_principais = ["📺 Silver Tok (Feed)", "🛒 Loja", "💬 Chat", "🎮 Entretenimento", "🤓 Área Geek", "❓ Quiz"]
 
-if is_admin:
-    abas_principais.append("👑 Painel Admin Secreto")
+    if is_admin:
+        abas_principais.append("👑 Painel Admin Secreto")
+
+    abas = st.tabs(abas_principais)
+    
 
 abas = st.tabs(abas_principais)
 
