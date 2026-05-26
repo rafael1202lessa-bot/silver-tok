@@ -14,6 +14,10 @@ except Exception as e:
     st.error(f"Erro crítico na inicialização do Supabase: {str(e)}")
     st.stop()
 
+# --- ESTADO DE DESENVOLVIMENTO (BLOQUEIO BETA) ---
+# Mude para False quando quiser liberar o aplicativo para todo mundo!
+ESTADO_DESENVOLVIMENTO = True 
+
 # --- INICIALIZAÇÃO DO ESTADO DA SESSÃO ---
 if "logado" not in st.session_state:
     st.session_state.logado = False
@@ -36,15 +40,12 @@ def criar_conta(username, password, nickname, codigo):
         return "Código de convite inválido! Você precisa do código correto para criar conta."
     
     try:
-        # Verifica se o usuário já existe
         existe = supabase.table("perfis_usuarios").select("*").eq("username", username).execute()
         if existe.data:
             return "Este nome de usuário já está em uso."
         
-        # Define título inicial baseado no username
         titulo = TITULOS.get(username, "Usuário")
         
-        # Insere no banco de dados
         novo_usuario = {
             "username": username,
             "senha": password,
@@ -108,7 +109,21 @@ if not st.session_state.logado:
 # --- SE O USUÁRIO ESTÁ LOGADO, ENTRA NO APLICATIVO PRINCIPAL ---
 user_atual = st.session_state.user_data
 
-# Sidebar com Perfil rápido
+# 🚨 VERIFICAÇÃO DE BLOQUEIO DE DESENVOLVIMENTO 🚨
+if ESTADO_DESENVOLVIMENTO:
+    # Só permite a entrada se o título for Desenvolvedor ou Tester
+    if user_atual["titulo"] not in ["👑 Desenvolvedor", "🧪 Tester"]:
+        st.title("🚧 Aplicativo em Manutenção")
+        st.warning(f"Olá {user_atual['nickname']}, o Silver Tok v2 está atualmente em desenvolvimento exclusivo para a equipe de testes.")
+        st.info("Acesso negado para a sua conta no momento. Tente novamente mais tarde!")
+        
+        if st.button("Sair da Conta"):
+            st.session_state.logado = False
+            st.session_state.user_data = None
+            st.rerun()
+        st.stop() # Interrompe o código aqui para o usuário comum não ver o app
+
+# --- SE PASSOU NO TESTE OU NÃO ESTÁ EM MANUTENÇÃO, CARREGA O APP ---
 st.sidebar.title(f"Olá, {user_atual['nickname']}!")
 st.sidebar.write(f"**Cargo:** {user_atual['titulo']}")
 st.sidebar.write(f"**Seguidores:** {user_atual['seguidores']} 👥")
@@ -125,7 +140,6 @@ if st.sidebar.button("Sair da Conta"):
 # --- ABAS PRINCIPAIS DO APLICATIVO ---
 abas = ["📱 Silver Tok (Feed/Shorts)", "🎥 Gravar Vídeo", "💬 Chat & Amigos", "📺 Stream (Filmes/Animes)", "👤 Meu Perfil"]
 
-# Se for a sua conta principal, adiciona o Painel de Comando Dev
 if user_atual['username'] == "rafael_oficial":
     abas.append("⚡ Painel Dev (God Mode)")
 
@@ -159,7 +173,6 @@ elif aba_ativa == "👤 Meu Perfil":
 elif aba_ativa == "⚡ Painel Dev (God Mode)":
     st.header("Painel Secreto do Desenvolvedor 👑 (God Mode)")
     
-    # Puxar todos os usuários do banco para escolher quem gerenciar
     try:
         usuarios_req = supabase.table("perfis_usuarios").select("username, nickname").execute()
         lista_usuarios = [u["username"] for u in usuarios_req.data]
@@ -168,7 +181,6 @@ elif aba_ativa == "⚡ Painel Dev (God Mode)":
         lista_usuarios = []
 
     if lista_usuarios:
-        # Interface para selecionar o alvo do comando
         usuario_alvo = st.selectbox("Selecione o usuário para aplicar o comando:", lista_usuarios)
         
         col1, col2, col3 = st.columns(3)
@@ -212,4 +224,3 @@ elif aba_ativa == "⚡ Painel Dev (God Mode)":
                 st.rerun()
     else:
         st.warning("Nenhum usuário cadastrado no banco de dados ainda.")
-                    
