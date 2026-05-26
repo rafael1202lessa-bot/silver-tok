@@ -429,7 +429,7 @@ def renderizar_lista_filtrada(lista_posts):
                                 with col_c2:
                                     selo_c = obter_selo_texto(c_user, uid_c, cargo_adicional=cargo_c)
                                     renderizar_caixa_mensagem(c_user, c_msg, selo_c, txt_caixa_c, eh_admin=verificar_se_eh_dev(uid_c))
-      else:
+       else:
             st.caption("Ninguém comentou ainda.")
     except:
         pass
@@ -440,11 +440,21 @@ abas_principais = ["📺 Silver Tok (Feed)", "🛒 Loja", "💬 Chat", "🎮 Ent
 if is_admin:
     abas_principais.append("👑 Painel Admin Secreto")
 
+# Criar a estrutura de abas dinâmicas
 abas = st.tabs(abas_principais)
-aba_feed, aba_loja, aba_chat, aba_entretenimento, aba_geek, aba_quiz, aba_admin = abas
+
+# Distribuir as abas corretamente de acordo com o tamanho
+aba_feed = abas[0]
+aba_loja = abas[1]
+aba_chat = abas[2]
+aba_entretenimento = abas[3]
+aba_geek = abas[4]
+aba_quiz = abas[5]
+aba_admin = abas[6] if len(abas) > 6 else None
 
 # === 📺 ABA 1: FEED COMPLETO ===
 with aba_feed:
+
         if st.session_state.perfil_visitado:
             autor_vis = st.session_state.perfil_visitado
             if st.button("⬅️ Voltar ao Feed Global"):
