@@ -310,7 +310,7 @@ else:
             if st.button("Equipar Cosmético 🛡️", key="btn_equipar_inv_fix"):
                 try:
                     supabase.table("perfis_usuarios").update({"banner_ativo": escolha_custom}).eq("id", u_id).execute()
-                    st.toast("Item equipado com sucesso! 🛡️")
+                    st.toast("Item équipé com sucesso! 🛡️")
                     st.rerun()
                 except: pass
 
@@ -334,18 +334,18 @@ else:
             st.session_state.perfil_visitado = None
             st.rerun()
 
-    # --- LISTAGEM DO FEED TRATADA CONTRA ERROS ---
-def renderizar_lista_filtrada(lista_posts):
-    if termo_busca:
-        lista_posts = [p for p in lista_posts if termo_busca.lower() in str(p.get("titulo", "")).lower()]
+    # --- LISTAGEM DO FEED TRATADA CONTRA FALHAS ---
+    def renderizar_lista_filtrada(lista_posts, identificador_formato, termo_busca="", ordenacao=""):
+        if termo_busca:
+            lista_posts = [p for p in lista_posts if termo_busca.lower() in str(p.get("titulo", "")).lower()]
         if ordenacao == "🔥 Mais Populares":
-            lista_posts = sorted(lista_posts, key=lambda x: x.get("likes", 0), reverse=True)
+            lista_posts = sorted(lista_posts, key=lambda x: x.get("curtidas", 0), reverse=True)
 
-    for idx, v in enumerate(lista_posts):
+        for idx, v in enumerate(lista_posts):
             if str(v.get("titulo", "")).startswith("[STATUS]") or str(v.get("titulo", "")).startswith("[ANIMES]") or str(v.get("titulo", "")).startswith("[FILMES]") or str(v.get("titulo", "")).startswith("[SÉRIES / DESENHOS]") or str(v.get("titulo", "")).startswith("[DORAMAS]"): 
                 continue
             autor = v.get('username_autor', 'Membro')
-            id_autor_post = v.get('id_autor')
+            id_autor_post = v.get('('id_autor')
             img_autor = v.get('avatar_autor') or FOTO_PADRAO
             video_url = v.get("url_video", "")
             id_post = v.get("id")
@@ -428,32 +428,21 @@ def renderizar_lista_filtrada(lista_posts):
                                     renderizar_foto_com_banner(foto_c, c_user, uid_c, tamanho=40, banner_equipado=txt_caixa_c)
                                 with col_c2:
                                     selo_c = obter_selo_texto(c_user, uid_c, cargo_adicional=cargo_c)
-           renderizar_caixa_mensagem(c_user, c_msg)
+                                    renderizar_caixa_mensagem(c_user, c_msg, selo_c, txt_caixa_c, eh_admin=verificar_se_eh_dev(uid_c))
+                    else:
+                        st.caption("Ninguém comentou ainda.")
+                except: pass
 
-# --- NAVEGAÇÃO PRINCIPAL ---
-abas_principais = ["📺 Silver Tok (Feed)", "🛒 Loja", "💬 Chat", "🎮 Entretenimento", "🤓 Área Geek", "❓ Quiz"]
+    # --- NAVEGAÇÃO PRINCIPAL ---
+    abas_principais = ["📺 Silver Tok (Feed)", "🛒 Loja & Caixas", "💬 Chat-Exv", "🍿 Área Geek", "🧠 Super Quiz", "✨ Status", f"🔔 Notificações ({total_notif})"]
+    if is_admin:
+        abas_principais.append("👑 Painel Admin Secreto")
+        
+    abas = st.tabs(abas_principais)
+    aba_feed, aba_loja, aba_chat, aba_entretenimento, aba_quiz, aba_status, aba_notif = abas[0], abas[1], abas[2], abas[3], abas[4], abas[5], abas[6]
 
-if is_admin:
-    abas_principais.append("👑 Painel Admin Secreto")
-
-abas = st.tabs(abas_principais)
-renderizar_caixa_mensagem(c_user, c_msg, selo_c, txt_caixa_c, eh_admin=verificar_se_eh_dev(uid_c))
-            
-aba_feed = abas[0]
-aba_loja = abas[1]
-aba_chat = abas[2]
-aba_entretenimento = abas[3]
-aba_geek = abas[4]
-aba_quiz = abas[5]
-aba_admin = abas[6] if len(abas) > 6 else None
-
-
-    
-# === 📺 ABA 1: FEED COMPLETO ===
-with aba_feed:
-
-    if st.session_state.perfil_visited:
-
+    # === 📺 ABA 1: FEED COMPLETO ===
+    with aba_feed:
         if st.session_state.perfil_visitado:
             autor_vis = st.session_state.perfil_visitado
             if st.button("⬅️ Voltar ao Feed Global"):
