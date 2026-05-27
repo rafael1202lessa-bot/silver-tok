@@ -1,8 +1,9 @@
 import streamlit as st
 from supabase import create_client, Client
+import random
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Silver Tok v2", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="Silver Tok v2", page_icon="🚀", layout="centered")
 
 # --- CONEXÃO COM SUPABASE ---
 url = "https://ldjtqgeyorkzbvuichjj.supabase.co"
@@ -22,233 +23,180 @@ if "logado" not in st.session_state:
     st.session_state.logado = False
 if "user_data" not in st.session_state:
     st.session_state.user_data = None
+if "perfil_visitado" not in st.session_state:
+    st.session_state.perfil_visitado = None
 
 CODIGO_CORRETO = "ChatPrivado2026"
-
-TITULOS = {
-    "rafael_oficial": "👑 Desenvolvedor",
-    "rafael_secundario": "⚔️ Vice-Dev",
-    "amiga_divulgadora": "📢 Divulgadora",
-}
-
-# --- FUNÇÕES DE AUTENTICAÇÃO ---
-def criar_conta(username, password, nickname, codigo):
-    if codigo != CODIGO_CORRETO:
-        return "Código de convite inválido!"
-    try:
-        existe = supabase.table("perfis_usuarios").select("*").eq("username", username).execute()
-        if existe.data:
-            return "Este nome de usuário já está em uso."
-        
-        titulo = TITULOS.get(username, "Usuário")
-        novo_usuario = {
-            "username": username,
-            "senha": password,
-            "nickname": nickname,
-            "titulo": titulo,
-            "seguidores": 0,
-            "dinheiro": 0,
-            "verificado": False,
-            "itens_exclusivos": []
-        }
-        supabase.table("perfis_usuarios").insert(novo_usuario).execute()
-        return "Sucesso"
-    except Exception as e:
-        return f"Erro ao criar conta: {str(e)}"
-
-def fazer_login(username, password):
-    try:
-        resultado = supabase.table("perfis_usuarios").select("*").eq("username", username).eq("senha", password).execute()
-        if resultado.data:
-            return resultado.data[0]
-        return None
-    except Exception as e:
-        st.error(f"Erro no login: {str(e)}")
-        return None
 
 # --- TELA DE LOGIN / CADASTRO ---
 if not st.session_state.logado:
     st.title("Welcome to Silver Tok v2 🚀")
     aba_login, aba_cadastro = st.tabs(["🔐 Entrar", "📝 Criar Conta"])
-    
     with aba_login:
         user_in = st.text_input("Usuário", key="login_user").strip()
         pass_in = st.text_input("Senha", type="password", key="login_pass")
         if st.button("Entrar", use_container_width=True):
-            user = fazer_login(user_in, pass_in)
-            if user:
+            resultado = supabase.table("perfis_usuarios").select("*").eq("username", user_in).eq("senha", pass_in).execute()
+            if resultado.data:
                 st.session_state.logado = True
-                st.session_state.user_data = user
+                st.session_state.user_data = resultado.data[0]
                 st.rerun()
             else:
-                st.error("Usuário ou senha incorretos.")
-                
-    with aba_cadastro:
-        new_user = st.text_input("Escolha seu Usuário", key="cad_user").strip()
-        new_nick = st.text_input("Nome de Exibição (Nickname)", key="cad_nick")
-        new_pass = st.text_input("Escolha sua Senha", type="password", key="cad_pass")
-        convite = st.text_input("Código de Convite Secreto", type="password", key="cad_code")
-        
-        if st.button("Cadastrar Nova Conta", use_container_width=True):
-            if not new_user or not new_pass or not new_nick:
-                st.warning("Preencha todos os campos!")
-            else:
-                status = criar_conta(new_user, new_pass, new_nick, convite)
-                if status == "Sucesso":
-                    st.success("Conta criada! Faça login ao lado.")
-                else:
-                    st.error(status)
+                st.error("Incorreto.")
     st.stop()
 
 user_atual = st.session_state.user_data
 
-# VERIFICAÇÃO DE BLOQUEIO DE DESENVOLVIMENTO
-if ESTADO_DESENVOLVIMENTO:
-    if user_atual["titulo"] not in ["👑 Desenvolvedor", "🧪 Tester"]:
-        st.title("🚧 Aplicativo em Manutenção")
-        st.warning(f"Olá {user_atual['nickname']}, o Silver Tok v2 está em desenvolvimento.")
-        if st.button("Sair da Conta"):
-            st.session_state.logado = False
-            st.session_state.user_data = None
-            st.rerun()
-        st.stop()
+# BLOQUEIO DE MANUTENÇÃO
+if ESTADO_DESENVOLVIMENTO and user_atual["titulo"] not in ["👑 Desenvolvedor", "🧪 Tester"]:
+    st.title("🚧 Aplicativo em Manutenção")
+    st.stop()
 
-# --- SIDEBAR ---
-st.sidebar.title(f"Olá, {user_atual['nickname']}!")
-st.sidebar.write(f"**Cargo:** {user_atual['titulo']}")
-st.sidebar.write(f"**Seguidores:** {user_atual['seguidores']} 👥")
-st.sidebar.write(f"**Carteira:** ${user_atual['dinheiro']}")
-
+# --- SIDEBAR COM SEU PERFIL ---
+st.sidebar.title(f"@{user_atual['username']}")
+st.sidebar.write(f" Carteira: ${user_atual['dinheiro']}")
 if st.sidebar.button("Sair da Conta"):
     st.session_state.logado = False
-    st.session_state.user_data = None
     st.rerun()
 
-# --- ABAS ---
-abas = ["📱 Silver Tok (Feed)", "🎥 Postar Vídeo", "💬 Chat & Amigos", "👤 Meu Perfil"]
-if user_atual['username'] == "rafael_oficial":
-    abas.append("⚡ Painel Dev (God Mode)")
+# --- MENU PRINCIPAL ---
+abas = ["📱 Feed", "🎥 Gravar/Postar", "💬 Chat", "👤 Meu Perfil"]
+if st.session_state.perfil_visitado:
+    abas.append("👀 Ver Perfil")
 
-aba_ativa = st.radio("Navegação", abas, horizontal=True)
+aba_ativa = st.radio("Menu", abas, horizontal=True)
 st.write("---")
 
-# --- CONTEÚDO DAS ABAS ---
-
-if aba_ativa == "📱 Silver Tok (Feed)":
-
+# --- 1. ABA FEED ---
+if aba_ativa == "📱 Feed":
     st.title("📱 Silver Tok Feed")
+    
+    termo_pesquisa = st.text_input("🔍 Pesquisar vídeos por legenda ou usuário:", "").strip().lower()
+    st.write("---")
     
     try:
         req = supabase.table("feed_videos").select("*").order("id", desc=True).execute()
         videos = req.data
-    except Exception as e:
-        st.error("Erro ao carregar o feed.")
+    except:
         videos = []
 
     if not videos:
-        st.info("O feed está vazio! Vá na aba '🎥 Postar Vídeo' para ser o primeiro a postar.")
+        st.info("Nenhum vídeo no feed.")
     else:
+        videos_filtrados = []
         for vid in videos:
-            # Uso do .get() evita que o app trave se a coluna estiver vazia
-            username_post = vid.get('username', 'usuario_anonimo')
-            nickname_post = vid.get('nickname', 'Usuário Silver')
-            legenda_post = vid.get('legenda', '')
-            url_video_post = vid.get('url_video', '')
-            curtidas_post = vid.get('curtidas', 0)
-            id_post = vid.get('id')
+            legenda = vid.get('legenda', '').lower()
+            username = vid.get('username', '').lower()
+            nickname = vid.get('nickname', '').lower()
+            
+            if not termo_pesquisa or (termo_pesquisa in legenda or termo_pesquisa in username or termo_pesquisa in nickname):
+                videos_filtrados.append(vid)
 
-            with st.container():
-                st.write(f"### 👤 {nickname_post} (@{username_post})")
-                if legenda_post:
-                    st.write(f"💬 {legenda_post}")
-                
-                col1, col2 = st.columns([1, 2])
-                with col1:
-                    if url_video_post:
-                        try:
-                            st.video(url_video_post)
-                        except:
-                            st.error("Não foi possível reproduzir este vídeo.")
-                    else:
-                        st.warning("Link de vídeo não encontrado para este post.")
+        if not videos_filtrados:
+            st.warning(f"Nenhum vídeo encontrado para '{termo_pesquisa}'.")
+        else:
+            for vid in videos_filtrados:
+                username_post = vid.get('username', 'anonimo')
+                nickname_post = vid.get('nickname', 'Usuário')
+                legenda_post = vid.get('legenda', '')
+                url_video_post = vid.get('url_video', '')
+                curtidas_post = vid.get('curtidas', 0)
+                id_post = vid.get('id')
+
+                with st.container():
+                    if st.button(f"👤 {nickname_post} (@{username_post})", key=f"user_{id_post}"):
+                        st.session_state.perfil_visitado = username_post
+                        st.info(f"Carregando perfil... Clique na aba '👀 Ver Perfil' no topo!")
                     
-                    st.write(f"❤️ {curtidas_post} curtidas")
-                    if st.button(f"Curtir post de @{username_post}", key=f"like_{id_post}"):
-                        try:
+                    if legenda_post:
+                        st.write(f" {legenda_post}")
+                    
+                    if url_video_post:
+                        st.video(url_video_post)
+                    
+                    # --- BOTÕES DE INTERAÇÃO ---
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        if st.button(f"❤️ {curtidas_post}", key=f"l_{id_post}", use_container_width=True):
                             supabase.table("feed_videos").update({"curtidas": curtidas_post + 1}).eq("id", id_post).execute()
                             st.rerun()
-                        except:
-                            st.error("Erro ao computar curtida.")
-                st.write("---")
-                
-elif aba_ativa == "🎥 Postar Vídeo":
-    st.title("🎥 Postar Novo Vídeo no Silver Tok")
-    st.write("Compartilhe um vídeo curto com a comunidade!")
-    
-    legenda = st.text_input("Escreva uma legenda marcante:")
-    url_do_video = st.text_input("Cole o link direto do vídeo (.mp4 ou link público):")
-    
-    st.caption("Dica de teste: Você pode usar este link de exemplo para testar se funciona: https://www.w3schools.com/html/mov_bbb.mp4")
-    
-    if st.button("Publicar no Feed", use_container_width=True):
-        if not url_do_video:
-            st.warning("Você precisa colocar o link do vídeo para publicar!")
-        else:
-            try:
-                novo_post = {
-                    "username": user_atual['username'],
-                    "nickname": user_atual['nickname'],
-                    "legenda": legenda,
-                    "url_video": url_do_video,
-                    "curtidas": 0
-                }
-                supabase.table("feed_videos").insert(novo_post).execute()
-                st.success("🚀 Vídeo publicado com sucesso! Vá para a aba do Feed para assistir.")
-            except Exception as e:
-                st.error(f"Erro ao publicar: {str(e)}")
+                    with c2:
+                        if st.button("🔗 Copiar", key=f"s_{id_post}", use_container_width=True):
+                            st.success("Link Copiado!")
+                    with c3:
+                        abrir_comentarios = st.checkbox("💬 Comentários", key=f"tab_c_{id_post}")
+                    
+                    if abrir_comentarios:
+                        st.write("**@rafael_oficial:** Esse vídeo ficou brabo! 🔥")
+                        st.text_input("Escreva um comentário...", key=f"inp_c_{id_post}")
+                    
+                    # --- 🗑️ NOVIDADE: FUNÇÃO DE DELETAR VÍDEO SEGURA ---
+                    # Só mostra o botão se quem está vendo for o dono do post OU se for você (rafael_oficial)
+                    if user_atual['username'] == username_post or user_atual['username'] == "rafael_oficial":
+                        st.write("") # Apenas um espacinho visual
+                        if st.button(f"🗑️ Apagar meu vídeo", key=f"del_{id_post}", use_container_width=True):
+                            try:
+                                supabase.table("feed_videos").delete().eq("id", id_post).execute()
+                                st.success("Vídeo removido com sucesso!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erro ao deletar: {str(e)}")
+                    
+                    st.write("================")
 
-elif aba_ativa == "💬 Chat & Amigos":
-    st.header("Central de Mensagens")
-    st.info("Área de conversas privadas, em grupo, amigos e seguidores (Próxima grande atualização!).")
+# --- 2. ABA GRAVAR VÍDEO ---
+elif aba_ativa == "🎥 Gravar/Postar":
+    st.title("🎥 Câmera Silver Tok")
+    aba_cam, aba_link = st.tabs(["📸 Gravar com a Câmera", "🔗 Postar por Link"])
+    
+    with aba_cam:
+        imagem_capturada = st.camera_input("Tirar foto/registro para o Feed")
+        if imagem_capturada:
+            st.success("Captura realizada com sucesso!")
+            
+    with aba_link:
+        legenda = st.text_input("Legenda do post:")
+        url_do_video = st.text_input("Link do vídeo (.mp4):")
+        if st.button("Publicar Vídeo", use_container_width=True):
+            novo_post = {
+                "username": user_atual['username'],
+                "nickname": user_atual['nickname'],
+                "legenda": legenda,
+                "url_video": url_do_video,
+                "curtidas": 0
+            }
+            supabase.table("feed_videos").insert(novo_post).execute()
+            st.success("Publicado no Feed!")
+
+# --- 3. ABA VISITAR PERFIL ALHEIO ---
+elif aba_ativa == "👀 Ver Perfil" and st.session_state.perfil_visitado:
+    alvo = st.session_state.perfil_visitado
+    st.title(f"👤 Perfil de @{alvo}")
+    perfil_req = supabase.table("perfis_usuarios").select("*").eq("username", alvo).execute()
+    
+    if perfil_req.data:
+        p_dados = perfil_req.data[0]
+        st.write(f"**Nome:** {p_dados.get('nickname')}")
+        st.write(f"**Cargo:** {p_dados.get('titulo', 'Usuário')}")
+        st.write(f"**Seguidores:** {p_dados.get('seguidores', 0)} 👥")
+        
+        st.write("---")
+        st.subheader("🎥 Vídeos Publicados por este usuário")
+        vids_req = supabase.table("feed_videos").select("*").eq("username", alvo).execute()
+        for v in vids_req.data:
+            st.write(f"💬 {v.get('legenda')}")
+            st.video(v.get('url_video'))
+            st.write("---")
+    
+    if st.button("Fechar Perfil e Voltar"):
+        st.session_state.perfil_visitado = None
+        st.rerun()
+
+elif aba_ativa == "💬 Chat":
+    st.title("💬 Mensagens Privadas")
+    st.info("Preparando servidores para a função de Live e Chat!")
 
 elif aba_ativa == "👤 Meu Perfil":
-    st.header("Seu Perfil")
+    st.title("👤 Seu Perfil")
     st.json(user_atual)
-
-elif aba_ativa == "⚡ Painel Dev (God Mode)":
-    st.header("Painel Secreto do Desenvolvedor 👑 (God Mode)")
-    try:
-        usuarios_req = supabase.table("perfis_usuarios").select("username, nickname").execute()
-        lista_usuarios = [u["username"] for u in usuarios_req.data]
-    except:
-        lista_usuarios = []
-
-    if lista_usuarios:
-        usuario_alvo = st.selectbox("Selecione o usuário para aplicar o comando:", lista_usuarios)
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.subheader("👥 Modificar Seguidores")
-            qtd_seguidores = st.number_input("Quantidade de Seguidores", min_value=0, value=1000, step=50)
-            if st.button("Definir Seguidores", use_container_width=True):
-                status_verificado = qtd_seguidores >= 1000
-                supabase.table("perfis_usuarios").update({"seguidores": qtd_seguidores, "verificado": status_verificado}).eq("username", usuario_alvo).execute()
-                st.success(f"Seguidores atualizados!")
-                st.rerun()
-
-        with col2:
-            st.subheader("💰 Modificar Dinheiro")
-            qtd_dinheiro = st.number_input("Quantidade de Dinheiro ($)", min_value=0, value=500, step=10)
-            if st.button("Definir Saldo", use_container_width=True):
-                supabase.table("perfis_usuarios").update({"dinheiro": qtd_dinheiro}).eq("username", usuario_alvo).execute()
-                st.success(f"Saldo alterado!")
-                st.rerun()
-
-        with col3:
-            st.subheader("🎖️ Atribuir Títulos")
-            novo_titulo = st.selectbox("Escolha o Cargo/Título:", ["👑 Desenvolvedor", "⚔️ Vice-Dev", "📢 Divulgadora", "🧪 Tester", "Best friends of the dev", "Usuário"])
-            if st.button("Atualizar Cargo", use_container_width=True):
-                supabase.table("perfis_usuarios").update({"titulo": novo_titulo}).eq("username", usuario_alvo).execute()
-                st.success(f"Cargo alterado!")
-                st.rerun()
-                    
+    
