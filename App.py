@@ -25,15 +25,15 @@ if "logado" not in st.session_state:
 if "user_data" not in st.session_state:
     st.session_state.user_data = None
 if "perfil_visitado" not in st.session_state:
-    st.session_state.perfil_visitado = None
-if "historico_ia" not in st.session_state:
-    st.session_state.historico_ia = []
+    rua. estado_sessão . perfil_visitado = Nenhum
+"historico_ia"  não estiver  em st. session_state :
+    st. session_state . historico_ia = [ ]
 
 # --- BANCO DE DADOS LOCAL DO CHAT E LIVES (Sessão Ativa) ---
-if "chat_privado_salas" not in st.session_state:
-    st.session_state.chat_privado_salas = {} 
-if "chat_grupos" not in st.session_state:
-    st.session_state.chat_grupos = {} 
+se  "chat_privado_salas"  não estiver  em st. session_state :
+    st. session_state . chat_privado_salas = { } 
+se  "chat_grupos"  não estiver  em st. session_state :
+    st. session_state . chat_grupos = { } 
 if "sala_privada_atual" not in st.session_state:
     st.session_state.sala_privada_atual = None
 if "codigo_grupo_atual" not in st.session_state:
@@ -339,7 +339,59 @@ elif aba_ativa == "🎥 Gravar/Postar":
             if st.button("⏹️ Encerrar Transmissão", use_container_width=True):
                 st.session_state.live_ativa = False
                 st.rerun()
+            # --- FUNÇÃO QUE INJETA A VOZ NO NAVEGADOR ---
+def emitir_alerta_voz(texto_mensagem):
+    """Injeta um script JavaScript que usa a API nativa do navegador para falar."""
+    js_code = f"""
+    <script>
+    if ('speechSynthesis' in window) {{
+        // Cancela leituras anteriores travadas
+        window.speechSynthesis.cancel(); 
+        
+        var msg = new SpeechSynthesisUtterance({repr(texto_mensagem)});
+        msg.lang = 'pt-BR';
+        msg.rate = 1.1; // Velocidade da fala
+        msg.pitch = 1.0; // Tom da voz
+        window.speechSynthesis.speak(msg);
+    }}
+    </script>
+    """
+    # Executa o componente invisível que roda o áudio
+    st.components.v1.html(js_code, height=0, width=0)
+
+# --- SISTEMA DE VERIFICAÇÃO DE NOVOS ALERTAS COM MOEDAS ---
+def checar_e_ler_alertas_da_live(live_id_atual):
+    try:
+        # Pega as mensagens com moedas que ainda não foram lidas pela IA de voz
+        alertas_nao_lidos = supabase.table("live_alertas")\
+            .select("*")\
+            .eq("live_id", live_id_atual)\
+            .eq("lido_status", False)\
+            .order("criado_em", desc=False)\
+            .execute()
             
+        for alerta in alertas_nao_lidos.data:
+            # Estrutura a frase que a voz vai falar
+            usuario = alerta.get("enviado_por")
+            coins = alerta.get("quantidade_coins")
+            msg_texto = alerta.get("mensagem", "")
+            
+            texto_para_falar = f"{usuario} enviou {coins} Silver Coins! Mensagem: {msg_texto}"
+            
+            # Executa a voz sintetizada
+            emitir_alerta_voz(texto_para_falar)
+            
+            # Atualiza no Supabase que esse alerta já foi lido para não repetir
+            supabase.table("live_alertas")\
+                .update({"lido_status": True})\
+                .eq("id", alerta.get("id"))\
+                .execute()
+                
+            # Dá um pequeno break visual no log
+            st.toast(f"📢 Voz lendo doação de @{usuario}!", icon="🔊")
+    except Exception as e:
+        pass
+
             st.write("---")
             col_video_retorno, col_chat_live = st.columns([4, 3])
             
