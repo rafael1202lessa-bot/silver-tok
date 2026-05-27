@@ -285,7 +285,7 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual['username'] == "rafael_oficial
 
         with col3:
             st.subheader("🎖️ Cargos")
-            novo_titulo = st.selectbox("Cargo:", ["👑 Desenvolvedor", "⚔️ Vice-Dev", "📢 Divulgadora", "🧪 Tester", "Usuário"])
+            novo_titulo = st.selectbox("Cargo:", ["👑 Desenvolvedor", "⚔️ Vice-Dev", "📢 Divulgadora", "🧪 Tester", "Usuário",  "🥇 best friends of the dev" ])
             if st.button("Atualizar", key="btn_cargo"):
                 supabase.table("perfis_usuarios").update({"titulo": novo_titulo}).eq("username", usuario_alvo).execute()
                 st.rerun()
