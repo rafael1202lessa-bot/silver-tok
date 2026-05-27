@@ -33,16 +33,27 @@ TITULOS = {
     "amiga_divulgadora": "📢 Divulgadora",
 }
 
-# --- FUNÇÃO PARA GERAR O SELO DE VERIFICADO ---
-def obter_selo(username, titulo):
+# --- FUNÇÃO PARA GERAR SELO E MOLDURA DE PERFIL ---
+def aplicar_moldura_e_selo(username, titulo, itens_usuario=None):
+    selo = ""
     if username == "rafael_oficial":
-        return " ✨[👑 DEV]"
+        selo = " ✨[👑 DEV]"
     elif "Dev" in str(titulo) or "Desenvolvedor" in str(titulo):
-        return " 🛠️[DEV]"
+        selo = " 🛠️[DEV]"
     elif titulo == "🏅 best friends of the dev":
-        return " 🌟"
-    else:
-        return ""
+        selo = " 🌟"
+        
+    # Estilo CSS padrão da imagem redonda
+    estilo_moldura = "border-radius: 50%; object-fit: cover;"
+    
+    # Aplica bordas temáticas baseadas nos itens adquiridos na loja
+    if itens_usuario and isinstance(itens_usuario, list):
+        if "🖼️ Moldura de Fogo 🔥" in itens_usuario:
+            estilo_moldura = "border-radius: 50%; object-fit: cover; border: 4px solid #FF4500; box-shadow: 0 0 15px #FF8C00;"
+        elif "💎 Moldura de Diamante ✨" in itens_usuario:
+            estilo_moldura = "border-radius: 50%; object-fit: cover; border: 4px solid #00FFFF; box-shadow: 0 0 15px #00BFFF;"
+            
+    return selo, estilo_moldura
 
 # --- FUNÇÕES DE AUTENTICAÇÃO ---
 def criar_conta(username, password, nickname, codigo):
@@ -120,7 +131,7 @@ def atualizar_sessao():
 atualizar_sessao()
 user_atual = st.session_state.user_data
 
-# Se o usuário estiver marcado como banido ou o app em manutenção
+# Validações globais de banimento e manutenção
 if user_atual.get("titulo") == "❌ BANIDO":
     st.title("🚫 Conta Bloqueada")
     st.error("Você foi banido deste aplicativo pela administração.")
@@ -134,29 +145,27 @@ if ESTADO_DESENVOLVIMENTO and user_atual.get("titulo") not in ["👑 Desenvolved
     st.stop()
 
 
-# ==========================================
-# --- SIDEBAR (TOTALMENTE CORRIGIDA AQUI) ---
-# ==========================================
+# --- SIDEBAR (BARRA LATERAL COM MOLDURAS ATIVAS) ---
 foto_side = user_atual.get('foto_perfil')
-
-# Se a foto no banco for "0", vazia ou inválida, joga o avatar seguro que não quebra
 if not foto_side or str(foto_side).strip() in ["0", "None", ""] or not str(foto_side).startswith("http"):
     foto_side = "https://img.icons8.com/colors/150/test-account.png"
 
-try:
-    st.sidebar.image(foto_side, width=100)
-except:
-    st.sidebar.markdown("👤")
+# Coleta os itens estéticos do usuário logado
+meus_itens_sidebar = user_atual.get('itens_exclusivos', [])
+selo_sidebar, estilo_da_moldura = aplicar_moldura_e_selo(user_atual.get('username', ''), user_atual.get('titulo', ''), meus_itens_sidebar)
 
-selo_sidebar = obter_selo(user_atual.get('username', ''), user_atual.get('titulo', ''))
+# Exibe foto de perfil usando a moldura HTML/CSS comprada
+st.sidebar.markdown(f'<img src="{foto_side}" style="{estilo_da_moldura}" width="100">', unsafe_allow_html=True)
+st.sidebar.write("") # Espaçamento curto
+
 st.sidebar.title(f"@{user_atual.get('username', '')}{selo_sidebar}")
 if st.sidebar.button("Sair da Conta"):
     st.session_state.logado = False
     st.rerun()
 
 
-# --- MENU PRINCIPAL ---
-abas = ["📱 Feed", "🎥 Gravar/Postar", "👤 Meu Perfil"]
+# --- MENU PRINCIPAL (COM A NOVA LOJA DO SITE) ---
+abas = ["📱 Feed", "🎥 Gravar/Postar", "🛒 Loja do Site", "👤 Meu Perfil"]
 if st.session_state.perfil_visitado:
     abas.append("👀 Ver Perfil")
 if user_atual.get('username') == "rafael_oficial":
@@ -189,6 +198,7 @@ if aba_ativa == "📱 Feed":
             with st.container():
                 foto_autor = "https://img.icons8.com/colors/150/test-account.png"
                 titulo_autor = "Usuário"
+                itens_autor = []
                 try:
                     autor_req = supabase.table("perfis_usuarios").select("*").eq("username", v_username).execute()
                     if autor_req.data:
@@ -196,14 +206,16 @@ if aba_ativa == "📱 Feed":
                         if not foto_autor or str(foto_autor).strip() in ["0", "None", ""]:
                             foto_autor = "https://img.icons8.com/colors/150/test-account.png"
                         titulo_autor = autor_req.data[0].get('titulo', 'Usuário')
+                        itens_autor = autor_req.data[0].get('itens_exclusivos', [])
                 except:
                     pass
                 
-                selo_post = obter_selo(v_username, titulo_autor)
+                selo_post, moldura_post = aplicar_moldura_e_selo(v_username, titulo_autor, itens_autor)
                 
                 col_foto, col_nome = st.columns([1, 5])
                 with col_foto:
-                    st.image(foto_autor, width=50)
+                    # Aplica a moldura comprada nas fotos que aparecem no Feed!
+                    st.markdown(f'<img src="{foto_autor}" style="{moldura_post}" width="50">', unsafe_allow_html=True)
                 with col_nome:
                     if st.button(f"**{v_nickname}** (@{v_username}){selo_post}", key=f"u_{v_id}"):
                         st.session_state.perfil_visitado = v_username
@@ -263,18 +275,75 @@ elif aba_ativa == "🎥 Gravar/Postar":
             except Exception as e:
                 st.error(f"Erro ao publicar: {str(e)}")
 
-# --- 3. ABA MEU PERFIL ---
+# --- 3. ABA LOJA DO SITE (MOLDURAS E CUSTOMIZAÇÕES) ---
+elif aba_ativa == "🛒 Loja do Site":
+    st.title("🛒 Loja de Customização do Silver Tok")
+    st.write(f"💰 **Sua Carteira:** ${user_atual.get('dinheiro', 0)}")
+    st.write("Compre itens visuais para mudar a cara do seu perfil e se destacar no Feed!")
+    st.write("---")
+
+    # Catálogo da loja com preços e itens estéticos
+    customizacoes = {
+        "🖼️ Moldura de Fogo 🔥": 1000,
+        "💎 Moldura de Diamante ✨": 2500,
+        "🖼️ Banner Estelar (Perfil)": 1500,
+        "💬 Caixa de Texto Neon (Feed)": 2000,
+        "🌈 Nickname Dourado": 5000
+    }
+
+    for item, preco in customizacoes.items():
+        with st.container():
+            col_info, col_btn = st.columns([3, 1])
+            
+            with col_info:
+                st.markdown(f"### {item}")
+                st.markdown(f"💰 Custo: **${preco}**")
+            
+            with col_btn:
+                st.write("<br>", unsafe_allow_html=True)
+                
+                meus_visuais = user_atual.get('itens_exclusivos', [])
+                if not isinstance(meus_visuais, list):
+                    meus_visuais = []
+                
+                # Desabilita o botão se o usuário já possuir o item
+                if item in meus_visuais:
+                    st.button("✅ Adquirido", key=f"tem_{item}", disabled=True, use_container_width=True)
+                else:
+                    if st.button(f"🛒 Adquirir", key=f"comprar_{item}", use_container_width=True):
+                        saldo = user_atual.get('dinheiro', 0)
+                        
+                        if saldo >= preco:
+                            try:
+                                novo_saldo = saldo - preco
+                                meus_visuais.append(item)
+                                
+                                supabase.table("perfis_usuarios").update({
+                                    "dinheiro": novo_saldo,
+                                    "itens_exclusivos": meus_visuais
+                                }).eq("username", user_atual.get('username')).execute()
+                                
+                                st.success(f"🎉 '{item}' desbloqueado!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erro na transação: {str(e)}")
+                        else:
+                            st.error("❌ Saldo insuficiente!")
+            st.write("---")
+
+# --- 4. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
-    selo_meu_perfil = obter_selo(user_atual.get('username'), user_atual.get('titulo'))
+    meus_itens_perfil = user_atual.get('itens_exclusivos', [])
+    selo_meu_perfil, moldura_meu_perfil = aplicar_moldura_e_selo(user_atual.get('username'), user_atual.get('titulo'), meus_itens_perfil)
+    
     col_foto, col_stats = st.columns([1, 2])
     with col_foto:
         f_perfil = user_atual.get('foto_perfil')
         if not f_perfil or str(f_perfil).strip() in ["0", "None", ""] or not str(f_perfil).startswith("http"):
             f_perfil = "https://img.icons8.com/colors/150/test-account.png"
-        try:
-            st.image(f_perfil, width=140)
-        except:
-            st.markdown("<h2>👤</h2>", unsafe_allow_html=True)
+        
+        # Renderiza a foto do perfil com a moldura
+        st.markdown(f'<img src="{f_perfil}" style="{moldura_meu_perfil}" width="140">', unsafe_allow_html=True)
             
     with col_stats:
         st.header(f"{user_atual.get('nickname', 'Usuário')}{selo_meu_perfil}")
@@ -287,13 +356,12 @@ elif aba_ativa == "👤 Meu Perfil":
     
     st.write(f"📝 **Bio:** {user_atual.get('bio', 'Disponível')}")
     
-    st.subheader("🎒 Meus Itens Equipados")
-    meus_itens = user_atual.get('itens_exclusivos', [])
-    if meus_itens:
-        for item in meus_itens:
-            st.markdown(f"🛡️ **{item}**")
+    st.subheader("🎒 Meus Itens & Customizações")
+    if meus_itens_perfil:
+        for item in meus_itens_perfil:
+            st.markdown(f"✨ **{item}** (Ativado)")
     else:
-        st.info("Você não possui itens no inventário ainda.")
+        st.info("Você não possui itens adquiridos na loja ainda.")
 
     expander = st.expander("⚙️ Editar Perfil (Mudar Foto e Bio)")
     with expander:
@@ -319,21 +387,22 @@ elif aba_ativa == "👤 Meu Perfil":
     except:
         st.info("Nenhum vídeo publicado.")
 
-# --- 4. ABA VISITAR PERFIL ALHEIO ---
+# --- 5. ABA VISITAR PERFIL ALHEIO ---
 elif aba_ativa == "👀 Ver Perfil" and st.session_state.perfil_visitado:
     alvo = st.session_state.perfil_visitado
     try:
         res = supabase.table("perfis_usuarios").select("*").eq("username", alvo).execute()
         if res.data:
             p = res.data[0]
-            selo_visitado = obter_selo(p.get('username'), p.get('titulo', 'Usuário'))
+            itens_alvo = p.get('itens_exclusivos', [])
+            selo_visitado, moldura_visitado = aplicar_moldura_e_selo(p.get('username'), p.get('titulo', 'Usuário'), itens_alvo)
             
             col_f, col_s = st.columns([1, 2])
             with col_f: 
                 f_vis = p.get('foto_perfil')
                 if not f_vis or str(f_vis).strip() in ["0", "None", ""]:
                     f_vis = 'https://img.icons8.com/colors/150/test-account.png'
-                st.image(f_vis, width=120)
+                st.markdown(f'<img src="{f_vis}" style="{moldura_visitado}" width="120">', unsafe_allow_html=True)
             with col_s:
                 st.header(f"{p.get('nickname', 'Usuário')}{selo_visitado}")
                 st.write(f"@{p.get('username', '')} | {p.get('titulo', 'Usuário')}")
@@ -342,9 +411,8 @@ elif aba_ativa == "👀 Ver Perfil" and st.session_state.perfil_visitado:
             st.write(f"📝 {p.get('bio', '')}")
             
             st.subheader("🎒 Itens do Usuário")
-            itens_alvo = p.get('itens_exclusivos', [])
             if itens_alvo:
-                for item in itens_alvo: st.markdown(f"🛡️ **{item}**")
+                for item in itens_alvo: st.markdown(f"✨ **{item}**")
             else: st.info("Este usuário não possui itens.")
 
             if st.button("Voltar ao Feed"):
@@ -357,7 +425,7 @@ elif aba_ativa == "👀 Ver Perfil" and st.session_state.perfil_visitado:
     except:
         st.error("Erro ao carregar o perfil visitado.")
 
-# --- 5. PAINEL DEV (CORRIGIDO EM COLUNAS) ---
+# --- 6. PAINEL DEV (CONTROLE COMPLETO) ---
 elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_oficial":
     st.header("Painel Secreto do Desenvolvedor 👑")
     try:
@@ -369,7 +437,6 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
     if lista_usuarios:
         usuario_alvo = st.selectbox("Selecione o usuário alvo:", lista_usuarios)
         
-        # 4 colunas criadas corretamente para evitar NameError
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
@@ -416,7 +483,7 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
         # --- SEÇÃO DO GERENCIADOR DE INVENTÁRIO ---
         st.write("---")
         st.subheader("🎒 Gerenciador de Inventário (God Mode)")
-        item_para_dar = st.text_input("Nome do Item para dar ao usuário:", placeholder="Ex: Espada Lendária, Selo Blue")
+        item_para_dar = st.text_input("Nome do Item para dar ao usuário:", placeholder="Ex: 🖼️ Moldura de Fogo 🔥, 🌈 Nickname Dourado")
 
         if st.button("🎁 Entregar Item para o Usuário", use_container_width=True):
             if not item_para_dar:
@@ -465,4 +532,3 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
                     st.rerun()
                 except:
                     pass
-                    
