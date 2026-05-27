@@ -135,7 +135,7 @@ st.write("---")
 # --- CONTEÚDO DAS ABAS ---
 
 if aba_ativa == "📱 Silver Tok (Feed)":
-if aba_ativa == "📱 Silver Tok (Feed)":
+
     st.title("📱 Silver Tok Feed")
     
     try:
