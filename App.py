@@ -1,6 +1,5 @@
 import streamlit as st
 from supabase import create_client, Client
-import random
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Silver Tok v2", page_icon="🚀", layout="centered")
@@ -37,7 +36,7 @@ TITULOS = {
 # --- FUNÇÃO PARA GERAR O SELO DE VERIFICADO ---
 def obter_selo(username, titulo):
     if username == "rafael_oficial":
-        return " ✨[👑 DEV]"  # O seu verificado especial e exclusivo!
+        return " ✨[👑 DEV]"
     elif "Dev" in str(titulo) or "Desenvolvedor" in str(titulo):
         return " 🛠️[DEV]"
     elif titulo == "🏅 best friends of the dev":
@@ -82,13 +81,16 @@ if not st.session_state.logado:
         user_in = st.text_input("Usuário", key="login_user").strip()
         pass_in = st.text_input("Senha", type="password", key="login_pass")
         if st.button("Entrar", use_container_width=True):
-            resultado = supabase.table("perfis_usuarios").select("*").eq("username", user_in).eq("senha", pass_in).execute()
-            if resultado.data:
-                st.session_state.logado = True
-                st.session_state.user_data = resultado.data[0]
-                st.rerun()
-            else:
-                st.error("Usuário ou senha incorretos.")
+            try:
+                resultado = supabase.table("perfis_usuarios").select("*").eq("username", user_in).eq("senha", pass_in).execute()
+                if resultado.data:
+                    st.session_state.logado = True
+                    st.session_state.user_data = resultado.data[0]
+                    st.rerun()
+                else:
+                    st.error("Usuário ou senha incorretos.")
+            except Exception as e:
+                st.error(f"Erro de conexão com o banco: {str(e)}")
                 
     with aba_cadastro:
         new_user = st.text_input("Escolha seu Usuário", key="cad_user").strip()
@@ -108,14 +110,23 @@ if not st.session_state.logado:
     st.stop()
 
 def atualizar_sessao():
-    res = supabase.table("perfis_usuarios").select("*").eq("username", st.session_state.user_data['username']).execute()
-    if res.data:
-        st.session_state.user_data = res.data[0]
+    try:
+        res = supabase.table("perfis_usuarios").select("*").eq("username", st.session_state.user_data['username']).execute()
+        if res.data:
+            st.session_state.user_data = res.data[0]
+    except:
+        pass
 
 atualizar_sessao()
 user_atual = st.session_state.user_data
 
-if ESTADO_DESENVOLVIMENTO and user_atual["titulo"] not in ["👑 Desenvolvedor", "🧪 Tester"]:
+# Se o usuário estiver marcado como banido ou o app em manutenção
+if user_atual.get("titulo") == "❌ BANIDO":
+    st.title("🚫 Conta Bloqueada")
+    st.error("Você foi banido deste aplicativo pela administração.")
+    st.stop()
+
+if ESTADO_DESENVOLVIMENTO and user_atual.get("titulo") not in ["👑 Desenvolvedor", "🧪 Tester"]:
     st.title("🚧 Aplicativo em Manutenção")
     if st.button("Sair da Conta"):
         st.session_state.logado = False
@@ -123,10 +134,12 @@ if ESTADO_DESENVOLVIMENTO and user_atual["titulo"] not in ["👑 Desenvolvedor",
     st.stop()
 
 # --- SIDEBAR ---
-st.sidebar.image(user_atual.get('foto_perfil', 'https://cdn-icons-png.flaticon.com/512/149/149071.png'), width=100)
-# Mostra o selo também na barra lateral
-selo_sidebar = obter_selo(user_atual['username'], user_atual['titulo'])
-st.sidebar.title(f"@{user_atual['username']}{selo_sidebar}")
+foto_side = user_atual.get('foto_perfil', 'https://cdn-icons-png.flaticon.com/512/149/149071.png')
+if not foto_side: foto_side = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+st.sidebar.image(foto_side, width=100)
+
+selo_sidebar = obter_selo(user_atual.get('username', ''), user_atual.get('titulo', ''))
+st.sidebar.title(f"@{user_atual.get('username', '')}{selo_sidebar}")
 if st.sidebar.button("Sair da Conta"):
     st.session_state.logado = False
     st.rerun()
@@ -135,7 +148,7 @@ if st.sidebar.button("Sair da Conta"):
 abas = ["📱 Feed", "🎥 Gravar/Postar", "👤 Meu Perfil"]
 if st.session_state.perfil_visitado:
     abas.append("👀 Ver Perfil")
-if user_atual['username'] == "rafael_oficial":
+if user_atual.get('username') == "rafael_oficial":
     abas.append("⚡ Painel Dev")
 
 aba_ativa = st.radio("Menu", abas, horizontal=True)
@@ -154,51 +167,66 @@ if aba_ativa == "📱 Feed":
         videos = []
 
     for vid in videos:
-        if not termo or termo in vid.get('legenda', '').lower() or termo in vid.get('username', '').lower() or termo in vid.get('nickname', '').lower():
+        v_username = vid.get('username', 'anonimo')
+        v_nickname = vid.get('nickname', 'Usuário')
+        v_legenda = vid.get('legenda', '')
+        v_url = vid.get('url_video', '')
+        v_curtidas = vid.get('curtidas', 0)
+        v_id = vid.get('id')
+
+        if not termo or termo in v_legenda.lower() or termo in v_username.lower() or termo in v_nickname.lower():
             with st.container():
-                # Trazendo dados do autor do post
-                autor_req = supabase.table("perfis_usuarios").select("foto_perfil", "titulo").eq("username", vid['username']).execute()
-                if autor_req.data:
-                    foto_autor = autor_req.data[0]['foto_perfil']
-                    titulo_autor = autor_req.data[0]['titulo']
-                else:
-                    foto_autor = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-                    titulo_autor = "Usuário"
+                foto_autor = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                titulo_autor = "Usuário"
+                try:
+                    autor_req = supabase.table("perfis_usuarios").select("*").eq("username", v_username).execute()
+                    if autor_req.data:
+                        foto_autor = autor_req.data[0].get('foto_perfil', foto_autor)
+                        titulo_autor = autor_req.data[0].get('titulo', 'Usuário')
+                except:
+                    pass
                 
-                selo_post = obter_selo(vid['username'], titulo_autor)
+                selo_post = obter_selo(v_username, titulo_autor)
                 
                 col_foto, col_nome = st.columns([1, 5])
                 with col_foto:
-                    st.image(foto_autor, width=50)
+                    st.image(foto_autor if foto_autor else "https://cdn-icons-png.flaticon.com/512/149/149071.png", width=50)
                 with col_nome:
-                    # O botão do perfil agora exibe o Verificado Especial!
-                    if st.button(f"**{vid['nickname']}** (@{vid['username']}){selo_post}", key=f"u_{vid['id']}"):
-                        st.session_state.perfil_visitado = vid['username']
+                    if st.button(f"**{v_nickname}** (@{v_username}){selo_post}", key=f"u_{v_id}"):
+                        st.session_state.perfil_visitado = v_username
                         st.rerun()
                 
-                if vid.get('legenda'): st.write(vid['legenda'])
-                st.video(vid['url_video'])
+                if v_legenda: st.write(v_legenda)
                 
-                # Interações (CORRIGIDO: trocado id_post por vid['id'])
+                if v_url:
+                    try:
+                        st.video(v_url)
+                    except:
+                        st.error("Não foi possível carregar este vídeo.")
+                
                 c1, c2, c3 = st.columns(3)
                 with c1:
-                    if st.button(f"❤️ {vid['curtidas']}", key=f"l_{vid['id']}", use_container_width=True):
-                        supabase.table("feed_videos").update({"curtidas": vid['curtidas'] + 1}).eq("id", vid['id']).execute()
-                        st.rerun()
+                    if st.button(f"❤️ {v_curtidas}", key=f"l_{v_id}", use_container_width=True):
+                        try:
+                            supabase.table("feed_videos").update({"curtidas": v_curtidas + 1}).eq("id", v_id).execute()
+                            st.rerun()
+                        except:
+                            pass
                 with c2:
-                    if st.button("🔗 Copiar", key=f"s_{vid['id']}", use_container_width=True):
-                        st.success("Link Copiado!")
+                    st.button("🔗 Copiar", key=f"s_{v_id}", use_container_width=True)
                 with c3:
-                    abrir_comentarios = st.checkbox("💬 Comentários", key=f"tab_c_{vid['id']}")
+                    abrir_comentarios = st.checkbox("💬 Comentários", key=f"tab_c_{v_id}")
                 
                 if abrir_comentarios:
                     st.write("**@rafael_oficial:** Esse vídeo ficou brabo! 🔥")
-                    st.text_input("Escreva um comentário...", key=f"inp_c_{vid['id']}")
                 
-                if user_atual['username'] == vid['username'] or user_atual['username'] == "rafael_oficial":
-                    if st.button(f"🗑️ Apagar Vídeo", key=f"d_{vid['id']}", use_container_width=True):
-                        supabase.table("feed_videos").delete().eq("id", vid['id']).execute()
-                        st.rerun()
+                if user_atual.get('username') == v_username or user_atual.get('username') == "rafael_oficial":
+                    if st.button(f"🗑️ Apagar Vídeo", key=f"d_{v_id}", use_container_width=True):
+                        try:
+                            supabase.table("feed_videos").delete().eq("id", v_id).execute()
+                            st.rerun()
+                        except:
+                            pass
                 st.write("---")
 
 # --- 2. ABA GRAVAR/POSTAR ---
@@ -207,80 +235,110 @@ elif aba_ativa == "🎥 Gravar/Postar":
     aba_cam, aba_link = st.tabs(["📸 Gravar com a Câmera", "🔗 Postar por Link"])
     
     with aba_cam:
-        imagem_capturada = st.camera_input("Tirar foto/registro para o Feed")
-        if imagem_capturada:
-            st.success("Captura realizada com sucesso!")
+        st.camera_input("Tirar foto/registro para o Feed")
             
     with aba_link:
         legenda = st.text_input("Legenda do post:")
         url_do_video = st.text_input("Link do vídeo (.mp4):")
         if st.button("Publicar Vídeo", use_container_width=True):
-            supabase.table("feed_videos").insert({
-                "username": user_atual['username'], "nickname": user_atual['nickname'],
-                "legenda": legenda, "url_video": url_do_video, "curtidas": 0
-            }).execute()
-            st.success("Publicado no Feed!")
+            try:
+                supabase.table("feed_videos").insert({
+                    "username": user_atual.get('username'), "nickname": user_atual.get('nickname'),
+                    "legenda": legenda, "url_video": url_do_video, "curtidas": 0
+                }).execute()
+                st.success("Publicado no Feed!")
+            except Exception as e:
+                st.error(f"Erro ao publicar: {str(e)}")
 
 # --- 3. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
-    selo_meu_perfil = obter_selo(user_atual['username'], user_atual['titulo'])
+    selo_meu_perfil = obter_selo(user_atual.get('username'), user_atual.get('titulo'))
     col_foto, col_stats = st.columns([1, 2])
     with col_foto:
-        st.image(user_atual.get('foto_perfil', 'https://cdn-icons-png.flaticon.com/512/149/149071.png'), width=140)
+        f_perfil = user_atual.get('foto_perfil', 'https://cdn-icons-png.flaticon.com/512/149/149071.png')
+        st.image(f_perfil if f_perfil else 'https://cdn-icons-png.flaticon.com/512/149/149071.png', width=140)
     with col_stats:
-        # Nome com o selo especial aplicado
-        st.header(f"{user_atual['nickname']}{selo_meu_perfil}")
-        st.write(f"**@{user_atual['username']}** | {user_atual['titulo']}")
+        st.header(f"{user_atual.get('nickname', 'Usuário')}{selo_meu_perfil}")
+        st.write(f"**@{user_atual.get('username', '')}** | {user_atual.get('titulo', 'Usuário')}")
         
         c1, c2, c3 = st.columns(3)
         c1.metric("Seguidores", user_atual.get('seguidores', 0))
         c2.metric("Seguindo", user_atual.get('seguindo', 0))
-        c3.metric("Carteira", f"${user_atual['dinheiro']}")
+        c3.metric("Carteira", f"${user_atual.get('dinheiro', 0)}")
     
-    st.write(f"📝 **Bio:** {user_atual.get('bio', '')}")
+    st.write(f"📝 **Bio:** {user_atual.get('bio', 'Disponível')}")
     
+    # Exibe o inventário do próprio usuário
+    st.subheader("🎒 Meus Itens Equipados")
+    meus_itens = user_atual.get('itens_exclusivos', [])
+    if meus_itens:
+        for item in meus_itens:
+            st.markdown(f"🛡️ **{item}**")
+    else:
+        st.info("Você não possui itens no inventário ainda.")
+
     expander = st.expander("⚙️ Editar Perfil (Mudar Foto e Bio)")
     with expander:
-        novo_nick = st.text_input("Mudar Nickname:", value=user_atual['nickname'])
+        novo_nick = st.text_input("Mudar Nickname:", value=user_atual.get('nickname', ''))
         nova_bio = st.text_area("Mudar Bio:", value=user_atual.get('bio', ''))
-        nova_foto = st.text_input("Link da Foto de Perfil (URL da imagem):", value=user_atual.get('foto_perfil', ''))
+        nova_foto = st.text_input("Link da Foto de Perfil:", value=user_atual.get('foto_perfil', ''))
         if st.button("Salvar Alterações"):
-            supabase.table("perfis_usuarios").update({
-                "nickname": novo_nick, "bio": nova_bio, "foto_perfil": nova_foto
-            }).eq("username", user_atual['username']).execute()
-            st.success("Perfil updated!")
-            st.rerun()
+            try:
+                supabase.table("perfis_usuarios").update({
+                    "nickname": novo_nick, "bio": nova_bio, "foto_perfil": nova_foto
+                }).eq("username", user_atual.get('username')).execute()
+                st.success("Perfil atualizado!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Erro ao salvar: {str(e)}")
 
     st.write("---")
     st.subheader("🎬 Meus Vídeos")
-    meus_vids = supabase.table("feed_videos").select("*").eq("username", user_atual['username']).execute()
-    for v in meus_vids.data: st.video(v['url_video'])
+    try:
+        meus_vids = supabase.table("feed_videos").select("*").eq("username", user_atual.get('username')).execute()
+        for v in meus_vids.data: 
+            if v.get('url_video'): st.video(v['url_video'])
+    except:
+        st.info("Nenhum vídeo publicado.")
 
 # --- 4. ABA VISITAR PERFIL ALHEIO ---
 elif aba_ativa == "👀 Ver Perfil" and st.session_state.perfil_visitado:
     alvo = st.session_state.perfil_visitado
-    res = supabase.table("perfis_usuarios").select("*").eq("username", alvo).execute()
-    if res.data:
-        p = res.data[0]
-        selo_visitado = obter_selo(p['username'], p.get('titulo', 'Usuário'))
-        
-        col_f, col_s = st.columns([1, 2])
-        with col_f: st.image(p.get('foto_perfil', 'https://cdn-icons-png.flaticon.com/512/149/149071.png'), width=120)
-        with col_s:
-            st.header(f"{p['nickname']}{selo_visitado}")
-            st.write(f"@{p['username']} | {p['titulo']}")
-            st.write(f"👥 {p.get('seguidores', 0)} Seguidores")
-        
-        st.write(f"📝 {p.get('bio', '')}")
-        if st.button("Voltar ao Feed"):
-            st.session_state.perfil_visitado = None
-            st.rerun()
-        st.write("---")
-        vids = supabase.table("feed_videos").select("*").eq("username", alvo).execute()
-        for v in vids.data: st.video(v['url_video'])
+    try:
+        res = supabase.table("perfis_usuarios").select("*").eq("username", alvo).execute()
+        if res.data:
+            p = res.data[0]
+            selo_visitado = obter_selo(p.get('username'), p.get('titulo', 'Usuário'))
+            
+            col_f, col_s = st.columns([1, 2])
+            with col_f: 
+                f_vis = p.get('foto_perfil', 'https://cdn-icons-png.flaticon.com/512/149/149071.png')
+                st.image(f_vis if f_vis else 'https://cdn-icons-png.flaticon.com/512/149/149071.png', width=120)
+            with col_s:
+                st.header(f"{p.get('nickname', 'Usuário')}{selo_visitado}")
+                st.write(f"@{p.get('username', '')} | {p.get('titulo', 'Usuário')}")
+                st.write(f"👥 {p.get('seguidores', 0)} Seguidores")
+            
+            st.write(f"📝 {p.get('bio', '')}")
+            
+            st.subheader("🎒 Itens do Usuário")
+            itens_alvo = p.get('itens_exclusivos', [])
+            if itens_alvo:
+                for item in itens_alvo: st.markdown(f"🛡️ **{item}**")
+            else: st.info("Este usuário não possui itens.")
 
-# --- 5. PAINEL DEV ---
-elif aba_ativa == "⚡ Painel Dev" and user_atual['username'] == "rafael_oficial":
+            if st.button("Voltar ao Feed"):
+                st.session_state.perfil_visitado = None
+                st.rerun()
+            st.write("---")
+            vids = supabase.table("feed_videos").select("*").eq("username", alvo).execute()
+            for v in vids.data: 
+                if v.get('url_video'): st.video(v['url_video'])
+    except:
+        st.error("Erro ao carregar o perfil visitado.")
+
+# --- 5. PAINEL DEV (CORRIGIDO SEM NameError!) ---
+elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_oficial":
     st.header("Painel Secreto do Desenvolvedor 👑")
     try:
         usuarios_req = supabase.table("perfis_usuarios").select("username, nickname").execute()
@@ -289,38 +347,101 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual['username'] == "rafael_oficial
         lista_usuarios = []
 
     if lista_usuarios:
-        usuario_alvo = st.selectbox("Selecione o usuário:", lista_usuarios)
-        col1, col2, col3 = st.columns(3)
+        usuario_alvo = st.selectbox("Selecione o usuário alvo:", lista_usuarios)
+        
+        # Criado as 4 colunas perfeitamente declaradas para evitar o erro do print!
+        col1, col2, col3, col4 = st.columns(4)
         
         with col1:
             st.subheader("👥 Seguidores")
             qtd_seguidores = st.number_input("Quantidade", min_value=0, value=1000)
             if st.button("Definir", key="btn_seg"):
-                supabase.table("perfis_usuarios").update({"seguidores": qtd_seguidores, "verificado": qtd_seguidores >= 1000}).eq("username", usuario_alvo).execute()
-                st.rerun()
+                try:
+                    supabase.table("perfis_usuarios").update({"seguidores": qtd_seguidores, "verificado": qtd_seguidores >= 1000}).eq("username", usuario_alvo).execute()
+                    st.rerun()
+                except:
+                    pass
 
         with col2:
             st.subheader("💰 Carteira")
             qtd_dinheiro = st.number_input("Dinheiro ($)", min_value=0, value=500)
             if st.button("Definir", key="btn_money"):
-                supabase.table("perfis_usuarios").update({"dinheiro": qtd_dinheiro}).eq("username", usuario_alvo).execute()
-                st.rerun()
+                try:
+                    supabase.table("perfis_usuarios").update({"dinheiro": qtd_dinheiro}).eq("username", usuario_alvo).execute()
+                    st.rerun()
+                except:
+                    pass
 
         with col3:
             st.subheader("🎖️ Cargos")
             novo_titulo = st.selectbox("Cargo:", ["👑 Desenvolvedor", "⚔️ Vice-Dev", "📢 Divulgadora", "🧪 Tester", "🏅 best friends of the dev", "Usuário"])
             if st.button("Atualizar", key="btn_cargo"):
-                supabase.table("perfis_usuarios").update({"titulo": novo_titulo}).eq("username", usuario_alvo).execute()
-                st.rerun()
+                try:
+                    supabase.table("perfis_usuarios").update({"titulo": novo_titulo}).eq("username", usuario_alvo).execute()
+                    st.rerun()
+                except:
+                    pass
+
         with col4:
-               
-           st.subheader("🔨 Moderação")
-if st.button("🚫 Banir Usuário", key="btn_banir", use_container_width=True):
-    try:
-        supabase.table("perfis_usuarios").update({"titulo": "❌ BANIDO"}).eq("username", usuario_alvo).execute()
-        st.success(f"@{usuario_alvo} foi banido com sucesso!")
-        st.rerun()
-    except Exception as e:
-        st.error(f"Erro ao banir: {str(e)}")
+            st.subheader("🔨 Moderação")
+            if st.button("🚫 Banir Usuário", key="btn_banir", use_container_width=True):
+                try:
+                    supabase.table("perfis_usuarios").update({"titulo": "❌ BANIDO"}).eq("username", usuario_alvo).execute()
+                    st.success(f"@{usuario_alvo} banido!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro: {str(e)}")
+
+        # --- SEÇÃO DO GERENCIADOR DE INVENTÁRIO ---
+        st.write("---")
+        st.subheader("🎒 Gerenciador de Inventário (God Mode)")
+        item_para_dar = st.text_input("Nome do Item para dar ao usuário:", placeholder="Ex: Espada Lendária, Selo Blue")
+
+        if st.button("🎁 Entregar Item para o Usuário", use_container_width=True):
+            if not item_para_dar:
+                st.warning("Digite o nome de um item antes de enviar!")
+            else:
+                try:
+                    busca_user = supabase.table("perfis_usuarios").select("itens_exclusivos").eq("username", usuario_alvo).execute()
+                    if busca_user.data:
+                        inventario_atual = busca_user.data[0].get('itens_exclusivos', [])
+                        if not isinstance(inventario_atual, list):
+                            inventario_atual = []
+                        inventario_atual.append(item_para_dar)
+                        
+                        supabase.table("perfis_usuarios").update({"itens_exclusivos": inventario_atual}).eq("username", usuario_alvo).execute()
+                        st.success(f"🎉 '{item_para_dar}' injetado no inventário de @{usuario_alvo}!")
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Erro no inventário: {str(e)}")
+
+        # --- SEÇÃO DE EVENTOS GLOBAIS ---
+        st.write("---")
+        st.subheader("⚙️ Ações Globais")
+        col_glob1, col_glob2 = st.columns(2)
         
-        
+        with col_glob1:
+            valor_bonus = st.number_input("Valor do Bônus Global:", min_value=1, value=100)
+            if st.button("💰 Dar Bônus para Todos", use_container_width=True):
+                try:
+                    todos = supabase.table("perfis_usuarios").select("username, dinheiro").execute()
+                    for u in todos.data:
+                        novo_saldo = u.get('dinheiro', 0) + valor_bonus
+                        supabase.table("perfis_usuarios").update({"dinheiro": novo_saldo}).eq("username", u['username']).execute()
+                    st.success("Bônus global enviado!")
+                    st.rerun()
+                except:
+                    pass
+                    
+        with col_glob2:
+            st.write("<br>", unsafe_allow_html=True) # Alinha o botão
+            if st.button("🧹 APAGAR TODOS OS VÍDEOS", use_container_width=True):
+                try:
+                    vids = supabase.table("feed_videos").select("id").execute()
+                    for v in vids.data:
+                        supabase.table("feed_videos").delete().eq("id", v['id']).execute()
+                    st.success("Feed limpo!")
+                    st.rerun()
+                except:
+                    pass
+                             
