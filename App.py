@@ -173,10 +173,10 @@ elif aba_ativa == "💬 Chat & Amigos":
     st.info("Área de conversas privadas, em grupo, amigos e seguidores.")
 
 elif aba_ativa == "📺 Stream (Filmes/Animes)":
+elif aba_ativa == "📺 Stream (Filmes/Animes)":
     st.title("Silver Stream 🍿")
     st.write("Assista aos seus conteúdos favoritos diretamente na plataforma.")
     
-    # Menu de Categorias
     categoria = st.selectbox("Escolha uma Categoria:", ["Animes", "Filmes", "Séries", "Desenhos", "Doramas"])
     
     conteudos_da_categoria = CATALOGO_STREAM.get(categoria, {})
@@ -189,14 +189,18 @@ elif aba_ativa == "📺 Stream (Filmes/Animes)":
         
         url_video = episodios[ep_escolhido]
         
-        # Player de Vídeo Nativo
         st.write(f"### 🎬 Assistindo: {titulo_escolhido} - {ep_escolhido}")
-        st.video(url_video)
+        
+        try:
+            st.video(url_video)
+        except Exception as e:
+            st.error("❌ Não foi possível carregar este vídeo.")
+            st.info("Verifique se o link direto está correto no catálogo do código.")
     else:
         st.warning(f"Nenhum título adicionado na categoria {categoria} ainda.")
         if user_atual['titulo'] == "👑 Desenvolvedor":
             st.info("💡 Como Desenvolvedor, você pode adicionar novos títulos diretamente editando a variável 'CATALOGO_STREAM' no código!")
-
+    
 elif aba_ativa == "👤 Meu Perfil":
     st.header("Seu Perfil")
     st.json(user_atual)
