@@ -315,8 +315,7 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual['username'] == "rafael_oficial
         with col4:
                
              st.subheader("🔨 Moderação")
-             if st.button("🚫 Banir Usuário", key="btn_banir", use_container_width=True):
- try:
+             if st.button("🚫 Banir Usuário", key="btn_banir", use_container_width=True): try:
              supabase.table("perfis_usuarios").update({"titulo": "❌ BANIDO"}).eq("username", usuario_alvo).execute()
              st.success(f"@{usuario_alvo} foi banido com sucesso!")
              st.rerun()
