@@ -34,7 +34,18 @@ TITULOS = {
     "amiga_divulgadora": "📢 Divulgadora",
 }
 
-# --- FUNÇÕES DE AUTENTICAÇÃO (RECUPERADAS!) ---
+# --- FUNÇÃO PARA GERAR O SELO DE VERIFICADO ---
+def obter_selo(username, titulo):
+    if username == "rafael_oficial":
+        return " ✨[👑 DEV]"  # O seu verificado especial e exclusivo!
+    elif "Dev" in str(titulo) or "Desenvolvedor" in str(titulo):
+        return " 🛠️[DEV]"
+    elif titulo == "🏅 best friends of the dev":
+        return " 🌟"
+    else:
+        return ""
+
+# --- FUNÇÕES DE AUTENTICAÇÃO ---
 def criar_conta(username, password, nickname, codigo):
     if codigo != CODIGO_CORRETO:
         return "Código de convite inválido!"
@@ -62,7 +73,7 @@ def criar_conta(username, password, nickname, codigo):
     except Exception as e:
         return f"Erro ao criar conta: {str(e)}"
 
-# --- TELA DE LOGIN / CADASTRO (RECUPERADA!) ---
+# --- TELA DE LOGIN / CADASTRO ---
 if not st.session_state.logado:
     st.title("Welcome to Silver Tok v2 🚀")
     aba_login, aba_cadastro = st.tabs(["🔐 Entrar", "📝 Criar Conta"])
@@ -96,7 +107,6 @@ if not st.session_state.logado:
                     st.error(status)
     st.stop()
 
-# Atualiza os dados do usuário logado em tempo real
 def atualizar_sessao():
     res = supabase.table("perfis_usuarios").select("*").eq("username", st.session_state.user_data['username']).execute()
     if res.data:
@@ -105,18 +115,18 @@ def atualizar_sessao():
 atualizar_sessao()
 user_atual = st.session_state.user_data
 
-# BLOQUEIO DE MANUTENÇÃO
 if ESTADO_DESENVOLVIMENTO and user_atual["titulo"] not in ["👑 Desenvolvedor", "🧪 Tester"]:
     st.title("🚧 Aplicativo em Manutenção")
-    st.warning(f"Olá {user_atual['nickname']}, o Silver Tok v2 está em desenvolvimento.")
     if st.button("Sair da Conta"):
         st.session_state.logado = False
         st.rerun()
     st.stop()
 
 # --- SIDEBAR ---
-st.sidebar.image(user_atual.get('foto_perfil', ''), width=100)
-st.sidebar.title(f"@{user_atual['username']}")
+st.sidebar.image(user_atual.get('foto_perfil', 'https://cdn-icons-png.flaticon.com/512/149/149071.png'), width=100)
+# Mostra o selo também na barra lateral
+selo_sidebar = obter_selo(user_atual['username'], user_atual['titulo'])
+st.sidebar.title(f"@{user_atual['username']}{selo_sidebar}")
 if st.sidebar.button("Sair da Conta"):
     st.session_state.logado = False
     st.rerun()
@@ -135,6 +145,7 @@ st.write("---")
 if aba_ativa == "📱 Feed":
     st.title("📱 Silver Tok")
     termo = st.text_input("🔍 Pesquisar...", "").strip().lower()
+    st.write("---")
     
     try:
         req = supabase.table("feed_videos").select("*").order("id", desc=True).execute()
@@ -143,38 +154,46 @@ if aba_ativa == "📱 Feed":
         videos = []
 
     for vid in videos:
-        if not termo or termo in vid.get('legenda', '').lower() or termo in vid.get('username', '').lower():
+        if not termo or termo in vid.get('legenda', '').lower() or termo in vid.get('username', '').lower() or termo in vid.get('nickname', '').lower():
             with st.container():
-                # Cabeçalho do Post (Foto + Nome)
-                autor_req = supabase.table("perfis_usuarios").select("foto_perfil").eq("username", vid['username']).execute()
-                foto_autor = autor_req.data[0]['foto_perfil'] if autor_req.data else "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                # Trazendo dados do autor do post
+                autor_req = supabase.table("perfis_usuarios").select("foto_perfil", "titulo").eq("username", vid['username']).execute()
+                if autor_req.data:
+                    foto_autor = autor_req.data[0]['foto_perfil']
+                    titulo_autor = autor_req.data[0]['titulo']
+                else:
+                    foto_autor = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                    titulo_autor = "Usuário"
+                
+                selo_post = obter_selo(vid['username'], titulo_autor)
                 
                 col_foto, col_nome = st.columns([1, 5])
                 with col_foto:
                     st.image(foto_autor, width=50)
                 with col_nome:
-                    if st.button(f"**{vid['nickname']}** (@{vid['username']})", key=f"u_{vid['id']}"):
+                    # O botão do perfil agora exibe o Verificado Especial!
+                    if st.button(f"**{vid['nickname']}** (@{vid['username']}){selo_post}", key=f"u_{vid['id']}"):
                         st.session_state.perfil_visitado = vid['username']
                         st.rerun()
                 
                 if vid.get('legenda'): st.write(vid['legenda'])
                 st.video(vid['url_video'])
                 
-                # Interações
+                # Interações (CORRIGIDO: trocado id_post por vid['id'])
                 c1, c2, c3 = st.columns(3)
                 with c1:
                     if st.button(f"❤️ {vid['curtidas']}", key=f"l_{vid['id']}", use_container_width=True):
-                        supabase.table("feed_videos").update({"curtidas": vid['curtidas'] + 1}).eq("id", id_post).execute()
+                        supabase.table("feed_videos").update({"curtidas": vid['curtidas'] + 1}).eq("id", vid['id']).execute()
                         st.rerun()
                 with c2:
                     if st.button("🔗 Copiar", key=f"s_{vid['id']}", use_container_width=True):
                         st.success("Link Copiado!")
                 with c3:
-                    abrir_comentarios = st.checkbox("💬 Comentários", key=f"tab_c_{id_post}")
+                    abrir_comentarios = st.checkbox("💬 Comentários", key=f"tab_c_{vid['id']}")
                 
                 if abrir_comentarios:
-                    st.write("**@pedro_dev:** Esse vídeo ficou brabo! 🔥")
-                    st.text_input("Escreva um comentário...", key=f"inp_c_{id_post}")
+                    st.write("**@rafael_oficial:** Esse vídeo ficou brabo! 🔥")
+                    st.text_input("Escreva um comentário...", key=f"inp_c_{vid['id']}")
                 
                 if user_atual['username'] == vid['username'] or user_atual['username'] == "rafael_oficial":
                     if st.button(f"🗑️ Apagar Vídeo", key=f"d_{vid['id']}", use_container_width=True):
@@ -202,13 +221,15 @@ elif aba_ativa == "🎥 Gravar/Postar":
             }).execute()
             st.success("Publicado no Feed!")
 
-# --- 3. ABA MEU PERFIL (ESTILO INSTAGRAM/TIKTOK) ---
+# --- 3. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
+    selo_meu_perfil = obter_selo(user_atual['username'], user_atual['titulo'])
     col_foto, col_stats = st.columns([1, 2])
     with col_foto:
         st.image(user_atual.get('foto_perfil', 'https://cdn-icons-png.flaticon.com/512/149/149071.png'), width=140)
     with col_stats:
-        st.header(user_atual['nickname'])
+        # Nome com o selo especial aplicado
+        st.header(f"{user_atual['nickname']}{selo_meu_perfil}")
         st.write(f"**@{user_atual['username']}** | {user_atual['titulo']}")
         
         c1, c2, c3 = st.columns(3)
@@ -218,16 +239,16 @@ elif aba_ativa == "👤 Meu Perfil":
     
     st.write(f"📝 **Bio:** {user_atual.get('bio', '')}")
     
-    expander = st.expander("⚙️ Editar Perfil")
+    expander = st.expander("⚙️ Editar Perfil (Mudar Foto e Bio)")
     with expander:
         novo_nick = st.text_input("Mudar Nickname:", value=user_atual['nickname'])
         nova_bio = st.text_area("Mudar Bio:", value=user_atual.get('bio', ''))
-        nova_foto = st.text_input("Link da Foto de Perfil:", value=user_atual.get('foto_perfil', ''))
+        nova_foto = st.text_input("Link da Foto de Perfil (URL da imagem):", value=user_atual.get('foto_perfil', ''))
         if st.button("Salvar Alterações"):
             supabase.table("perfis_usuarios").update({
                 "nickname": novo_nick, "bio": nova_bio, "foto_perfil": nova_foto
             }).eq("username", user_atual['username']).execute()
-            st.success("Perfil atualizado!")
+            st.success("Perfil updated!")
             st.rerun()
 
     st.write("---")
@@ -241,10 +262,12 @@ elif aba_ativa == "👀 Ver Perfil" and st.session_state.perfil_visitado:
     res = supabase.table("perfis_usuarios").select("*").eq("username", alvo).execute()
     if res.data:
         p = res.data[0]
+        selo_visitado = obter_selo(p['username'], p.get('titulo', 'Usuário'))
+        
         col_f, col_s = st.columns([1, 2])
         with col_f: st.image(p.get('foto_perfil', 'https://cdn-icons-png.flaticon.com/512/149/149071.png'), width=120)
         with col_s:
-            st.header(p['nickname'])
+            st.header(f"{p['nickname']}{selo_visitado}")
             st.write(f"@{p['username']} | {p['titulo']}")
             st.write(f"👥 {p.get('seguidores', 0)} Seguidores")
         
@@ -256,7 +279,7 @@ elif aba_ativa == "👀 Ver Perfil" and st.session_state.perfil_visitado:
         vids = supabase.table("feed_videos").select("*").eq("username", alvo).execute()
         for v in vids.data: st.video(v['url_video'])
 
-# --- 5. PAINEL DEV (GOD MODE RECUPERADO!) ---
+# --- 5. PAINEL DEV ---
 elif aba_ativa == "⚡ Painel Dev" and user_atual['username'] == "rafael_oficial":
     st.header("Painel Secreto do Desenvolvedor 👑")
     try:
@@ -285,8 +308,8 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual['username'] == "rafael_oficial
 
         with col3:
             st.subheader("🎖️ Cargos")
-            novo_titulo = st.selectbox("Cargo:", ["👑 Desenvolvedor", "⚔️ Vice-Dev", "📢 Divulgadora", "🧪 Tester", "Usuário",  "🥇 best friends of the dev" ])
+            novo_titulo = st.selectbox("Cargo:", ["👑 Desenvolvedor", "⚔️ Vice-Dev", "📢 Divulgadora", "🧪 Tester", "🏅 best friends of the dev", "Usuário"])
             if st.button("Atualizar", key="btn_cargo"):
                 supabase.table("perfis_usuarios").update({"titulo": novo_titulo}).eq("username", usuario_alvo).execute()
                 st.rerun()
-    
+                
