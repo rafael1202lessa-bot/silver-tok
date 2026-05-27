@@ -92,16 +92,30 @@ def aplicar_moldura_e_selo(username, titulo, itens_usuario=None, seguidores=0):
             estilo_moldura = "border-radius: 50%; object-fit: cover; border: 4px solid #00FFFF; box-shadow: 0 0 15px #00BFFF;"
     return selo, estilo_moldura
 
-# --- SIMULAÇÃO DO SILVER IA ---
+# --- SIMULAÇÃO DA IA SILVER INTELIGENTE ---
 def responder_ia(pergunta):
-    respostas_prontas = [
-        "Com certeza, Rafael! Como seu assistente Silver, estou aqui para ajudar você a gerenciar o Silver Tok. O que mais quer codar hoje?",
-        "Essa é uma excelente pergunta. No ecossistema do Silver Tok v2, eu, Silver, recomendo estruturar isso usando Python e Streamlit.",
-        "Analisando os dados da plataforma... Pronto! O Silver encontrou a solução: tente postar vídeos curtos com legendas chamativas para alcançar os 1.000 seguidores mais rápido!",
-        "Dica do Silver: O Chat EXV foi reformulado com salas privadas, fotos, áudios e grupos por código!",
-        "Olá, eu sou o Silver! Posso te ajudar a criar códigos, responder curiosidades ou planejar novas atualizações."
-    ]
-    return random.choice(respostas_prontas)
+    pergunta_lower = pergunta.lower()
+    
+    if "ideia" in pergunta_lower or "video" in pergunta_lower or "feed" in pergunta_lower:
+        return ("💡 **Ideias de Vídeo do Silver:**\n\n"
+                "1. **Bastidores do Dev:** Grave a tela do seu VS Code mostrando como você criou o sistema de Live Pix do Silver Tok!\n"
+                "2. **Tour pelo App:** Faça um vídeo rápido mostrando a Loja do Site e como equipar a Moldura de Fogo 🔥.\n"
+                "3. **Desafio Tech:** Pergunte aos seguidores qual funcionalidade eles querem ver na v3 do aplicativo.")
+                
+    elif "live" in pergunta_lower or "coins" in pergunta_lower or "pix" in pergunta_lower:
+        return ("🪙 **Dica do Silver para Lives:**\n\n"
+                "O novo sistema de **Live Pix** lê as mensagens em voz alta usando a API do navegador! "
+                "Para bombar sua transmissão, crie metas de Silver Coins na tela (ex: 'Com 500 Coins eu mudo meu cargo no painel').")
+                
+    elif "oi" in pergunta_lower or "ola" in pergunta_lower or "ajuda" in pergunta_lower:
+        return (f"Olá, Rafael! Eu sou o **Silver**, seu assistente oficial. "
+                "Estou calibrado para te ajudar com ideias de conteúdo, dicas de moderação no Painel Dev ou testes das novas salas do Chat EXV. O que vamos projetar agora?")
+                
+    else:
+        return ("🧠 **Análise do Silver:** Entendi sua dúvida! Para o ecossistema do Silver Tok v2, "
+                "recomendo aplicar essa ideia integrando os componentes visuais do Streamlit com o banco de dados do Supabase. "
+                "Quer que eu gere um exemplo de código para isso?")
+        
 
 # --- FUNÇÕES DE AUTENTICAÇÃO ---
 def criar_conta(username, password, nickname, codigo):
