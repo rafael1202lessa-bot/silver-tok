@@ -135,9 +135,9 @@ st.write("---")
 # --- CONTEÚDO DAS ABAS ---
 
 if aba_ativa == "📱 Silver Tok (Feed)":
+if aba_ativa == "📱 Silver Tok (Feed)":
     st.title("📱 Silver Tok Feed")
     
-    # Busca os vídeos do banco de dados (do mais novo para o mais antigo)
     try:
         req = supabase.table("feed_videos").select("*").order("id", desc=True).execute()
         videos = req.data
@@ -148,27 +148,39 @@ if aba_ativa == "📱 Silver Tok (Feed)":
     if not videos:
         st.info("O feed está vazio! Vá na aba '🎥 Postar Vídeo' para ser o primeiro a postar.")
     else:
-        # Exibe os vídeos em um formato vertical estilo celular
         for vid in videos:
+            # Uso do .get() evita que o app trave se a coluna estiver vazia
+            username_post = vid.get('username', 'usuario_anonimo')
+            nickname_post = vid.get('nickname', 'Usuário Silver')
+            legenda_post = vid.get('legenda', '')
+            url_video_post = vid.get('url_video', '')
+            curtidas_post = vid.get('curtidas', 0)
+            id_post = vid.get('id')
+
             with st.container():
-                st.write(f"### 👤 {vid['nickname']} (@{vid['username']})")
-                st.write(f"💬 {vid['legenda']}")
+                st.write(f"### 👤 {nickname_post} (@{username_post})")
+                if legenda_post:
+                    st.write(f"💬 {legenda_post}")
                 
-                # Container vertical simulando a proporção de um celular
                 col1, col2 = st.columns([1, 2])
                 with col1:
-                    try:
-                        st.video(vid['url_video'])
-                    except:
-                        st.error("Não foi possível carregar este vídeo.")
+                    if url_video_post:
+                        try:
+                            st.video(url_video_post)
+                        except:
+                            st.error("Não foi possível reproduzir este vídeo.")
+                    else:
+                        st.warning("Link de vídeo não encontrado para este post.")
                     
-                    # Sistema simples de Curtidas
-                    st.write(f"❤️ {vid['curtidas']} curtidas")
-                    if st.button(f"Curtir post de @{vid['username']}", key=f"like_{vid['id']}"):
-                        supabase.table("feed_videos").update({"curtidas": vid['curtidas'] + 1}).eq("id", vid['id']).execute()
-                        st.rerun()
+                    st.write(f"❤️ {curtidas_post} curtidas")
+                    if st.button(f"Curtir post de @{username_post}", key=f"like_{id_post}"):
+                        try:
+                            supabase.table("feed_videos").update({"curtidas": curtidas_post + 1}).eq("id", id_post).execute()
+                            st.rerun()
+                        except:
+                            st.error("Erro ao computar curtida.")
                 st.write("---")
-
+                
 elif aba_ativa == "🎥 Postar Vídeo":
     st.title("🎥 Postar Novo Vídeo no Silver Tok")
     st.write("Compartilhe um vídeo curto com a comunidade!")
