@@ -63,7 +63,7 @@ def criar_conta(username, password, nickname, codigo):
             "seguindo": 0,
             "dinheiro": 0,
             "verificado": False,
-            "foto_perfil": "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+            "foto_perfil": "https://img.icons8.com/colors/150/test-account.png",
             "bio": "Olá! Estou usando o Silver Tok.",
             "itens_exclusivos": []
         }
@@ -133,16 +133,27 @@ if ESTADO_DESENVOLVIMENTO and user_atual.get("titulo") not in ["👑 Desenvolved
         st.rerun()
     st.stop()
 
-# --- SIDEBAR ---
-foto_side = user_atual.get('foto_perfil', 'https://cdn-icons-png.flaticon.com/512/149/149071.png')
-if not foto_side: foto_side = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-st.sidebar.image(foto_side, width=100)
+
+# ==========================================
+# --- SIDEBAR (TOTALMENTE CORRIGIDA AQUI) ---
+# ==========================================
+foto_side = user_atual.get('foto_perfil')
+
+# Se a foto no banco for "0", vazia ou inválida, joga o avatar seguro que não quebra
+if not foto_side or str(foto_side).strip() in ["0", "None", ""] or not str(foto_side).startswith("http"):
+    foto_side = "https://img.icons8.com/colors/150/test-account.png"
+
+try:
+    st.sidebar.image(foto_side, width=100)
+except:
+    st.sidebar.markdown("👤")
 
 selo_sidebar = obter_selo(user_atual.get('username', ''), user_atual.get('titulo', ''))
 st.sidebar.title(f"@{user_atual.get('username', '')}{selo_sidebar}")
 if st.sidebar.button("Sair da Conta"):
     st.session_state.logado = False
     st.rerun()
+
 
 # --- MENU PRINCIPAL ---
 abas = ["📱 Feed", "🎥 Gravar/Postar", "👤 Meu Perfil"]
@@ -176,12 +187,14 @@ if aba_ativa == "📱 Feed":
 
         if not termo or termo in v_legenda.lower() or termo in v_username.lower() or termo in v_nickname.lower():
             with st.container():
-                foto_autor = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                foto_autor = "https://img.icons8.com/colors/150/test-account.png"
                 titulo_autor = "Usuário"
                 try:
                     autor_req = supabase.table("perfis_usuarios").select("*").eq("username", v_username).execute()
                     if autor_req.data:
                         foto_autor = autor_req.data[0].get('foto_perfil', foto_autor)
+                        if not foto_autor or str(foto_autor).strip() in ["0", "None", ""]:
+                            foto_autor = "https://img.icons8.com/colors/150/test-account.png"
                         titulo_autor = autor_req.data[0].get('titulo', 'Usuário')
                 except:
                     pass
@@ -190,7 +203,7 @@ if aba_ativa == "📱 Feed":
                 
                 col_foto, col_nome = st.columns([1, 5])
                 with col_foto:
-                    st.image(foto_autor if foto_autor else "https://cdn-icons-png.flaticon.com/512/149/149071.png", width=50)
+                    st.image(foto_autor, width=50)
                 with col_nome:
                     if st.button(f"**{v_nickname}** (@{v_username}){selo_post}", key=f"u_{v_id}"):
                         st.session_state.perfil_visitado = v_username
@@ -255,8 +268,14 @@ elif aba_ativa == "👤 Meu Perfil":
     selo_meu_perfil = obter_selo(user_atual.get('username'), user_atual.get('titulo'))
     col_foto, col_stats = st.columns([1, 2])
     with col_foto:
-        f_perfil = user_atual.get('foto_perfil', 'https://cdn-icons-png.flaticon.com/512/149/149071.png')
-        st.image(f_perfil if f_perfil else 'https://cdn-icons-png.flaticon.com/512/149/149071.png', width=140)
+        f_perfil = user_atual.get('foto_perfil')
+        if not f_perfil or str(f_perfil).strip() in ["0", "None", ""] or not str(f_perfil).startswith("http"):
+            f_perfil = "https://img.icons8.com/colors/150/test-account.png"
+        try:
+            st.image(f_perfil, width=140)
+        except:
+            st.markdown("<h2>👤</h2>", unsafe_allow_html=True)
+            
     with col_stats:
         st.header(f"{user_atual.get('nickname', 'Usuário')}{selo_meu_perfil}")
         st.write(f"**@{user_atual.get('username', '')}** | {user_atual.get('titulo', 'Usuário')}")
@@ -268,7 +287,6 @@ elif aba_ativa == "👤 Meu Perfil":
     
     st.write(f"📝 **Bio:** {user_atual.get('bio', 'Disponível')}")
     
-    # Exibe o inventário do próprio usuário
     st.subheader("🎒 Meus Itens Equipados")
     meus_itens = user_atual.get('itens_exclusivos', [])
     if meus_itens:
@@ -312,8 +330,10 @@ elif aba_ativa == "👀 Ver Perfil" and st.session_state.perfil_visitado:
             
             col_f, col_s = st.columns([1, 2])
             with col_f: 
-                f_vis = p.get('foto_perfil', 'https://cdn-icons-png.flaticon.com/512/149/149071.png')
-                st.image(f_vis if f_vis else 'https://cdn-icons-png.flaticon.com/512/149/149071.png', width=120)
+                f_vis = p.get('foto_perfil')
+                if not f_vis or str(f_vis).strip() in ["0", "None", ""]:
+                    f_vis = 'https://img.icons8.com/colors/150/test-account.png'
+                st.image(f_vis, width=120)
             with col_s:
                 st.header(f"{p.get('nickname', 'Usuário')}{selo_visitado}")
                 st.write(f"@{p.get('username', '')} | {p.get('titulo', 'Usuário')}")
@@ -337,7 +357,7 @@ elif aba_ativa == "👀 Ver Perfil" and st.session_state.perfil_visitado:
     except:
         st.error("Erro ao carregar o perfil visitado.")
 
-# --- 5. PAINEL DEV (CORRIGIDO SEM NameError!) ---
+# --- 5. PAINEL DEV (CORRIGIDO EM COLUNAS) ---
 elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_oficial":
     st.header("Painel Secreto do Desenvolvedor 👑")
     try:
@@ -349,7 +369,7 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
     if lista_usuarios:
         usuario_alvo = st.selectbox("Selecione o usuário alvo:", lista_usuarios)
         
-        # Criado as 4 colunas perfeitamente declaradas para evitar o erro do print!
+        # 4 colunas criadas corretamente para evitar NameError
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
@@ -384,6 +404,7 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
 
         with col4:
             st.subheader("🔨 Moderação")
+            st.write("<br>", unsafe_allow_html=True)
             if st.button("🚫 Banir Usuário", key="btn_banir", use_container_width=True):
                 try:
                     supabase.table("perfis_usuarios").update({"titulo": "❌ BANIDO"}).eq("username", usuario_alvo).execute()
@@ -415,7 +436,7 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
                 except Exception as e:
                     st.error(f"Erro no inventário: {str(e)}")
 
-        # --- SEÇÃO DE EVENTOS GLOBAIS ---
+        # --- SEÇÃO DE AÇÕES GLOBAIS ---
         st.write("---")
         st.subheader("⚙️ Ações Globais")
         col_glob1, col_glob2 = st.columns(2)
@@ -434,7 +455,7 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
                     pass
                     
         with col_glob2:
-            st.write("<br>", unsafe_allow_html=True) # Alinha o botão
+            st.write("<br>", unsafe_allow_html=True)
             if st.button("🧹 APAGAR TODOS OS VÍDEOS", use_container_width=True):
                 try:
                     vids = supabase.table("feed_videos").select("id").execute()
@@ -444,4 +465,4 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
                     st.rerun()
                 except:
                     pass
-                             
+                    
