@@ -200,7 +200,7 @@ elif aba_ativa == "📺 Stream (Filmes/Animes)":
         st.warning(f"Nenhum título adicionado na categoria {categoria} ainda.")
         if user_atual['titulo'] == "👑 Desenvolvedor":
             st.info("💡 Como Desenvolvedor, você pode adicionar novos títulos diretamente editando a variável 'CATALOGO_STREAM' no código!")
-    
+
 elif aba_ativa == "👤 Meu Perfil":
     st.header("Seu Perfil")
     st.json(user_atual)
