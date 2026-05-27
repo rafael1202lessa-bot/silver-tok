@@ -28,10 +28,45 @@ if "perfil_visitado" not in st.session_state:
 
 CODIGO_CORRETO = "ChatPrivado2026"
 
-# --- TELA DE LOGIN ---
+TITULOS = {
+    "rafael_oficial": "👑 Desenvolvedor",
+    "rafael_secundario": "⚔️ Vice-Dev",
+    "amiga_divulgadora": "📢 Divulgadora",
+}
+
+# --- FUNÇÕES DE AUTENTICAÇÃO (RECUPERADAS!) ---
+def criar_conta(username, password, nickname, codigo):
+    if codigo != CODIGO_CORRETO:
+        return "Código de convite inválido!"
+    try:
+        existe = supabase.table("perfis_usuarios").select("*").eq("username", username).execute()
+        if existe.data:
+            return "Este nome de usuário já está em uso."
+        
+        titulo = TITULOS.get(username, "Usuário")
+        novo_usuario = {
+            "username": username,
+            "senha": password,
+            "nickname": nickname,
+            "titulo": titulo,
+            "seguidores": 0,
+            "seguindo": 0,
+            "dinheiro": 0,
+            "verificado": False,
+            "foto_perfil": "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+            "bio": "Olá! Estou usando o Silver Tok.",
+            "itens_exclusivos": []
+        }
+        supabase.table("perfis_usuarios").insert(novo_usuario).execute()
+        return "Sucesso"
+    except Exception as e:
+        return f"Erro ao criar conta: {str(e)}"
+
+# --- TELA DE LOGIN / CADASTRO (RECUPERADA!) ---
 if not st.session_state.logado:
     st.title("Welcome to Silver Tok v2 🚀")
     aba_login, aba_cadastro = st.tabs(["🔐 Entrar", "📝 Criar Conta"])
+    
     with aba_login:
         user_in = st.text_input("Usuário", key="login_user").strip()
         pass_in = st.text_input("Senha", type="password", key="login_pass")
@@ -42,7 +77,23 @@ if not st.session_state.logado:
                 st.session_state.user_data = resultado.data[0]
                 st.rerun()
             else:
-                st.error("Incorreto.")
+                st.error("Usuário ou senha incorretos.")
+                
+    with aba_cadastro:
+        new_user = st.text_input("Escolha seu Usuário", key="cad_user").strip()
+        new_nick = st.text_input("Nome de Exibição (Nickname)", key="cad_nick")
+        new_pass = st.text_input("Escolha sua Senha", type="password", key="cad_pass")
+        convite = st.text_input("Código de Convite Secreto", type="password", key="cad_code")
+        
+        if st.button("Cadastrar Nova Conta", use_container_width=True):
+            if not new_user or not new_pass or not new_nick:
+                st.warning("Preencha todos os campos!")
+            else:
+                status = criar_conta(new_user, new_pass, new_nick, convite)
+                if status == "Sucesso":
+                    st.success("Conta criada! Faça login ao lado.")
+                else:
+                    st.error(status)
     st.stop()
 
 # Atualiza os dados do usuário logado em tempo real
@@ -54,6 +105,15 @@ def atualizar_sessao():
 atualizar_sessao()
 user_atual = st.session_state.user_data
 
+# BLOQUEIO DE MANUTENÇÃO
+if ESTADO_DESENVOLVIMENTO and user_atual["titulo"] not in ["👑 Desenvolvedor", "🧪 Tester"]:
+    st.title("🚧 Aplicativo em Manutenção")
+    st.warning(f"Olá {user_atual['nickname']}, o Silver Tok v2 está em desenvolvimento.")
+    if st.button("Sair da Conta"):
+        st.session_state.logado = False
+        st.rerun()
+    st.stop()
+
 # --- SIDEBAR ---
 st.sidebar.image(user_atual.get('foto_perfil', ''), width=100)
 st.sidebar.title(f"@{user_atual['username']}")
@@ -62,9 +122,11 @@ if st.sidebar.button("Sair da Conta"):
     st.rerun()
 
 # --- MENU PRINCIPAL ---
-abas = ["📱 Feed", "🎥 Postar", "👤 Meu Perfil"]
+abas = ["📱 Feed", "🎥 Gravar/Postar", "👤 Meu Perfil"]
 if st.session_state.perfil_visitado:
     abas.append("👀 Ver Perfil")
+if user_atual['username'] == "rafael_oficial":
+    abas.append("⚡ Painel Dev")
 
 aba_ativa = st.radio("Menu", abas, horizontal=True)
 st.write("---")
@@ -84,9 +146,8 @@ if aba_ativa == "📱 Feed":
         if not termo or termo in vid.get('legenda', '').lower() or termo in vid.get('username', '').lower():
             with st.container():
                 # Cabeçalho do Post (Foto + Nome)
-                # Buscamos a foto de quem postou
                 autor_req = supabase.table("perfis_usuarios").select("foto_perfil").eq("username", vid['username']).execute()
-                foto_autor = autor_req.data[0]['foto_perfil'] if autor_req.data else ""
+                foto_autor = autor_req.data[0]['foto_perfil'] if autor_req.data else "https://cdn-icons-png.flaticon.com/512/149/149071.png"
                 
                 col_foto, col_nome = st.columns([1, 5])
                 with col_foto:
@@ -102,41 +163,54 @@ if aba_ativa == "📱 Feed":
                 # Interações
                 c1, c2, c3 = st.columns(3)
                 with c1:
-                    if st.button(f"❤️ {vid['curtidas']}", key=f"l_{vid['id']}"):
-                        supabase.table("feed_videos").update({"curtidas": vid['curtidas'] + 1}).eq("id", vid['id']).execute()
+                    if st.button(f"❤️ {vid['curtidas']}", key=f"l_{vid['id']}", use_container_width=True):
+                        supabase.table("feed_videos").update({"curtidas": vid['curtidas'] + 1}).eq("id", id_post).execute()
                         st.rerun()
+                with c2:
+                    if st.button("🔗 Copiar", key=f"s_{vid['id']}", use_container_width=True):
+                        st.success("Link Copiado!")
+                with c3:
+                    abrir_comentarios = st.checkbox("💬 Comentários", key=f"tab_c_{id_post}")
+                
+                if abrir_comentarios:
+                    st.write("**@pedro_dev:** Esse vídeo ficou brabo! 🔥")
+                    st.text_input("Escreva um comentário...", key=f"inp_c_{id_post}")
                 
                 if user_atual['username'] == vid['username'] or user_atual['username'] == "rafael_oficial":
-                    if st.button(f"🗑️ Apagar", key=f"d_{vid['id']}"):
+                    if st.button(f"🗑️ Apagar Vídeo", key=f"d_{vid['id']}", use_container_width=True):
                         supabase.table("feed_videos").delete().eq("id", vid['id']).execute()
                         st.rerun()
                 st.write("---")
 
-# --- 2. ABA POSTAR ---
-elif aba_ativa == "🎥 Postar":
-    st.title("🎥 Novo Post")
-    legenda = st.text_input("Legenda:")
-    url_vid = st.text_input("Link do vídeo (.mp4):")
-    if st.button("Publicar"):
-        supabase.table("feed_videos").insert({
-            "username": user_atual['username'], "nickname": user_atual['nickname'],
-            "legenda": legenda, "url_video": url_vid, "curtidas": 0
-        }).execute()
-        st.success("Postado!")
+# --- 2. ABA GRAVAR/POSTAR ---
+elif aba_ativa == "🎥 Gravar/Postar":
+    st.title("🎥 Câmera Silver Tok")
+    aba_cam, aba_link = st.tabs(["📸 Gravar com a Câmera", "🔗 Postar por Link"])
+    
+    with aba_cam:
+        imagem_capturada = st.camera_input("Tirar foto/registro para o Feed")
+        if imagem_capturada:
+            st.success("Captura realizada com sucesso!")
+            
+    with aba_link:
+        legenda = st.text_input("Legenda do post:")
+        url_do_video = st.text_input("Link do vídeo (.mp4):")
+        if st.button("Publicar Vídeo", use_container_width=True):
+            supabase.table("feed_videos").insert({
+                "username": user_atual['username'], "nickname": user_atual['nickname'],
+                "legenda": legenda, "url_video": url_do_video, "curtidas": 0
+            }).execute()
+            st.success("Publicado no Feed!")
 
-# --- 3. ABA MEU PERFIL (ESTILO INSTAGRAM) ---
+# --- 3. ABA MEU PERFIL (ESTILO INSTAGRAM/TIKTOK) ---
 elif aba_ativa == "👤 Meu Perfil":
-    # Cabeçalho do Perfil
     col_foto, col_stats = st.columns([1, 2])
-    
     with col_foto:
-        st.image(user_atual.get('foto_perfil', ''), width=150)
-    
+        st.image(user_atual.get('foto_perfil', 'https://cdn-icons-png.flaticon.com/512/149/149071.png'), width=140)
     with col_stats:
         st.header(user_atual['nickname'])
         st.write(f"**@{user_atual['username']}** | {user_atual['titulo']}")
         
-        # Contadores estilo Social Media
         c1, c2, c3 = st.columns(3)
         c1.metric("Seguidores", user_atual.get('seguidores', 0))
         c2.metric("Seguindo", user_atual.get('seguindo', 0))
@@ -144,18 +218,14 @@ elif aba_ativa == "👤 Meu Perfil":
     
     st.write(f"📝 **Bio:** {user_atual.get('bio', '')}")
     
-    # Botão para Editar
     expander = st.expander("⚙️ Editar Perfil")
     with expander:
         novo_nick = st.text_input("Mudar Nickname:", value=user_atual['nickname'])
         nova_bio = st.text_area("Mudar Bio:", value=user_atual.get('bio', ''))
         nova_foto = st.text_input("Link da Foto de Perfil:", value=user_atual.get('foto_perfil', ''))
-        
         if st.button("Salvar Alterações"):
             supabase.table("perfis_usuarios").update({
-                "nickname": novo_nick,
-                "bio": nova_bio,
-                "foto_perfil": nova_foto
+                "nickname": novo_nick, "bio": nova_bio, "foto_perfil": nova_foto
             }).eq("username", user_atual['username']).execute()
             st.success("Perfil atualizado!")
             st.rerun()
@@ -163,17 +233,16 @@ elif aba_ativa == "👤 Meu Perfil":
     st.write("---")
     st.subheader("🎬 Meus Vídeos")
     meus_vids = supabase.table("feed_videos").select("*").eq("username", user_atual['username']).execute()
-    for v in meus_vids.data:
-        st.video(v['url_video'])
+    for v in meus_vids.data: st.video(v['url_video'])
 
-# --- 4. VISITAR PERFIL ---
+# --- 4. ABA VISITAR PERFIL ALHEIO ---
 elif aba_ativa == "👀 Ver Perfil" and st.session_state.perfil_visitado:
     alvo = st.session_state.perfil_visitado
     res = supabase.table("perfis_usuarios").select("*").eq("username", alvo).execute()
     if res.data:
         p = res.data[0]
         col_f, col_s = st.columns([1, 2])
-        with col_f: st.image(p.get('foto_perfil', ''), width=120)
+        with col_f: st.image(p.get('foto_perfil', 'https://cdn-icons-png.flaticon.com/512/149/149071.png'), width=120)
         with col_s:
             st.header(p['nickname'])
             st.write(f"@{p['username']} | {p['titulo']}")
@@ -186,4 +255,38 @@ elif aba_ativa == "👀 Ver Perfil" and st.session_state.perfil_visitado:
         st.write("---")
         vids = supabase.table("feed_videos").select("*").eq("username", alvo).execute()
         for v in vids.data: st.video(v['url_video'])
-                
+
+# --- 5. PAINEL DEV (GOD MODE RECUPERADO!) ---
+elif aba_ativa == "⚡ Painel Dev" and user_atual['username'] == "rafael_oficial":
+    st.header("Painel Secreto do Desenvolvedor 👑")
+    try:
+        usuarios_req = supabase.table("perfis_usuarios").select("username, nickname").execute()
+        lista_usuarios = [u["username"] for u in usuarios_req.data]
+    except:
+        lista_usuarios = []
+
+    if lista_usuarios:
+        usuario_alvo = st.selectbox("Selecione o usuário:", lista_usuarios)
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.subheader("👥 Seguidores")
+            qtd_seguidores = st.number_input("Quantidade", min_value=0, value=1000)
+            if st.button("Definir", key="btn_seg"):
+                supabase.table("perfis_usuarios").update({"seguidores": qtd_seguidores, "verificado": qtd_seguidores >= 1000}).eq("username", usuario_alvo).execute()
+                st.rerun()
+
+        with col2:
+            st.subheader("💰 Carteira")
+            qtd_dinheiro = st.number_input("Dinheiro ($)", min_value=0, value=500)
+            if st.button("Definir", key="btn_money"):
+                supabase.table("perfis_usuarios").update({"dinheiro": qtd_dinheiro}).eq("username", usuario_alvo).execute()
+                st.rerun()
+
+        with col3:
+            st.subheader("🎖️ Cargos")
+            novo_titulo = st.selectbox("Cargo:", ["👑 Desenvolvedor", "⚔️ Vice-Dev", "📢 Divulgadora", "🧪 Tester", "Usuário"])
+            if st.button("Atualizar", key="btn_cargo"):
+                supabase.table("perfis_usuarios").update({"titulo": novo_titulo}).eq("username", usuario_alvo).execute()
+                st.rerun()
+    
