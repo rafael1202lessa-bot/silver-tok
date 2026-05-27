@@ -173,7 +173,7 @@ elif aba_ativa == "💬 Chat & Amigos":
     st.info("Área de conversas privadas, em grupo, amigos e seguidores.")
 
 elif aba_ativa == "📺 Stream (Filmes/Animes)":
-elif aba_ativa == "📺 Stream (Filmes/Animes)":
+
     st.title("Silver Stream 🍿")
     st.write("Assista aos seus conteúdos favoritos diretamente na plataforma.")
     
