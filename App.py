@@ -312,4 +312,14 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual['username'] == "rafael_oficial
             if st.button("Atualizar", key="btn_cargo"):
                 supabase.table("perfis_usuarios").update({"titulo": novo_titulo}).eq("username", usuario_alvo).execute()
                 st.rerun()
-                
+        with col4:
+               
+st.subheader("🔨 Moderação")
+if st.button("🚫 Banir Usuário", key="btn_banir", use_container_width=True):
+    try:
+        supabase.table("perfis_usuarios").update({"titulo": "❌ BANIDO"}).eq("username", usuario_alvo).execute()
+        st.success(f"@{usuario_alvo} foi banido com sucesso!")
+        st.rerun()
+    except Exception as e:
+        st.error(f"Erro ao banir: {str(e)}")
+        
