@@ -94,7 +94,7 @@ def aplicar_moldura_e_selo(username, titulo, itens_usuario=None, seguidores=0):
 
 # --- SIMULAÇÃO DA IA SILVER INTELIGENTE ---
 def responder_ia(pergunta):
-    pergunta_lower = pergunta.lower()
+    pergunta_lower = pregunta.lower()
     
     if "ideia" in pergunta_lower or "video" in pergunta_lower or "feed" in pergunta_lower:
         return ("💡 **Ideias de Vídeo do Silver:**\n\n"
@@ -115,7 +115,6 @@ def responder_ia(pergunta):
         return ("🧠 **Análise do Silver:** Entendi sua dúvida! Para o ecossistema do Silver Tok v2, "
                 "recomendo aplicar essa ideia integrando os componentes visuais do Streamlit com o banco de dados do Supabase. "
                 "Quer que eu gere um exemplo de código para isso?")
-        
 
 # --- FUNÇÕES DE AUTENTICAÇÃO ---
 def criar_conta(username, password, nickname, codigo):
@@ -346,7 +345,6 @@ elif aba_ativa == "🎥 Gravar/Postar":
             
             with col_video_retorno:
                 st.markdown("### 🖥️ Retorno do seu Vídeo")
-                # Exibe a câmera do desenvolvedor na tela para ver o próprio enquadramento
                 st.camera_input("Monitor da Câmera", key="monitor_live_cam")
                 
                 st.markdown("### 🪙 Últimos Alertas Live Pix (Voz Alta)")
@@ -356,12 +354,10 @@ elif aba_ativa == "🎥 Gravar/Postar":
             with col_chat_live:
                 st.markdown("### 💬 Chat da Live")
                 
-                # Container scannável de chat da transmissão
                 with st.container(border=True, height=250):
                     for msg_l in st.session_state.live_chat:
                         st.write(f"**@{msg_l['remetente']}:** {msg_l['conteudo']}")
                 
-                # Simulador de Interatividade da audiência (Para o Dev testar o Live Pix)
                 st.write("---")
                 st.caption("🧪 Simulador de Público (Modo Dev)")
                 sim_user = st.text_input("Usuário do fã:", value="seguidor_vip_01", key="sim_u")
@@ -377,14 +373,10 @@ elif aba_ativa == "🎥 Gravar/Postar":
                     sim_coins = st.number_input("Moedas:", min_value=10, value=50, step=10)
                     if st.button("🎁 Simular Silver Coins", use_container_width=True):
                         if sim_txt:
-                            # Adiciona no chat
                             texto_completo_alerta = f"Enviou {sim_coins} Silver Coins! Mensagem: {sim_txt}"
                             st.session_state.live_chat.append({"remetente": sim_user, "conteudo": f"⭐ {texto_completo_alerta}"})
-                            
-                            # Registra o alerta estruturado
                             st.session_state.live_alertas.append({"usuario": sim_user, "moedas": sim_coins, "msg": sim_txt})
                             
-                            # DISPARA A LEITURA EM VOZ ALTA DO LIVE PIX
                             texto_leitura = f"{sim_user} enviou {sim_coins} Silver Coins. {sim_txt}"
                             emitir_alerta_voz(texto_leitura)
                             st.rerun()
@@ -502,6 +494,7 @@ elif aba_ativa == "🧠 Silver IA":
         if prompt_usuario:
             resposta = responder_ia(prompt_usuario)
             st.session_state.historico_ia.insert(0, {"pergunta": prompt_usuario, "resposta": resposta})
+            st.rerun()
             
     if st.session_state.historico_ia:
         st.write("---")
@@ -510,15 +503,18 @@ elif aba_ativa == "🧠 Silver IA":
             st.info(f"❓ **Você:** {chat['pergunta']}")
             st.success(f"🤖 **Silver:** {chat['resposta']}")
 
-# --- 5. ABA LOJA DO SITE (ATUALIZADA COM SILVER COINS) ---
+# --- 5. ABA LOJA DO SITE (FUNCIONANDO TOTALMENTE COM TRATAMENTO DE ARRAY) ---
 elif aba_ativa == "🛒 Loja do Site":
     st.title("🛒 Loja de Customizações e Vantagens")
     st.write(f"🪙 **Sua Carteira:** {user_atual.get('dinheiro', 0)} Silver Coins")
     st.write("---")
 
     customizacoes = {
-        "🖼️ Moldura de Fogo 🔥": 1000, "💎 Moldura de Diamante ✨": 2500,
-        "🖼️ Banner Estelar (Perfil)": 1500, "💬 Caixa de Texto Neon (Feed)": 2000, "🌈 Nickname Dourado": 5000
+        "🖼️ Moldura de Fogo 🔥": 1000, 
+        "💎 Moldura de Diamante ✨": 2500,
+        "🖼️ Banner Estelar (Perfil)": 1500, 
+        "💬 Caixa de Texto Neon (Feed)": 2000, 
+        "🌈 Nickname Dourado": 5000
     }
 
     for item, preco in customizacoes.items():
@@ -529,8 +525,12 @@ elif aba_ativa == "🛒 Loja do Site":
                 st.markdown(f"🪙 Custo: **{preco} Silver Coins**")
             with col_btn:
                 st.write("<br>", unsafe_allow_html=True)
-                meus_visuais = user_atual.get('itens_exclusivos', [])
-                if not isinstance(meus_visuais, list): meus_visuais = []
+                
+                # Garante que o inventário seja tratado como lista e previne bugs de nulo
+                meus_visuais = user_atual.get('itens_exclusivos')
+                if not isinstance(meus_visuais, list):
+                    meus_visuais = []
+                meus_visuais = [x for x in meus_visuais if x]
                 
                 if item in meus_visuais or f"[EQUIPADO] {item}" in meus_visuais:
                     st.button("✅ Adquirido", key=f"loja_{item}", disabled=True, use_container_width=True)
@@ -541,44 +541,161 @@ elif aba_ativa == "🛒 Loja do Site":
                             try:
                                 novo_saldo = saldo - preco
                                 meus_visuais.append(item)
-                                supabase.table("perfis_usuarios").update({"dinheiro": novo_saldo, "itens_exclusivos": meus_visuais}).eq("username", user_atual.get('username')).execute()
+                                
+                                # Atualiza saldo e adiciona o item comprado no array
+                                supabase.table("perfis_usuarios").update({
+                                    "dinheiro": novo_saldo, 
+                                    "itens_exclusivos": meus_visuais
+                                }).eq("username", user_atual.get('username')).execute()
+                                
                                 st.success(f"🎉 '{item}' adquirido!")
                                 st.rerun()
-                            except: st.error("Erro ao realizar compra.")
-                        else: st.error("❌ Saldo de Silver Coins insuficiente!")
+                            except Exception as e: 
+                                st.error(f"Erro ao salvar no banco: {str(e)}")
+                        else: 
+                            st.error("❌ Saldo de Silver Coins insuficiente!")
             st.write("---")
 
-# --- 6. ABA MEU PERFIL ---
+# --- 6. ABA MEU PERFIL (VERSÃO COMPLETA, TURBINADA E ROBUSTA) ---
 elif aba_ativa == "👤 Meu Perfil":
-    meus_itens_perfil = user_atual.get('itens_exclusivos', [])
-    if not isinstance(meus_itens_perfil, list): meus_itens_perfil = []
-        
-    selo_meu_perfil, moldura_meu_perfil = aplicar_moldura_e_selo(user_atual.get('username'), user_atual.get('titulo'), meus_itens_perfil, user_atual.get('seguidores', 0))
+    meus_itens_perfil = user_atual.get('itens_exclusivos')
+    if not isinstance(meus_itens_perfil, list): 
+        meus_itens_perfil = []
+    meus_itens_perfil = [x for x in meus_itens_perfil if x]
+    
+    # 🌟 Banner de Fundo Dinâmico baseado na Loja
+    if "[EQUIPADO] 🖼️ Banner Estelar (Perfil)" in meus_itens_perfil:
+        st.markdown(
+            """
+            <div style="background: linear-gradient(135deg, #1e0034 0%, #340068 50%, #ff007f 100%); 
+            height: 120px; border-radius: 12px 12px 0px 0px; position: relative; margin-bottom: -60px;
+            box-shadow: inset 0 0 20px rgba(255,255,255,0.2);">
+            </div>
+            """, unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            """
+            <div style="background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%); 
+            height: 100px; border-radius: 12px 12px 0px 0px; position: relative; margin-bottom: -50px;">
+            </div>
+            """, unsafe_allow_html=True
+        )
+
+    selo_meu_perfil, moldura_meu_perfil = aplicar_moldura_e_selo(
+        user_atual.get('username'), user_atual.get('titulo'), meus_itens_perfil, user_atual.get('seguidores', 0)
+    )
     
     col_foto, col_stats = st.columns([1, 2])
     with col_foto:
         f_perfil = user_atual.get('foto_perfil')
         if not f_perfil or str(f_perfil).strip() in ["0", "None", ""] or not str(f_perfil).startswith("http"):
             f_perfil = "https://img.icons8.com/colors/150/test-account.png"
-        st.markdown(f'<img src="{f_perfil}" style="{moldura_meu_perfil}" width="140">', unsafe_allow_html=True)
+        
+        st.markdown(
+            f'<div style="padding-top: 10px; text-align: center;">'
+            f'<img src="{f_perfil}" style="{moldura_meu_perfil} background-color: #0e1117;" width="120">'
+            f'</div>', unsafe_allow_html=True
+        )
             
     with col_stats:
+        st.write("<br>" * 2, unsafe_allow_html=True)
         st.header(f"{user_atual.get('nickname', 'Usuário')}{selo_meu_perfil}")
-        st.write(f"**@{user_atual.get('username', '')}** | {user_atual.get('titulo', 'Usuário')}")
+        st.caption(f"🆔 **@{user_atual.get('username', '')}** | 🎖️ Cargo: *{user_atual.get('titulo', 'Usuário')}*")
         
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Seguidores", user_atual.get('seguidores', 0))
-        c2.metric("Seguindo", user_atual.get('seguindo', 0))
-        c3.metric("Coins", f"{user_atual.get('dinheiro', 0)}")
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Seguidores", f"👥 {user_atual.get('seguidores', 0)}")
+        m2.metric("Seguindo", f"🏃 {user_atual.get('seguindo', 0)}")
+        m3.metric("Saldo", f"🪙 {user_atual.get('dinheiro', 0)}")
     
-    st.write(f"📝 **Bio:** {user_atual.get('bio', 'Disponível')}")
     st.write("---")
     
-    exp_seg = st.expander("👥 Ver Meus Seguidores / Amigos")
-    with exp_seg:
-        st.markdown("### ➕ Adicionar Novo Amigo/Seguidor")
-        amigo_para_add = st.text_input("Digite o @username exato do seguidor:", key="input_add_amigo_perfil").strip()
-        if st.button("➕ Adicionar na Lista", use_container_width=True):
+    # Sistema de Nível XP integrado (Calculado por Seguidores)
+    seguidores_atuais = user_atual.get('seguidores', 0)
+    nivel_atual = (seguidores_atuais // 100) + 1
+    xp_progresso = seguidores_atuais % 100
+    
+    st.markdown(f"### 🚀 Nível do Canal: **Lv. {nivel_atual}**")
+    st.progress(xp_progresso / 100, text=f"{xp_progresso}/100 seguidores para o próximo nível")
+    
+    st.markdown(f"💬 **Biografia:** *{user_atual.get('bio', 'Nenhuma biografia definida ainda.')}*")
+    st.write("---")
+    
+    # Sub-Abas de Gestão interna do Perfil
+    sub_aba_inventario, sub_aba_editar, sub_aba_conquistas, sub_aba_seguidores = st.tabs([
+        "🎒 Meu Inventário", 
+        "⚙️ Editar Perfil", 
+        "🏅 Minhas Conquistas",
+        "👥 Gerenciar Seguidores"
+    ])
+    
+    with sub_aba_inventario:
+        st.subheader("Gerenciar Customizações Equipadas")
+        if meus_itens_perfil:
+            itens_para_exibir = list(set([item.replace("[EQUIPADO] ", "") for item in meus_itens_perfil if item]))
+            for item_base in itens_para_exibir:
+                col_item_nome, col_item_acao = st.columns([3, 1])
+                esta_equipado = f"[EQUIPADO] {item_base}" in meus_itens_perfil
+                
+                with col_item_nome:
+                    if esta_equipado: st.markdown(f"🟢 **{item_base}** *(Equipado)*")
+                    else: st.markdown(f"⚪ {item_base}")
+                        
+                with col_item_acao:
+                    if esta_equipado:
+                        if st.button("🔴 Desequipar", key=f"deseq_{item_base}", use_container_width=True):
+                            nova_lista = [x for x in meus_itens_perfil if x != f"[EQUIPADO] {item_base}"] + [item_base]
+                            supabase.table("perfis_usuarios").update({"itens_exclusivos": nova_lista}).eq("username", user_atual.get('username')).execute()
+                            st.rerun()
+                    else:
+                        if st.button("🟢 Equipar", key=f"eq_{item_base}", use_container_width=True):
+                            if "Moldura" in item_base:
+                                nova_lista = [x for x in meus_itens_perfil if "Moldura" not in x]
+                            elif "Banner" in item_base:
+                                nova_lista = [x for x in meus_itens_perfil if "Banner" not in x]
+                            else:
+                                nova_lista = meus_itens_perfil.copy()
+                                
+                            if item_base in nova_lista: nova_lista.remove(item_base)
+                            nova_lista.append(f"[EQUIPADO] {item_base}")
+                            
+                            supabase.table("perfis_usuarios").update({"itens_exclusivos": nova_lista}).eq("username", user_atual.get('username')).execute()
+                            st.rerun()
+        else: 
+            st.info("Sua mochila está vazia. Compre molduras exclusivas na Loja do Site!")
+
+    with sub_aba_editar:
+        st.subheader("Atualizar Informações do Canal")
+        novo_nickname = st.text_input("Mudar Nome de Exibição (Nickname):", value=user_atual.get('nickname'))
+        nova_foto_url = st.text_input("Link da Nova Foto de Perfil (URL):", value=user_atual.get('foto_perfil'))
+        nova_bio = st.text_area("Escrever nova Biografia:", value=user_atual.get('bio'), max_chars=150)
+        
+        if st.button("💾 Salvar Alterações", use_container_width=True):
+            try:
+                supabase.table("perfis_usuarios").update({
+                    "nickname": novo_nickname, "foto_perfil": nova_foto_url, "bio": nova_bio
+                }).eq("username", user_atual.get('username')).execute()
+                st.success("Perfil atualizado com sucesso no Silver Tok!")
+                st.rerun()
+            except Exception as e: st.error(f"Erro ao salvar dados: {str(e)}")
+
+    with sub_aba_conquistas:
+        st.subheader("Medalhas de Honra do Canal")
+        if seguidores_atuais >= 1000:
+            st.success("🏅 **Criador VIP:** Alcançou mais de 1.000 seguidores!")
+        else: st.caption("🔒 *Criador VIP:* Alcance 1.000 seguidores para desbloquear.")
+            
+        if user_atual.get('dinheiro', 0) >= 5000:
+            st.success("💰 **Magnata Prateado:** Fortuna acumulada de mais de 5.000 Silver Coins!")
+        else: st.caption("🔒 *Magnata Prateado:* Acumule 5.000 moedas na carteira.")
+            
+        if user_atual.get('username') == "rafael_oficial":
+            st.info("👑 **Arquiteto do Sistema:** Atribuído exclusivamente ao criador do código.")
+
+    with sub_aba_seguidores:
+        st.subheader("Lista de Canais que você acompanha")
+        amigo_para_add = st.text_input("Digite o @username exato de quem quer seguir:", key="input_add_amigo_perfil").strip()
+        if st.button("➕ Seguir Usuário", use_container_width=True):
             if amigo_para_add:
                 try:
                     checar_user = supabase.table("perfis_usuarios").select("username").eq("username", amigo_para_add).execute()
@@ -586,51 +703,32 @@ elif aba_ativa == "👤 Meu Perfil":
                         lista_amigos_perfil = user_atual.get('lista_amigos', [])
                         if not isinstance(lista_amigos_perfil, list): lista_amigos_perfil = []
                         
-                        if amigo_para_add in lista_amigos_perfil: st.warning("Este usuário já está na sua lista!")
+                        if amigo_para_add in lista_amigos_perfil: st.warning("Você já segue este canal!")
                         else:
                             lista_amigos_perfil.append(amigo_para_add)
-                            supabase.table("perfis_usuarios").update({"lista_amigos": lista_amigos_perfil}).eq("username", user_atual.get('username')).execute()
-                            st.success(f"🎉 @{amigo_para_add} adicionado com sucesso!")
+                            supabase.table("perfis_usuarios").update({
+                                "lista_amigos": lista_amigos_perfil,
+                                "seguindo": user_atual.get('seguindo', 0) + 1
+                            }).eq("username", user_atual.get('username')).execute()
+                            st.success(f"🎉 Agora você está seguindo @{amigo_para_add}!")
                             st.rerun()
-                    else: st.error("Usuário não encontrado no Silver Tok.")
-                except: st.error("Erro ao processar adição de amigo.")
-            else: st.warning("Por favor, digite um nome de usuário.")
+                    else: st.error("Canal não encontrado no Silver Tok.")
+                except Exception as e: st.error(f"Erro ao processar: {str(e)}")
+            else: st.warning("Preencha o campo de usuário.")
 
         st.write("---")
         lista_amigos_perfil = user_atual.get('lista_amigos', [])
         if lista_amigos_perfil and isinstance(lista_amigos_perfil, list):
             for amg in lista_amigos_perfil:
-                col_amg_nome, col_amg_btn = st.columns([3, 2])
-                with col_amg_nome: st.write(f"👤 **@{amg}**")
-                with col_amg_btn:
-                    if st.button(f"💬 Conversa com Seguidor", key=f"chat_seg_{amg}", use_container_width=True):
-                        st.session_state.sala_privada_atual = obter_id_sala_privada(user_atual.get('username'), amg)
-                        st.session_state.codigo_grupo_atual = None
-                        st.rerun()
-        else: st.caption("Nenhum seguidor ou amigo adicionado ainda.")
-    
-    st.write("---")
-    st.subheader("🎒 Meu Inventário Visual")
-    if meus_itens_perfil:
-        itens_para_exibir = list(set([item.replace("[EQUIPADO] ", "") for item in meus_itens_perfil if item]))
-        for item_base in itens_para_exibir:
-            col_item_nome, col_item_acao = st.columns([3, 1])
-            esta_equipado = f"[EQUIPADO] {item_base}" in meus_itens_perfil
-            with col_item_nome:
-                if esta_equipado: st.markdown(f"🟢 **{item_base}** *(Equipado)*")
-                else: st.markdown(f"⚪ {item_base}")
-            with col_item_acao:
-                if esta_equipado:
-                    if st.button("🔴 Desequipar", key=f"deseq_{item_base}", use_container_width=True):
-                        nova_lista = [x for x in meus_itens_perfil if x != f"[EQUIPADO] {item_base}"] + [item_base]
-                        supabase.table("perfis_usuarios").update({"itens_exclusivos": nova_lista}).eq("username", user_atual.get('username')).execute()
-                        st.rerun()
-                else:
-                    if st.button("🟢 Equipar", key=f"eq_{item_base}", use_container_width=True):
-                        nova_lista = [x for x in meus_itens_perfil if "Moldura" not in x or "Moldura" not in item_base] + [f"[EQUIPADO] {item_base}"]
-                        supabase.table("perfis_usuarios").update({"itens_exclusivos": nova_lista}).eq("username", user_atual.get('username')).execute()
-                        st.rerun()
-    else: st.info("Você não possui itens.")
+                if amg:
+                    col_amg_nome, col_amg_btn = st.columns([3, 2])
+                    with col_amg_nome: st.write(f"👤 **@{amg}**")
+                    with col_amg_btn:
+                        if st.button(f"💬 Abrir Direct", key=f"chat_seg_{amg}", use_container_width=True):
+                            st.session_state.sala_privada_atual = obter_id_sala_privada(user_atual.get('username'), amg)
+                            st.session_state.codigo_grupo_atual = None
+                            st.success("Direcionado! Vá para a aba Chat EXV.")
+        else: st.caption("Você ainda não está seguindo nenhum criador.")
 
 # --- 7. ABA VISITAR PERFIL ALHEIO ---
 elif aba_ativa == "👀 Ver Perfil" and st.session_state.perfil_visitado:
@@ -712,7 +810,6 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
                 supabase.table("perfis_usuarios").update({"titulo": "❌ BANIDO"}).eq("username", usuario_alvo).execute()
                 st.rerun()
 
-        # --- SEÇÃO DO GERENCIADOR DE INVENTÁRIO ---
         st.write("---")
         st.subheader("🎒 Gerenciador de Inventário (God Mode)")
         item_para_dar = st.text_input("Nome do Item para dar ao usuário:", placeholder="Ex: 🖼️ Moldura de Fogo 🔥")
@@ -727,7 +824,6 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
                     st.success(f"🎉 Item injetado!")
                     st.rerun()
 
-        # --- SEÇÃO DE AÇÕES GLOBAIS ---
         st.write("---")
         st.subheader("⚙️ Ações Globais")
         col_glob1, col_glob2 = st.columns(2)
@@ -746,4 +842,3 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
                 vids = supabase.table("feed_videos").select("id").execute()
                 for v in vids.data: supabase.table("feed_videos").delete().eq("id", v['id']).execute()
                 st.rerun()
-  
