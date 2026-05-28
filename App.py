@@ -333,10 +333,11 @@ if aba_ativa == "📱 Feed":
 
 # --- 2. ABA GRAVAR/POSTAR ---
 if aba_ativa == "🎥 Gravar/Postar":
+if aba_ativa == "🎥 Gravar/Postar":
     st.title("🎥 Postar Novo Conteúdo")
     
-    # Criando apenas as duas abas reais que você usa na tela!
-    aba_gravas, aba_link = st.tabs(["🔴 Gravar Post", "🔗 Postar por Link"])
+    # Adicionando explicitamente a aba_central para corrigir o NameError
+    aba_gravas, aba_link, aba_central = st.tabs(["🔴 Gravar Post", "🔗 Postar por Link", "🚨 Central do Dev"])
     
     with aba_gravas:
         st.info("Função de gravação direta pela câmera em desenvolvimento!")
@@ -357,9 +358,9 @@ if aba_ativa == "🎥 Gravar/Postar":
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro ao salvar: {str(e)}")
-                                                            
+                    
     with aba_central:
-        st.write("Configurações adicionais de posts de live aqui.")
+        st.write("Configurações adicionais e monitoramento de lives.")
  
         if not st.session_state.live_ativa:
             titulo_live = st.text_input("Título da sua Live:", placeholder="Ex: Programando o Silver Tok v2! 🔥")
