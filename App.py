@@ -63,7 +63,7 @@ if "user_data" not in st.session_state:
     st.session_state.user_data = None
 if "perfil_visitado" not in st.session_state:
     rua. estado_sessão . perfil_visitado = Nenhum
-"historico_ia" not in st. session_state :
+if "historico_ia" not in st.session_state:
     st. session_state . historico_ia = [ ]
 
 # --- BANCO DE DADOS LOCAL DO CHAT E LIVES (Sessão Ativa) ---
