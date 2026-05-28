@@ -305,30 +305,94 @@ if aba_ativa == "📱 Feed":
                     if st.button(f"**{v_nickname}** (@{v_username}){selo_post}", key=f"u_{v_id}"):
                         st.session_state.perfil_visitado = v_username
                         st.rerun()
+ # --- 1. ABA FEED (CORRIGIDA) ---
+if aba_ativa == "📱 Feed":
+    st.title("📱 Feed de Vídeos")
+    
+    # --- BARRA DE PESQUISA (Resolve o NameError da variável 'termo') ---
+    termo = st.text_input("🔍 Pesquisar vídeos por legenda ou usuário:", "").strip().lower()
+    st.write("---")
+    
+    try:
+        dados_feed = supabase.table("feed_videos").select("*").order("id", desc=True).execute()
+        videos = dados_feed.data if dados_feed else []
+    except Exception as e:
+        st.error(f"Erro ao carregar o Feed: {str(e)}")       
+        videos = []
+
+    if not videos:
+        st.info("Nenhum vídeo publicado ainda. Seja o primeiro a postar na aba 🎥 Gravar/Postar!")
+
+    # Loop único e limpo para renderizar os posts
+    for vid in videos:
+        v_username = vid.get('username', 'anonimo')
+        v_nickname = vid.get('nickname', 'Usuário')
+        v_legenda = vid.get('legenda', '')
+        v_url = vid.get('url', '')  
+        v_curtidas = vid.get('curtidas', 0)
+        v_id = vid.get('id')
+        
+        # Filtro de busca usando a variável 'termo' com segurança
+        if not termo or termo in str(v_legenda).lower() or termo in str(v_username).lower() or termo in str(v_nickname).lower():
+            with st.container():
+                foto_autor, titulo_autor, itens_autor, seg_autor = "https://img.icons8.com/colors/150/test-account.png", "Usuário", [], 0
+                try:
+                    autor_req = supabase.table("perfis_usuarios").select("*").eq("username", v_username).execute()
+                    if autor_req.data:
+                        foto_autor = autor_req.data[0].get('foto_perfil', foto_autor)
+                        if not foto_autor or str(foto_autor).strip() in ["0", "None", ""]: 
+                            foto_autor = "https://img.icons8.com/colors/150/test-account.png"
+                        titulo_autor = autor_req.data[0].get('titulo', 'Usuário')
+                        itens_autor = autor_req.data[0].get('itens_exclusivos', [])
+                        seg_autor = autor_req.data[0].get('seguidores', 0)
+                except: 
+                    pass
                 
-                if v_legenda: st.write(v_legenda)
+                selo_post, moldura_post = aplicar_moldura_e_selo(v_username, titulo_autor, itens_autor, seg_autor)
+                
+                # Cabeçalho do post (Foto e Nome do criador)
+                col_foto, col_nome = st.columns([1, 5])
+                with col_foto: 
+                    st.markdown(f'<img src="{foto_autor}" style="{moldura_post}" width="50">', unsafe_allow_html=True)
+                with col_nome:
+                    if st.button(f"**{v_nickname}** (@{v_username}){selo_post}", key=f"u_{v_id}"):
+                        st.session_state.perfil_visitado = v_username
+                        st.rerun()
+                
+                # Conteúdo do post (Legenda e Vídeo)
+                if v_legenda: 
+                    st.write(v_legenda)
                 if v_url:
-                    try: st.video(v_url)
-                    except: st.error("Vídeo indisponível.")
+                    try: 
+                        st.video(v_url)
+                    except: 
+                        st.error("Vídeo indisponível.")
                 
+                # Botões de Interação
                 c1, c2, c3 = st.columns(3)
                 with c1:
                     if st.button(f"❤️ {v_curtidas}", key=f"l_{v_id}", use_container_width=True):
                         try:
                             supabase.table("feed_videos").update({"curtidas": v_curtidas + 1}).eq("id", v_id).execute()
                             st.rerun()
-                        except: pass
-                with c2: st.button("🔗 Copiar", key=f"s_{v_id}", use_container_width=True)
-                with c3: abrir_comentarios = st.checkbox("💬 Comentários", key=f"tab_c_{v_id}")
+                        except: 
+                            pass
+                with c2: 
+                    st.button("🔗 Copiar", key=f"s_{v_id}", use_container_width=True)
+                with c3: 
+                    abrir_comentarios = st.checkbox("💬 Comentários", key=f"tab_c_{v_id}")
                 
-                if abrir_comentarios: st.write("**@rafael_oficial:** Esse vídeo ficou brabo! 🔥")
+                if abrir_comentarios: 
+                    st.write("**@rafael_oficial:** Esse vídeo ficou brabo! 🔥")
                 
+                # Opção de apagar (Apenas para o criador do post ou o Dev)
                 if user_atual.get('username') == v_username or user_atual.get('username') == "rafael_oficial":
                     if st.button(f"🗑️ Apagar Vídeo", key=f"d_{v_id}", use_container_width=True):
                         try:
                             supabase.table("feed_videos").delete().eq("id", v_id).execute()
                             st.rerun()
-                        except: pass
+                        except: 
+                            pass
                 st.write("---")
 
 # ==========================================
