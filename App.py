@@ -346,24 +346,23 @@ elif aba_ativa == "🎥 Gravar/Postar":
         video_arquivo = st.file_uploader("Selecione o arquivo de vídeo", type=["mp4", "mov"])
         if st.button("Publicar Vídeo Gravado", use_container_width=True): st.success("Vídeo processado!")
                     
-        with aba_link:
+            with aba_link:
         legenda = st.text_input("Legenda do post:", key="leg_link")
         url_do_video = st.text_input("Link do vídeo (.mp4):", key="url_mp4")
         if st.button("Publicar Vídeo por Link", use_container_width=True):
             if url_do_video:
                 try:
-                    # Insere no banco de dados
+                    # Envia a coluna com o nome correto ('url') que está no banco de dados
                     supabase.table("feed_videos").insert({
                         "username": user_atual.get('username'), 
                         "nickname": user_atual.get('nickname'), 
                         "legenda": legenda, 
-                        "url_video": url_do_video, 
+                        "url": url_do_video, # Ajustado aqui de 'url_video' para 'url'
                         "curtidas": 0
                     }).execute()
                     
                     st.success("Publicado no Feed! Atualizando...")
-                    # O SEGREDO ESTÁ AQUI: Força o app a reiniciar o ciclo e ler o feed novo
-                    st.rerun() 
+                    st.rerun() # Força o app a recarregar e mostrar o vídeo na hora
                 except Exception as e: 
                     st.error(f"Erro: {str(e)}")
           
