@@ -546,7 +546,8 @@ elif aba_ativa == "👤 Meu Perfil":
         m3.metric("Saldo", f"🪙 {user_atual.get('dinheiro', 0)}")
     
     st.write("---")
-    
+    sub_aba_perfil, sub_aba_inventario, sub_aba_editar, sub_aba_convites, sub_aba_amigos = st.tabs(["📋 Meus Dados", "🎒 Meu Inventário", "⚙️ Editar Perfil", "✉️ Convites", "👥 Amigos"])
+
     seg_at = user_atual.get('seguidores', 0)
     st.markdown(f"### 🚀 Nível do Canal: **Lv. {(seg_at // 100) + 1}**")
     st.progress((seg_at % 100) / 100, text=f"{seg_at % 100}/100 para o próximo nível")
