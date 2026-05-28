@@ -328,18 +328,19 @@ if aba_ativa == "📱 Feed":
 # --- 2. ABA GRAVAR/POSTAR ---
 elif aba_ativa == "🎥 Gravar/Postar":
     st.title("🎥 Postar Novo Conteúdo")
-    aba_gravas, aba_link = st.tabs(["🔴 Gravar Post", "🔗 Postar por Link"])
+    # Criando apenas as abas que você vai usar de verdade
+    aba_gravas, aba_link, aba_central = st.tabs(["🔴 Gravar Post", "🔗 Postar por Link", "🚨 Central do Dev"])
     
     with aba_gravas:
         st.info("Função de gravação direta pela câmera em desenvolvimento!")
         
     with aba_link:
-        legenda = st.text_input("Legenda do post (Aparecerá no Feed):", key="leg_link")
+        legenda = st.text_input("Legenda do post:", key="leg_link")
         url_do_video = st.text_input("Link do vídeo (.mp4):", key="url_mp4")
         if st.button("Publicar Vídeo por Link", use_container_width=True):
             if url_do_video:
                 try:
-                    # Envia apenas os dados compatíveis com suas colunas do banco
+                    # Envia para a coluna 'url' que está no seu banco
                     supabase.table("feed_videos").insert({
                         "username": user_atual.get('username'), 
                         "nickname": user_atual.get('nickname'), 
@@ -347,16 +348,14 @@ elif aba_ativa == "🎥 Gravar/Postar":
                         "curtidas": 0
                     }).execute()
                     
-                    # Salva a legenda temporariamente no session_state para o feed ler localmente se necessário, 
-                    # evitando o erro de coluna ausente no Supabase
                     st.success("Publicado com sucesso no Feed! Atualizando...")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro ao salvar: {str(e)}")
-                  
-    with aba_live:
-        st.subheader("📹 Painel de Controle de Transmissão")
-        
+                    
+    with aba_central:
+        st.write("Configurações adicionais de posts de live aqui.")
+ 
         if not st.session_state.live_ativa:
             titulo_live = st.text_input("Título da sua Live:", placeholder="Ex: Programando o Silver Tok v2! 🔥")
             if st.button("🔴 INICIAR LIVE GLOBAL", use_container_width=True):
