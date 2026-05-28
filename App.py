@@ -415,14 +415,32 @@ elif aba_ativa == "💬 Chat EXV":
                 st.session_state.sala_privada_atual = obter_id_sala_privada(user_atual.get('username'), usuario_selecionado)
                 st.session_state.codigo_grupo_atual = None
         
-        if st.session_state.sala_privada_atual:
+                if st.session_state.sala_privada_atual:
             sala_id = st.session_state.sala_privada_atual
             outro_usuario = sala_id.replace(user_atual.get('username'), "").replace("_", "")
             st.markdown(f"### 💬 Sala: **@{user_atual.get('username')}** & **@{outro_usuario}**")
             
-            if sala_id not in st.session_state.chat_privado_salas: st.session_state.chat_privado_salas[sala_id] = []
+            if sala_id not in st.session_state.chat_privado_salas: 
+                st.session_state.chat_privado_salas[sala_id] = []
+                
             for msg in st.session_state.chat_privado_salas[sala_id]:
-                with st.chat_message("user" if msg['remetente'] == user_atual.get('username') else "assistant"):
+                # --- BUSCA A FOTO DO REMETENTE DA MENSAGEM ---
+                foto_avatar = "https://img.icons8.com/colors/150/test-account.png"
+                if msg['remetente'] == user_atual.get('username'):
+                    if user_atual.get('foto_perfil') and str(user_atual.get('foto_perfil')).startswith("http"):
+                        foto_avatar = user_atual.get('foto_perfil')
+                else:
+                    try:
+                        # Busca a foto do outro usuário direto no banco de dados
+                        outro_req = supabase.table("perfis_usuarios").select("foto_perfil").eq("username", msg['remetente']).execute()
+                        if outro_req.data and outro_req.data[0].get('foto_perfil'):
+                            if str(outro_req.data[0].get('foto_perfil')).startswith("http"):
+                                foto_avatar = outro_req.data[0].get('foto_perfil')
+                    except:
+                        pass
+                
+                # --- EXIBE O BALÃO COM A FOTO CORRETA ---
+                with st.chat_message("user" if msg['remetente'] == user_atual.get('username') else "assistant", avatar=foto_avatar):
                     st.write(f"**@{msg['remetente']}:** {msg['conteudo']}")
             
             txt = st.text_input("Mensagem:", key="msg_p_input")
