@@ -528,7 +528,9 @@ if aba_ativa == "🎥 Gravar/Postar":
                     st.error(f"Erro ao fazer upload: {str(e)}")
             else:
                 st.warning("Por favor, selecione um arquivo de vídeo antes de publicar.")
+                
 # --- 3. ABA ASSISTIR LIVES (PARA O PÚBLICO) ---
+            
 if aba_ativa == "📺 Assistir Lives":
     st.title("📺 Transmissões Ao Vivo")
     st.write("Veja quem está transmitindo agora no Silver Tok!")
