@@ -335,9 +335,9 @@ if aba_ativa == "🎥 Gravar/Postar":
     # 1. Título da aba de gravação
     st.title("🎥 Postar Novo Conteúdo")
     
-    # Se estás a usar sub-abas (Gravar Post, Postar por Link, Central)
-    # Garante que o código da Gravação Direta tem o "pass" ou a mensagem de desenvolvimento:
-    
+    # Certifique-se de que definiu os três nomes antes do '='
+aba_gravar, aba_link, aba_central = st.tabs(["🔴 Gravar Post", "🔗 Postar por Link", "🚨 Central do..."])
+ 
     # Exemplo para a sub-aba de Gravar Post:
     st.info("Função de gravação direta pela câmera em desenvolvimento!")
     
