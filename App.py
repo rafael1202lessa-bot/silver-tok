@@ -357,7 +357,7 @@ with aba_link:
                 except Exception as e:
                     st.error(f"Erro ao salvar: {str(e)}")                
         with aba_central:
-    st.write("Configurações adicionais e monitoramento de lives.")
+••••st.write("Configurações adicionais e monitoramento de lives.")
 
         if not st.session_state.live_ativa:
             titulo_live = st.text_input("Título da sua Live:", placeholder="Ex: Programando o Silver Tok v2! 🔥")
