@@ -356,7 +356,7 @@ with aba_link:
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro ao salvar: {str(e)}")                
-    with aba_central:
+      with aba_central:
         st.write("Configurações adicionais e monitoramento de lives.")
  
         if not st.session_state.live_ativa:
