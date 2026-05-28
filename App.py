@@ -398,38 +398,38 @@ if aba_ativa == "📱 Feed":
 if aba_ativa == "🎥 Gravar/Postar":
     st.title("🎥 Postar Novo Conteúdo")
     
-    # Criação correta das 3 abas principais
-    aba_gravar, aba_link, aba_central = st.tabs(["🔴 Gravar Post", "🔗 Postar por Link", "🚨 Central do Streamer" "📁 Upload da Galeria"])
-     
-    # --- SUB-ABA 1: GRAVAR POST ---
-    with aba_gravar:
-        st.subheader("🔴 Gravação Direta")
-        st.info("Função de gravação direta pela câmera em desenvolvimento!")
-        # Se quiser testar o componente de câmera futuramente:
-        # foto_ou_video = st.camera_input("Tire uma foto para o post")
-
-            # --- SUB-ABA 2: POSTAR POR LINK (AJUSTADA PARA AS COLUNAS DO SEU BANCO) ---
+        # 1. Criação das 3 sub-abas principais na mesma linha
+    aba_link, aba_central, aba_upload = st.tabs(["🔗 Postar por Link", "🚨 Central do Streamer", "📁 Upload da Galeria"])
+    
+    # --- SUB-ABA 1: POSTAR POR LINK ---
     with aba_link:
         st.subheader("🔗 Postar Conteúdo por Link")
-        legenda = st.text_input("Legenda do post:", key="leg_link")
-        url_do_video = st.text_input("Link do vídeo (.mp4):", key="url_mp4")
+        legenda_link = st.text_input("Legenda do post:", key="leg_link")
+        url_link = st.text_input("Link do vídeo (.mp4):", key="url_link")
         
         if st.button("Publicar Vídeo por Link", use_container_width=True):
-            if url_do_video:
+            if url_link.strip():
                 try:
-                    # Enviando apenas as colunas exatas que existem no seu Supabase:
                     supabase.table("feed_videos").insert({
-                        "username": user_atual.get('username'), 
-                        "url": url_do_video, 
-                        "curtidas": 0
+                        "usuario": user_atual.get('username'),
+                        "video_url": url_link.strip(),
+                        "legenda": legenda_link.strip(),
+                        "curtidas": 0,
+                        "visualizacoes": 0
                     }).execute()
-                    st.success("Publicado com sucesso no Feed! Atualizando...")
+                    st.success("Vídeo publicado com sucesso!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro ao salvar: {str(e)}")
             else:
-                             
-        # --- SUB-ABA 3: UPLOAD DIRETO DA GALERIA (NOMES DE COLUNAS AJUSTADOS) ---
+                st.warning("Por favor, insira o link do vídeo.")
+
+    # --- SUB-ABA 2: CENTRAL DO STREAMER ---
+    with aba_central:
+        st.subheader("🚨 Central do Streamer")
+        st.info("Configurações adicionais e monitoramento de lives.")
+
+    # --- SUB-ABA 3: UPLOAD DIRETO DA GALERIA ---
     with aba_upload:
         st.subheader("📁 Enviar Vídeo da Galeria")
         
@@ -438,95 +438,34 @@ if aba_ativa == "🎥 Gravar/Postar":
         
         if st.button("Publicar Vídeo da Galeria", use_container_width=True):
             if arquivo_video is not None:
-                tamanho_mb = arquivo_video.size / (1024 * 1024)
-                
-                if tamanho_mb > 50:
-                    st.error(f"❌ Vídeo muito pesado ({tamanho_mb:.1f} MB)! O limite máximo permitido é de 50 MB.")
-                else:
-                    try:
-                        with st.spinner("Enviando o vídeo para o Silver Tok... Aguarde. ⏳"):
-                            # 1. Gera o nome do arquivo usando o dicionário do usuário atual
-                            nome_do_arquivo = f"{user_atual.get('username')}_{arquivo_video.name}"
-                            dados_do_video = arquivo_video.read()
-                            
-                            # 2. Upload para o balde do Supabase Storage
-                            supabase.storage.from_("videos_feed").upload(
-                                path=nome_do_arquivo,
-                                file=dados_do_video,
-                                file_options={"content-type": "video/mp4"}
-                            )
-                            
-                            # 3. Pega o link público gerado
-                            url_publica = supabase.storage.from_("videos_feed").get_public_url(nome_do_arquivo)
-                            
-                            # 4. Salva na tabela do Feed batendo com as colunas reais do seu app (usuario, video_url, legenda)
-                            supabase.table("feed_videos").insert({
-                                "usuario": user_atual.get('username'), 
-                                "video_url": url_publica, 
-                                "legenda": legenda_upload,
-                                "curtidas": 0,
-                                "visualizacoes": 0
-                            }).execute()
-                            
-                            st.success("Vídeo enviado e publicado no seu feed com sucesso! 🎉")
-                            st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro ao fazer upload: {str(e)}")
+                try:
+                    with st.spinner("Enviando o vídeo para o Silver Tok... Aguarde. ⏳"):
+                        nome_do_arquivo = f"{user_atual.get('username')}_{arquivo_video.name}"
+                        dados_do_video = arquivo_video.read()
+                        
+                        supabase.storage.from_("videos_feed").upload(
+                            path=nome_do_arquivo,
+                            file=dados_do_video,
+                            file_options={"content-type": "video/mp4"}
+                        )
+                        
+                        url_publica = supabase.storage.from_("videos_feed").get_public_url(nome_do_arquivo)
+                        
+                        supabase.table("feed_videos").insert({
+                            "usuario": user_atual.get('username'), 
+                            "video_url": url_publica, 
+                            "legenda": legenda_upload,
+                            "curtidas": 0,
+                            "visualizacoes": 0
+                        }).execute()
+                        
+                        st.success("Vídeo enviado e publicado com sucesso! 🎉")
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Erro ao fazer upload: {str(e)}")
             else:
                 st.warning("Por favor, selecione um arquivo de vídeo antes de publicar.")
-                                    
-    # --- SUB-ABA 4: CENTRAL DO STREAMER ---
-    with aba_central:
-        st.subheader("🚨 Central de Controle da Live")
-        st.write("Configurações adicionais e monitoramento de lives.")
-        
-        if not st.session_state.live_ativa:
-            titulo_live = st.text_input("Título da sua Live:", placeholder="Ex: Programando o Silver Tok v2! 🔥")
-            if st.button("🔴 INICIAR LIVE GLOBAL", use_container_width=True):
-                if titulo_live:
-                    try:
-                        supabase.table("lives_ativas").delete().eq("streamer_username", user_atual.get('username')).execute()
-                        supabase.table("lives_ativas").insert({
-                            "streamer_username": user_atual.get('username'), 
-                            "streamer_nickname": user_atual.get('nickname'), 
-                            "titulo_live": titulo_live, 
-                            "status": "online"
-                        }).execute()
-                        st.session_state.live_ativa = True
-                        st.session_state.live_chat = [{"remetente": "Sistema", "conteudo": "Sua transmissão está pública no feed!"}]
-                        st.session_state.live_alertas = []
-                        st.rerun()
-                    except Exception as e: 
-                        st.error(f"Erro ao abrir transmissão: {str(e)}")
-        else:
-            st.success("🎥 VOCÊ ESTÁ AO VIVO!")
-            if st.button("⏹️ Encerrar Transmissão", use_container_width=True):
-                st.session_state.live_ativa = False
-                try: 
-                    supabase.table("lives_ativas").delete().eq("streamer_username", user_atual.get('username')).execute()
-                except: 
-                    pass
-                st.rerun()
-            
-            try:
-                live_req = supabase.table("lives_ativas").select("id").eq("streamer_username", user_atual.get('username')).execute()
-                if live_req.data:
-                    checar_e_ler_alertas_da_live(live_req.data[0]["id"])
-            except: 
-                pass
-            
-            st.write("---")
-            col_video_retorno, col_chat_live = st.columns([4, 3])
-            
-            with col_video_retorno:
-                st.markdown("### 🖥️ Retorno de Vídeo")
-                st.camera_input("Monitor", key="monitor_live_cam")
-            with col_chat_live:
-                st.markdown("### 💬 Chat da Live")
-                with st.container(border=True, height=200):
-                    for msg_l in st.session_state.live_chat: 
-                        st.write(f"**@{msg_l['remetente']}:** {msg_l['conteudo']}")                        
-
+                                     
 # --- 3. ABA CHAT EXV ---
 elif aba_ativa == "💬 Chat EXV":
     st.title("💬 Chat EXV")
