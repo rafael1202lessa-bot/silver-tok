@@ -244,7 +244,7 @@ if st.sidebar.button("Sair da Conta"):
     st.rerun()
 
 # --- MENU PRINCIPAL ---
-abas = ["📱 Feed", "🎥 Gravar/Postar", "💬 Chat EXV", "🧠 Silver IA", "🛒 Loja do Site", "👤 Meu Perfil" "📺 assistir live" ]
+abas = ["📱 Feed", "🎥 Gravar/Postar", "💬 Chat EXV", "🧠 Silver IA", "🛒 Loja do Site", "👤 Meu Perfil", "📺 assistir live" ]
 if st.session_state.perfil_visitado: abas.append("👀 Ver Perfil")
 if user_atual.get('username') == "rafael_oficial": abas.append("⚡ Painel Dev")
 
