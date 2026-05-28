@@ -442,7 +442,7 @@ with col_video_retorno:
                     st.warning(f"🎁 **{alerta['usuario']}** enviou **{alerta['moedas']} Silver Coins**:\n*{alerta['msg']}*")
             
                 with col_chat_live:
-            st.markdown("### 💬 Chat da Live")
+             st.markdown("### 💬 Chat da Live")
                 
                 with st.container(border=True, height=250):
                     for msg_l in st.session_state.live_chat:
