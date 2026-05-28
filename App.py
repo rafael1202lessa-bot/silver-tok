@@ -395,7 +395,7 @@ if aba_ativa == "📱 Feed":
 # ==========================================
 # --- 2. ABA GRAVAR / POSTAR (CORRIGIDA) ---
 # ==========================================
-  if aba_active == "🎥 Gravar/Postar":
+if aba_active == "🎥 Gravar/Postar":
     st.title("🎥 Postar Novo Conteúdo")
     
     aba_link, aba_central, aba_upload = st.tabs(["🔗 Postar por Link", "🚨 Central do Streamer", "📁 Upload da Galeria"])
