@@ -428,8 +428,8 @@ if aba_ativa == "🎥 Gravar/Postar":
                 except Exception as e:
                     st.error(f"Erro ao salvar: {str(e)}")
             else:
-                st.warning("Por favor, insira o link do vídeo antes de publicar.")
-                     # --- SUB-ABA 3: UPLOAD DIRETO DA GALERIA (VÍDEOS_FEED JÁ EXISTENTE) ---
+                
+                     
     # --- SUB-ABA 3: UPLOAD DIRETO DA GALERIA ---
     with aba_upload:
         st.subheader("📁 Enviar Vídeo da Galeria")
