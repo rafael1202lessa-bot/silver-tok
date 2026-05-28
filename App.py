@@ -392,10 +392,8 @@ if aba_ativa == "📱 Feed":
                             
                 st.write("---")
             
-# ==========================================
-# --- 2. ABA GRAVAR / POSTAR (CORRIGIDA) ---
-# ==========================================
-if aba_active == "🎥 Gravar/Postar":
+# --- 2. ABA GRAVAR / POSTAR ---
+if aba_ativa == "🎥 Gravar/Postar":
     st.title("🎥 Postar Novo Conteúdo")
     
     aba_link, aba_central, aba_upload = st.tabs(["🔗 Postar por Link", "🚨 Central do Streamer", "📁 Upload da Galeria"])
@@ -504,7 +502,6 @@ if aba_active == "🎥 Gravar/Postar":
                     st.error(f"Erro ao fazer upload: {str(e)}")
             else:
                 st.warning("Por favor, selecione um arquivo de vídeo antes de publicar.")
-
 if aba_active == "📺 Assistir Lives":
     st.title("📺 Transmissões Ao Vivo")
     st.write("Veja quem está transmitindo agora no Silver Tok!")
