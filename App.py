@@ -15,44 +15,7 @@ try:
 except Exception as e:
     st.error(f"Erro crítico de conexão: {str(e)}")
     st.stop()
-    
-# --- 1. FUNÇÃO QUE FAZ O NAVEGADOR FALAR ---
-def emitir_alerta_voz(texto_mensagem):
-    """Injeta um script JavaScript discreto para ler a mensagem em voz alta."""
-    js_code = f"""
-    <script>
-    if ('speechSynthesis' in window) {{
-        window.speechSynthesis.cancel(); 
-        var msg = new SpeechSynthesisUtterance({repr(texto_mensagem)});
-        msg.lang = 'pt-BR';
-        msg.rate = 1.1; 
-        window.speechSynthesis.speak(msg);
-    }}
-    </script>
-    """
-    st.components.v1.html(js_code, height=0, width=0)
 
-
-# --- 2. FUNÇÃO QUE CHECA AS MOEDAS NO BANCO DE DADOS ---
-def checar_e_ler_alertas_da_live(live_id_atual):
-    try:
-        # Pega os alertas com moedas da live que ainda não foram lidos
-        alertas_nao_lidos = supabase.table("live_alertas").select("*").eq("live_id", live_id_atual).eq("lido_status", False).order("criado_em", desc=False).execute()
-        for alerta in alertas_nao_lidos.data:
-            usuario = alerta.get("enviado_por")
-            coins = alerta.get("quantidade_coins")
-            msg_texto = alerta.get("mensagem", "")
-            
-            # Monta a frase e ativa o som
-            texto_para_falar = f"{usuario} enviou {coins} Silver Coins! Mensagem: {msg_texto}"
-            emitir_alerta_voz(texto_para_falar)
-            
-            # Marca como lido no Supabase para não repetir a voz
-            supabase.table("live_alertas").update({"lido_status": True}).eq("id", alerta.get("id")).execute()
-            st.toast(f"📢 Voz lendo doação de @{usuario}!", icon="🔊")
-    except: 
-        pass
-        
 # --- ESTADO DE DESENVOLVIMENTO ---
 ESTADO_DESENVOLVIMENTO = True 
 
@@ -62,14 +25,13 @@ if "logado" not in st.session_state:
 if "user_data" not in st.session_state:
     st.session_state.user_data = None
 if "perfil_visitado" not in st.session_state:
-    rua. estado_sessão . perfil_visitado = Nenhum
+    st.session_state.perfil_visitado = None
 if "historico_ia" not in st.session_state:
-    st. session_state . historico_ia = [ ]
-
-# --- BANCO DE DADOS LOCAL DO CHAT E LIVES (Sessão Ativa) ---
+    st.session_state.historico_ia = []
 if "chat_privado_salas" not in st.session_state:
-    st. session_state . chat_privado_salas = { } 
-    st. session_state . chat_grupos = { } 
+    st.session_state.chat_privado_salas = {} 
+if "chat_grupos" not in st.session_state:
+    st.session_state.chat_grupos = {} 
 if "sala_privada_atual" not in st.session_state:
     st.session_state.sala_privada_atual = None
 if "codigo_grupo_atual" not in st.session_state:
@@ -89,12 +51,13 @@ TITULOS = {
     "amiga_divulgadora": "📢 Divulgadora",
 }
 
-# --- FUNÇÃO PARA SISTEMA DE TEXT-TO-SPEECH (LIVE PIX VOZ ALTA) ---
+# --- 1. FUNÇÃO QUE FAZ O NAVEGADOR FALAR ---
 def emitir_alerta_voz(texto_mensagem):
-    """Injeta um script JavaScript discreto para ler a mensagem em voz alta no navegador."""
+    """Injeta um script JavaScript discreto para ler a mensagem em voz alta."""
     js_code = f"""
     <script>
     if ('speechSynthesis' in window) {{
+        window.speechSynthesis.cancel(); 
         var msg = new SpeechSynthesisUtterance({repr(texto_mensagem)});
         msg.lang = 'pt-BR';
         msg.rate = 1.1; 
@@ -104,6 +67,23 @@ def emitir_alerta_voz(texto_mensagem):
     """
     st.components.v1.html(js_code, height=0, width=0)
 
+# --- 2. FUNÇÃO QUE CHECA AS MOEDAS NO BANCO DE DADOS ---
+def checar_e_ler_alertas_da_live(live_id_atual):
+    try:
+        alertas_nao_lidos = supabase.table("live_alertas").select("*").eq("live_id", live_id_atual).eq("lido_status", False).order("criado_em", desc=False).execute()
+        for alerta in alertas_nao_lidos.data:
+            usuario = alerta.get("enviado_por")
+            coins = alerta.get("quantidade_coins")
+            msg_texto = alerta.get("mensagem", "")
+            
+            texto_para_falar = f"{usuario} enviou {coins} Silver Coins! Mensagem: {msg_texto}"
+            emitir_alerta_voz(texto_para_falar)
+            
+            supabase.table("live_alertas").update({"lido_status": True}).eq("id", alerta.get("id")).execute()
+            st.toast(f"📢 Voz lendo doação de @{usuario}!", icon="🔊")
+    except: 
+        pass
+
 # --- FUNÇÃO PARA GERAR ID DE SALA PRIVADA ÚNICA ---
 def obter_id_sala_privada(userA, userB):
     return "_".join(sorted([userA, userB]))
@@ -111,14 +91,10 @@ def obter_id_sala_privada(userA, userB):
 # --- FUNÇÃO PARA GERAR SELO E MOLDURA DE PERFIL ---
 def aplicar_moldura_e_selo(username, titulo, itens_usuario=None, seguidores=0):
     selo = ""
-    if seguidores >= 1000:
-        selo += " ⚡[VERIFICADO]"
-    if username == "rafael_oficial":
-        selo += " ✨[👑 DEV]"
-    elif "Dev" in str(titulo) or "Desenvolvedor" in str(titulo):
-        selo += " 🛠️[DEV]"
-    elif titulo == "🏅 best friends of the dev":
-        selo += " 🌟"
+    if seguidores >= 1000: selo += " ⚡[VERIFICADO]"
+    if username == "rafael_oficial": selo += " ✨[👑 DEV]"
+    elif "Dev" in str(titulo) or "Desenvolvedor" in str(titulo): selo += " 🛠️[DEV]"
+    elif titulo == "🏅 best friends of the dev": selo += " 🌟"
         
     estilo_moldura = "border-radius: 50%; object-fit: cover;"
     if itens_usuario and isinstance(itens_usuario, list):
@@ -130,43 +106,52 @@ def aplicar_moldura_e_selo(username, titulo, itens_usuario=None, seguidores=0):
 
 # --- SIMULAÇÃO DA IA SILVER INTELIGENTE ---
 def responder_ia(pergunta):
-    pergunta_lower = pregunta.lower()
-    
+    pergunta_lower = pergunta.lower()
     if "ideia" in pergunta_lower or "video" in pergunta_lower or "feed" in pergunta_lower:
-        return ("💡 **Ideias de Vídeo do Silver:**\n\n"
-                "1. **Bastidores do Dev:** Grave a tela do seu VS Code mostrando como você criou o sistema de Live Pix do Silver Tok!\n"
-                "2. **Tour pelo App:** Faça um vídeo rápido mostrando a Loja do Site e como equipar a Moldura de Fogo 🔥.\n"
-                "3. **Desafio Tech:** Pergunte aos seguidores qual funcionalidade eles querem ver na v3 do aplicativo.")
-                
+        return ("💡 **Ideias de Vídeo do Silver:**\n\n1. **Bastidores do Dev:** Mostre como funciona o Live Pix do Silver Tok!\n2. **Tour pelo App:** Mostre a Loja do Site e como equipar a Moldura de Fogo 🔥.\n3. **Desafio Tech:** Pergunte aos seguidores o que eles querem na v3.")
     elif "live" in pergunta_lower or "coins" in pergunta_lower or "pix" in pergunta_lower:
-        return ("🪙 **Dica do Silver para Lives:**\n\n"
-                "O novo sistema de **Live Pix** lê as mensagens em voz alta usando a API do navegador! "
-                "Para bombar sua transmissão, crie metas de Silver Coins na tela (ex: 'Com 500 Coins eu mudo meu cargo no painel').")
-                
+        return ("🪙 **Dica do Silver para Lives:**\n\nO sistema de **Live Pix** lê mensagens em voz alta! Crie metas de Silver Coins na tela para engajar seu público.")
     elif "oi" in pergunta_lower or "ola" in pergunta_lower or "ajuda" in pergunta_lower:
-        return (f"Olá, Rafael! Eu sou o **Silver**, seu assistente oficial. "
-                "Estou calibrado para te ajudar com ideias de conteúdo, dicas de moderação no Painel Dev ou testes das novas salas do Chat EXV. O que vamos projetar agora?")
-                
+        return (f"Olá, Rafael! Eu sou o **Silver**, seu assistente oficial. Como vamos projetar o app agora?")
     else:
-        return ("🧠 **Análise do Silver:** Entendi sua dúvida! Para o ecossistema do Silver Tok v2, "
-                "recomendo aplicar essa ideia integrando os componentes visuais do Streamlit com o banco de dados do Supabase. "
-                "Quer que eu gere um exemplo de código para isso?")
+        return ("🧠 **Análise do Silver:** Entendi sua dúvida! Recomendo aplicar essa ideia integrando os componentes visuais do Streamlit com o banco de dados do Supabase.")
 
-# --- FUNÇÕES DE AUTENTICAÇÃO ---
-def criar_conta(username, password, nickname, codigo):
-    if codigo != CODIGO_CORRETO:
-        return "Código de convite inválido!"
+# --- FUNÇÃO DE CRIAÇÃO DE CONTA COM SISTEMA DE CONVITES ---
+def criar_conta(username, password, nickname, codigo_manual, indicador_url):
     try:
         existe = supabase.table("perfis_usuarios").select("*").eq("username", username).execute()
         if existe.data:
             return "Este nome de usuário já está em uso."
         
+        quem_convidou = None
+        
+        if indicador_url:
+            if indicador_url == "rafael_oficial":
+                quem_convidou = "rafael_oficial"
+            else:
+                checar_dono = supabase.table("perfis_usuarios").select("username", "convites_restantes").eq("username", indicador_url).execute()
+                if checar_dono.data:
+                    creditos = checar_dono.data[0].get("convites_restantes", 0)
+                    if creditos > 0:
+                        quem_convidou = indicador_url
+                        if indicador_url != "rafael_oficial":
+                            supabase.table("perfis_usuarios").update({"convites_restantes": creditos - 1}).eq("username", indicador_url).execute()
+                    else:
+                        return f"O link de convite de @{indicador_url} já atingiu o limite de 3 usos!"
+                else:
+                    return "Este link de convite é inválido ou o usuário não existe."
+        else:
+            if codigo_manual != CODIGO_CORRETO:
+                return "Código de convite inválido! Use um link de amigo ou peça o código mestre."
+
         titulo = TITULOS.get(username, "Usuário")
+        
         novo_usuario = {
             "username": username, "senha": password, "nickname": nickname, "titulo": titulo,
             "seguidores": 0, "seguindo": 0, "dinheiro": 0, "verificado": False,
             "foto_perfil": "https://img.icons8.com/colors/150/test-account.png",
-            "bio": "Olá! Estou usando o Silver Tok.", "itens_exclusivos": [], "lista_amigos": []
+            "bio": "Olá! Estou usando o Silver Tok.", "itens_exclusivos": [], "lista_amigos": [],
+            "convites_restantes": 3, "convidado_por": quem_convidou
         }
         supabase.table("perfis_usuarios").insert(novo_usuario).execute()
         return "Sucesso"
@@ -176,6 +161,10 @@ def criar_conta(username, password, nickname, codigo):
 # --- TELA DE LOGIN / CADASTRO ---
 if not st.session_state.logado:
     st.title("Welcome to Silver Tok v2 🚀")
+    
+    parametros_url = st.query_params
+    referencia_convite = parametros_url.get("ref", None)
+    
     aba_login, aba_cadastro = st.tabs(["🔐 Entrar", "📝 Criar Conta"])
     
     with aba_login:
@@ -189,20 +178,30 @@ if not st.session_state.logado:
                     st.session_state.user_data = resultado.data[0]
                     st.rerun()
                 else: st.error("Usuário ou senha incorretos.")
-            except Exception as e: st.error(f"Erro de conexão com o banco: {str(e)}")
+            except Exception as e: st.error(f"Erro de conexão: {str(e)}")
                 
     with aba_cadastro:
-        new_user = st.text_input("Escolha seu Usuário", key="cad_user").strip()
+        if referencia_convite:
+            st.success(f"✨ **Link Ativo:** Você está sendo convidado por **@{referencia_convite}**! O código secreto foi pulado automaticamente.")
+        
+        new_user = st.text_input("Escolha seu Usuário (@)", key="cad_user").strip()
         new_nick = st.text_input("Nome de Exibição (Nickname)", key="cad_nick")
         new_pass = st.text_input("Escolha sua Senha", type="password", key="cad_pass")
-        convite = st.text_input("Código de Convite Secreto", type="password", key="cad_code")
+        
+        convite_manual = ""
+        if not referencia_convite:
+            convite_manual = st.text_input("Código de Convite Secreto (Manual)", type="password", key="cad_code")
         
         if st.button("Cadastrar Nova Conta", use_container_width=True):
-            if not new_user or not new_pass or not new_nick: st.warning("Preencha todos os campos!")
+            if not new_user or not new_pass or not new_nick: 
+                st.warning("Preencha todos os campos!")
             else:
-                status = criar_conta(new_user, new_pass, new_nick, convite)
-                if status == "Sucesso": st.success("Conta criada! Faça login ao lado.")
-                else: st.error(status)
+                status = criar_conta(new_user, new_pass, new_nick, convite_manual, referencia_convite)
+                if status == "Sucesso": 
+                    st.success("🎉 Conta criada com sucesso! Faça login na aba ao lado.")
+                    st.query_params.clear()
+                else: 
+                    st.error(status)
     st.stop()
 
 def atualizar_sessao():
@@ -246,10 +245,8 @@ if st.sidebar.button("Sair da Conta"):
 
 # --- MENU PRINCIPAL ---
 abas = ["📱 Feed", "🎥 Gravar/Postar", "💬 Chat EXV", "🧠 Silver IA", "🛒 Loja do Site", "👤 Meu Perfil"]
-if st.session_state.perfil_visitado:
-    abas.append("👀 Ver Perfil")
-if user_atual.get('username') == "rafael_oficial":
-    abas.append("⚡ Painel Dev")
+if st.session_state.perfil_visitado: abas.append("👀 Ver Perfil")
+if user_atual.get('username') == "rafael_oficial": abas.append("⚡ Painel Dev")
 
 aba_ativa = st.radio("Menu", abas, horizontal=True)
 st.write("---")
@@ -257,6 +254,25 @@ st.write("---")
 # --- 1. ABA FEED ---
 if aba_ativa == "📱 Feed":
     st.title("📱 Silver Tok")
+    
+    try:
+        lives_db = supabase.table("lives_ativas").select("*").eq("status", "online").execute()
+        if lives_db.data:
+            st.markdown("### 🔴 Canais Ao Vivo Agora")
+            for live_on in lives_db.data:
+                with st.container(border=True):
+                    c_lv1, c_lv2 = st.columns([3, 1])
+                    with c_lv1:
+                        st.markdown(f"📺 **{live_on['streamer_nickname']}** (@{live_on['streamer_username']})")
+                        st.caption(f"📌 *{live_on['titulo_live']}*")
+                    with c_lv2:
+                        if st.button("📺 Assistir", key=f"assistir_{live_on['id']}", use_container_width=True):
+                            st.session_state.perfil_visitado = live_on['streamer_username']
+                            st.success("Direcionando! Clique na aba '👀 Ver Perfil'.")
+                            st.rerun()
+            st.write("---")
+    except: pass
+
     termo = st.text_input("🔍 Pesquisar no feed...", "").strip().lower()
     st.write("---")
     
@@ -275,26 +291,20 @@ if aba_ativa == "📱 Feed":
 
         if not termo or termo in v_legenda.lower() or termo in v_username.lower() or termo in v_nickname.lower():
             with st.container():
-                foto_autor = "https://img.icons8.com/colors/150/test-account.png"
-                titulo_autor = "Usuário"
-                itens_autor = []
-                seg_autor = 0
+                foto_autor, titulo_autor, itens_autor, seg_autor = "https://img.icons8.com/colors/150/test-account.png", "Usuário", [], 0
                 try:
                     autor_req = supabase.table("perfis_usuarios").select("*").eq("username", v_username).execute()
                     if autor_req.data:
                         foto_autor = autor_req.data[0].get('foto_perfil', foto_autor)
-                        if not foto_autor or str(foto_autor).strip() in ["0", "None", ""]:
-                            foto_autor = "https://img.icons8.com/colors/150/test-account.png"
+                        if not foto_autor or str(foto_autor).strip() in ["0", "None", ""]: foto_autor = "https://img.icons8.com/colors/150/test-account.png"
                         titulo_autor = autor_req.data[0].get('titulo', 'Usuário')
                         itens_autor = autor_req.data[0].get('itens_exclusivos', [])
                         seg_autor = autor_req.data[0].get('seguidores', 0)
                 except: pass
                 
                 selo_post, moldura_post = aplicar_moldura_e_selo(v_username, titulo_autor, itens_autor, seg_autor)
-                
                 col_foto, col_nome = st.columns([1, 5])
-                with col_foto:
-                    st.markdown(f'<img src="{foto_autor}" style="{moldura_post}" width="50">', unsafe_allow_html=True)
+                with col_foto: st.markdown(f'<img src="{foto_autor}" style="{moldura_post}" width="50">', unsafe_allow_html=True)
                 with col_nome:
                     if st.button(f"**{v_nickname}** (@{v_username}){selo_post}", key=f"u_{v_id}"):
                         st.session_state.perfil_visitado = v_username
@@ -311,7 +321,7 @@ if aba_ativa == "📱 Feed":
                         try:
                             supabase.table("feed_videos").update({"curtidas": v_curtidas + 1}).eq("id", v_id).execute()
                             st.rerun()
-                        except: st.error("Erro ao curtir.")
+                        except: pass
                 with c2: st.button("🔗 Copiar", key=f"s_{v_id}", use_container_width=True)
                 with c3: abrir_comentarios = st.checkbox("💬 Comentários", key=f"tab_c_{v_id}")
                 
@@ -322,154 +332,70 @@ if aba_ativa == "📱 Feed":
                         try:
                             supabase.table("feed_videos").delete().eq("id", v_id).execute()
                             st.rerun()
-                        except: st.error("Erro ao apagar.")
+                        except: pass
                 st.write("---")
 
-# --- 2. ABA GRAVAR/POSTAR (ESTÚDIO COM CENTRAL DA LIVE + LIVE PIX TTS) ---
+# --- 2. ABA GRAVAR/POSTAR ---
 elif aba_ativa == "🎥 Gravar/Postar":
     st.title("🎥 Estúdio de Criação & Live")
-    
-    aba_upload, aba_link, aba_live = st.tabs([
-        "📁 Enviar Vídeo Gravado", 
-        "🔗 Postar por Link", 
-        "🔴 Central do Streamer (Sua Live)"
-    ])
+    aba_upload, aba_link, aba_live = st.tabs(["📁 Enviar Vídeo", "🔗 Postar por Link", "🔴 Central do Streamer"])
     
     with aba_upload:
-        st.subheader("Suba um vídeo da sua galeria")
+        st.subheader("Suba um vídeo da galeria")
         legenda_upload = st.text_input("Legenda do seu vídeo:", key="leg_up")
-        video_arquivo = st.file_uploader("Selecione o arquivo de vídeo", type=["mp4", "mov", "avi", "webm"])
-        
-        if st.button("🚀 Publicar Vídeo Gravado", use_container_width=True):
-            if not video_arquivo: st.warning("Selecione um arquivo primeiro!")
-            else: st.success("Vídeo processado! Integre com o Supabase Storage Bucket para persistência completa.")
+        video_arquivo = st.file_uploader("Selecione o arquivo de vídeo", type=["mp4", "mov"])
+        if st.button("Publicar Vídeo Gravado", use_container_width=True): st.success("Vídeo processado!")
                     
     with aba_link:
         legenda = st.text_input("Legenda do post:", key="leg_link")
         url_do_video = st.text_input("Link do vídeo (.mp4):", key="url_mp4")
         if st.button("Publicar Vídeo por Link", use_container_width=True):
-            if not url_do_video: st.warning("Insira o link do vídeo.")
-            else:
+            if url_do_video:
                 try:
-                    supabase.table("feed_videos").insert({
-                        "username": user_atual.get('username'), "nickname": user_atual.get('nickname'),
-                        "legenda": legenda, "url_video": url_do_video, "curtidas": 0
-                    }).execute()
+                    supabase.table("feed_videos").insert({"username": user_atual.get('username'), "nickname": user_atual.get('nickname'), "legenda": legenda, "url_video": url_do_video, "curtidas": 0}).execute()
                     st.success("Publicado no Feed!")
-                except Exception as e: st.error(f"Erro ao publicar: {str(e)}")
+                except Exception as e: st.error(f"Erro: {str(e)}")
                     
     with aba_live:
         st.subheader("📹 Painel de Controle de Transmissão")
         
         if not st.session_state.live_ativa:
-            titulo_live = st.text_input("Título da sua Live:", placeholder="Ex: Jogando com inscritos! 🔥")
-            if st.button("🔴 INICIAR LIVE", use_container_width=True):
+            titulo_live = st.text_input("Título da sua Live:", placeholder="Ex: Programando o Silver Tok v2! 🔥")
+            if st.button("🔴 INICIAR LIVE GLOBAL", use_container_width=True):
                 if titulo_live:
-                    st.session_state.live_ativa = True
-                    st.session_state.live_chat = [{"remetente": "Sistema", "conteudo": f"Sua live '{titulo_live}' foi iniciada!"}]
-                    st.session_state.live_alertas = []
-                    st.rerun()
-                else: st.warning("Insira um título para começar.")
+                    try:
+                        supabase.table("lives_ativas").delete().eq("streamer_username", user_atual.get('username')).execute()
+                        supabase.table("lives_ativas").insert({"streamer_username": user_atual.get('username'), "streamer_nickname": user_atual.get('nickname'), "titulo_live": titulo_live, "status": "online"}).execute()
+                        st.session_state.live_ativa = True
+                        st.session_state.live_chat = [{"remetente": "Sistema", "conteudo": "Sua transmissão está pública no feed!"}]
+                        st.session_state.live_alertas = []
+                        st.rerun()
+                    except Exception as e: st.error(f"Erro ao abrir transmissão: {str(e)}")
         else:
             st.success("🎥 VOCÊ ESTÁ AO VIVO!")
             if st.button("⏹️ Encerrar Transmissão", use_container_width=True):
                 st.session_state.live_ativa = False
+                try: supabase.table("lives_ativas").delete().eq("streamer_username", user_atual.get('username')).execute()
+                except: pass
                 st.rerun()
-            # --- FUNÇÃO QUE INJETA A VOZ NO NAVEGADOR ---
-def emitir_alerta_voz(texto_mensagem):
-    """Injeta um script JavaScript que usa a API nativa do navegador para falar."""
-    js_code = f"""
-    <script>
-    if ('speechSynthesis' in window) {{
-        // Cancela leituras anteriores travadas
-        window.speechSynthesis.cancel(); 
-        
-        var msg = new SpeechSynthesisUtterance({repr(texto_mensagem)});
-        msg.lang = 'pt-BR';
-        msg.rate = 1.1; // Velocidade da fala
-        msg.pitch = 1.0; // Tom da voz
-        window.speechSynthesis.speak(msg);
-    }}
-    </script>
-    """
-    # Executa o componente invisível que roda o áudio
-    st.components.v1.html(js_code, height=0, width=0)
-
-# --- SISTEMA DE VERIFICAÇÃO DE NOVOS ALERTAS COM MOEDAS ---
-def checar_e_ler_alertas_da_live(live_id_atual):
-    try:
-        # Pega as mensagens com moedas que ainda não foram lidas pela IA de voz
-        alertas_nao_lidos = supabase.table("live_alertas")\
-            .select("*")\
-            .eq("live_id", live_id_atual)\
-            .eq("lido_status", False)\
-            .order("criado_em", desc=False)\
-            .execute()
             
-        for alerta in alertas_nao_lidos.data:
-            # Estrutura a frase que a voz vai falar
-            usuario = alerta.get("enviado_por")
-            coins = alerta.get("quantidade_coins")
-            msg_texto = alerta.get("mensagem", "")
+            try:
+                live_req = supabase.table("lives_ativas").select("id").eq("streamer_username", user_atual.get('username')).execute()
+                if live_req.data:
+                    checar_e_ler_alertas_da_live(live_req.data[0]["id"])
+            except: pass
             
-            texto_para_falar = f"{usuario} enviou {coins} Silver Coins! Mensagem: {msg_texto}"
+            st.write("---")
+            col_video_retorno, col_chat_live = st.columns([4, 3])
             
-            # Executa a voz sintetizada
-            emitir_alerta_voz(texto_para_falar)
-            
-            # Atualiza no Supabase que esse alerta já foi lido para não repetir
-            supabase.table("live_alertas")\
-                .update({"lido_status": True})\
-                .eq("id", alerta.get("id"))\
-                .execute()
-                
-            # Dá um pequeno break visual no log
-            st.toast(f"📢 Voz lendo doação de @{usuario}!", icon="🔊")
-    except Exception as e:
-        pass
-
-    st.write("---")
-        
-    col_video_retorno, col_chat_live = st.columns([4, 3])
-            
-    
-    with col_video_retorno:
-                st.markdown("### 🖥️ Retorno do seu Vídeo")
-                st.camera_input("Monitor da Câmera", key="monitor_live_cam")
-                
-                st.markdown("### 🪙 Últimos Alertas Live Pix (Voz Alta)")
-                for alerta in st.session_state.live_alertas[-3:]:
-                    st.warning(f"🎁 **{alerta['usuario']}** enviou **{alerta['moedas']} Silver Coins**:\n*{alerta['msg']}*")
-            
-    with col_chat_live:
+            with col_video_retorno:
+                st.markdown("### 🖥️ Retorno de Vídeo")
+                st.camera_input("Monitor", key="monitor_live_cam")
+            with col_chat_live:
                 st.markdown("### 💬 Chat da Live")
                 with st.container(border=True, height=200):
-                    # Garanta que o loop 'for' tenha 4 espaços a mais que o 'with' de cima
                     for msg_l in st.session_state.live_chat: 
                         st.write(f"**@{msg_l['remetente']}:** {msg_l['conteudo']}")
-
-                st.write("---")
-                st.caption("🧪 Simulador de Público (Modo Dev)")
-                sim_user = st.text_input("Usuário do fã:", value="seguidor_vip_01", key="sim_u")
-                sim_txt = st.text_input("Mensagem do Chat:", placeholder="Manda salve Rafa!", key="sim_t")
-                
-                c_b1, c_b2 = st.columns(2)
-                with c_b1:
-                    if st.button("💬 Simular Mensagem", use_container_width=True):
-                        if sim_txt:
-                            st.session_state.live_chat.append({"remetente": sim_user, "conteudo": sim_txt})
-                            st.rerun()
-                with c_b2:
-                    sim_coins = st.number_input("Moedas:", min_value=10, value=50, step=10)
-                    if st.button("🎁 Simular Silver Coins", use_container_width=True):
-                        if sim_txt:
-                            texto_completo_alerta = f"Enviou {sim_coins} Silver Coins! Mensagem: {sim_txt}"
-                            st.session_state.live_chat.append({"remetente": sim_user, "conteudo": f"⭐ {texto_completo_alerta}"})
-                            st.session_state.live_alertas.append({"usuario": sim_user, "moedas": sim_coins, "msg": sim_txt})
-                            
-                            texto_leitura = f"{sim_user} enviou {sim_coins} Silver Coins. {sim_txt}"
-                            emitir_alerta_voz(texto_leitura)
-                            st.rerun()
 
 # --- 3. ABA CHAT EXV ---
 elif aba_ativa == "💬 Chat EXV":
@@ -482,11 +408,9 @@ elif aba_ativa == "💬 Chat EXV":
             lista_usuarios = [u for u in todos_req.data if u['username'] != user_atual.get('username')]
         except: lista_usuarios = []
         
-        st.subheader("🔒 Suas Salas Privadas Ativas")
         if lista_usuarios:
             opcoes_usuarios = {u['username']: f"{u['nickname']} (@{u['username']})" for u in lista_usuarios}
-            usuario_selecionado = st.selectbox("Abrir sala privada com:", list(opcoes_usuarios.keys()), format_func=lambda x: opcoes_usuarios[x])
-            
+            usuario_selecionado = st.selectbox("Abrir sala com:", list(opcoes_usuarios.keys()), format_func=lambda x: opcoes_usuarios[x])
             if st.button("🚪 Entrar na Sala Privada", use_container_width=True):
                 st.session_state.sala_privada_atual = obter_id_sala_privada(user_atual.get('username'), usuario_selecionado)
                 st.session_state.codigo_grupo_atual = None
@@ -494,132 +418,73 @@ elif aba_ativa == "💬 Chat EXV":
         if st.session_state.sala_privada_atual:
             sala_id = st.session_state.sala_privada_atual
             outro_usuario = sala_id.replace(user_atual.get('username'), "").replace("_", "")
+            st.markdown(f"### 💬 Sala: **@{user_atual.get('username')}** & **@{outro_usuario}**")
             
-            st.write("---")
-            st.markdown(f"### 💬 Sala Privada: **@{user_atual.get('username')}** & **@{outro_usuario}**")
-            
-            if sala_id not in st.session_state.chat_privado_salas:
-                st.session_state.chat_privado_salas[sala_id] = []
-                
+            if sala_id not in st.session_state.chat_privado_salas: st.session_state.chat_privado_salas[sala_id] = []
             for msg in st.session_state.chat_privado_salas[sala_id]:
                 with st.chat_message("user" if msg['remetente'] == user_atual.get('username') else "assistant"):
-                    st.markdown(f"**@{msg['remetente']}**")
-                    if msg['tipo'] == 'texto': st.write(msg['conteudo'])
-                    elif msg['tipo'] == 'foto': st.image(msg['conteudo'], caption="Foto enviada", width=250)
-                    elif msg['tipo'] == 'audio': st.audio(msg['conteudo'])
+                    st.write(f"**@{msg['remetente']}:** {msg['conteudo']}")
             
-            st.write("---")
-            tipo_midia = st.radio("O que quer enviar?", ["📝 Mensagem", "🖼️ Link de Foto", "🎵 Link de Áudio"], horizontal=True)
-            
-            if tipo_midia == "📝 Mensagem":
-                txt = st.text_input("Sua mensagem:", key="msg_p_input")
-                if st.button("Enviar Texto", use_container_width=True) and txt:
-                    st.session_state.chat_privado_salas[sala_id].append({"remetente": user_atual.get('username'), "tipo": "texto", "conteudo": txt})
-                    st.rerun()
-            elif tipo_midia == "🖼️ Link de Foto":
-                img_url = st.text_input("URL da Imagem (.jpg, .png):", placeholder="https://exemplo.com/imagem.png")
-                if st.button("Enviar Foto", use_container_width=True) and img_url:
-                    st.session_state.chat_privado_salas[sala_id].append({"remetente": user_atual.get('username'), "tipo": "foto", "conteudo": img_url})
-                    st.rerun()
-            elif tipo_midia == "🎵 Link de Áudio":
-                audio_url = st.text_input("URL do arquivo de áudio (.mp3, .wav):", placeholder="https://exemplo.com/audio.mp3")
-                if st.button("Enviar Áudio", use_container_width=True) and audio_url:
-                    st.session_state.chat_privado_salas[sala_id].append({"remetente": user_atual.get('username'), "tipo": "audio", "conteudo": audio_url})
-                    st.rerun()
-                    
-            if st.button("❌ Fechar Sala Privada", use_container_width=True):
-                st.session_state.sala_privada_atual = None
+            txt = st.text_input("Mensagem:", key="msg_p_input")
+            if st.button("Enviar", use_container_width=True) and txt:
+                st.session_state.chat_privado_salas[sala_id].append({"remetente": user_atual.get('username'), "conteudo": txt})
                 st.rerun()
 
     with aba_grp:
-        st.subheader("👥 Grupos Protegidos por Código")
+        st.subheader("👥 Grupos por Código")
         cg1, cg2 = st.columns(2)
         with cg1:
-            st.markdown("### Criar Novo Grupo")
             nome_novo_grp = st.text_input("Nome do Grupo:")
-            cod_novo_grp = st.text_input("Criar Código de Acesso Secreto:", type="password", key="new_grp_cod")
-            if st.button("🏗️ Gerar Sala de Grupo", use_container_width=True):
-                if nome_novo_grp and cod_novo_grp:
-                    st.session_state.chat_grupos[cod_novo_grp] = {"nome": nome_novo_grp, "mensagens": []}
-                    st.success(f"Grupo '{nome_novo_grp}' criado!")
-                else: st.warning("Preencha todos os campos do grupo.")
-                
+            cod_novo_grp = st.text_input("Código Secreto:", type="password", key="new_grp_cod")
+            if st.button("🏗️ Criar Grupo", use_container_width=True) and nome_novo_grp and cod_novo_grp:
+                st.session_state.chat_grupos[cod_novo_grp] = {"nome": nome_novo_grp, "mensagens": []}
+                st.success("Grupo criado!")
         with cg2:
-            st.markdown("### Entrar em um Grupo")
-            cod_inserido = st.text_input("Digitar Código de Acesso do Grupo:", type="password", key="join_grp_cod")
-            if st.button("🚪 Entrar no Grupo", use_container_width=True):
-                if cod_inserido in st.session_state.chat_grupos:
-                    st.session_state.codigo_grupo_atual = cod_inserido
-                    st.session_state.sala_privada_atual = None
-                    st.success(f"Conectado ao grupo: {st.session_state.chat_grupos[cod_inserido]['nome']}")
-                else: st.error("Código de grupo incorreto ou inexistente!")
+            cod_inserido = st.text_input("Digitar Código:", type="password", key="join_grp_cod")
+            if st.button("🚪 Entrar", use_container_width=True) and cod_inserido in st.session_state.chat_grupos:
+                st.session_state.codigo_grupo_atual = cod_inserido
+                st.session_state.sala_privada_atual = None
                 
         if st.session_state.codigo_grupo_atual:
             cod_g = st.session_state.codigo_grupo_atual
-            dados_grupo = st.session_state.chat_grupos[cod_g]
-            
-            st.write("---")
-            st.markdown(f"### 👥 Sala de Grupo Ativa: **{dados_grupo['nome']}**")
-            
-            for m_g in dados_grupo['mensagens']:
-                with st.chat_message("user" if m_g['remetente'] == user_atual.get('username') else "assistant"):
-                    st.write(f"**@{m_g['remetente']}:** {m_g['conteudo']}")
-                    
-            msg_para_enviar_grp = st.text_input("Escrever no grupo...", key="input_msg_grp")
-            if st.button("Enviar para o Grupo", use_container_width=True) and msg_para_enviar_grp:
-                st.session_state.chat_grupos[cod_g]['mensagens'].append({"remetente": user_atual.get('username'), "conteudo": msg_para_enviar_grp})
-                st.rerun()
-                
-            if st.button("❌ Sair do Grupo", use_container_width=True):
-                st.session_state.codigo_grupo_atual = None
+            st.markdown(f"### Grupo: **{st.session_state.chat_grupos[cod_g]['nome']}**")
+            for m_g in st.session_state.chat_grupos[cod_g]['mensagens']: st.write(f"**@{m_g['remetente']}:** {m_g['conteudo']}")
+            msg_g = st.text_input("Escrever...", key="input_msg_grp")
+            if st.button("Enviar Grupo") and msg_g:
+                st.session_state.chat_grupos[cod_g]['mensagens'].append({"remetente": user_atual.get('username'), "conteudo": msg_g})
                 st.rerun()
 
 # --- 4. ABA SILVER IA ---
 elif aba_ativa == "🧠 Silver IA":
     st.title("🧠 Silver IA")
-    st.write("Olá! Eu sou o **Silver**, seu assistente oficial do Silver Tok v2.")
-    
-    prompt_usuario = st.text_input("O que deseja saber ou pesquisar?", placeholder="Ex: Me dê ideias de vídeos para o meu feed")
-    if st.button("Perguntar ao Silver", use_container_width=True):
-        if prompt_usuario:
-            resposta = responder_ia(prompt_usuario)
-            st.session_state.historico_ia.insert(0, {"pergunta": prompt_usuario, "resposta": resposta})
-            st.rerun()
-            
-    if st.session_state.historico_ia:
-        st.write("---")
-        st.subheader("💬 Histórico de Conversas")
-        for chat in st.session_state.historico_ia:
-            st.info(f"❓ **Você:** {chat['pergunta']}")
-            st.success(f"🤖 **Silver:** {chat['resposta']}")
+    prompt_usuario = st.text_input("O que deseja saber?", placeholder="Ex: Me dê ideias de vídeos para o meu feed")
+    if st.button("Perguntar", use_container_width=True) and prompt_usuario:
+        resposta = responder_ia(prompt_usuario)
+        st.session_state.historico_ia.insert(0, {"pergunta": prompt_usuario, "resposta": resposta})
+        st.rerun()
+    for chat in st.session_state.historico_ia:
+        st.info(f"❓ **Você:** {chat['pergunta']}")
+        st.success(f"🤖 **Silver:** {chat['resposta']}")
 
-# --- 5. ABA LOJA DO SITE (FUNCIONANDO TOTALMENTE COM TRATAMENTO DE ARRAY) ---
+# --- 5. ABA LOJA DO SITE ---
 elif aba_ativa == "🛒 Loja do Site":
-    st.title("🛒 Loja de Customizações e Vantagens")
-    st.write(f"🪙 **Sua Carteira:** {user_atual.get('dinheiro', 0)} Silver Coins")
+    st.title("🛒 Loja de Customizações")
+    st.write(f"🪙 **Carteira:** {user_atual.get('dinheiro', 0)} Silver Coins")
     st.write("---")
 
     customizacoes = {
-        "🖼️ Moldura de Fogo 🔥": 1000, 
-        "💎 Moldura de Diamante ✨": 2500,
-        "🖼️ Banner Estelar (Perfil)": 1500, 
-        "💬 Caixa de Texto Neon (Feed)": 2000, 
-        "🌈 Nickname Dourado": 5000
+        "🖼️ Moldura de Fogo 🔥": 1000, "💎 Moldura de Diamante ✨": 2500,
+        "🖼️ Banner Estelar (Perfil)": 1500, "💬 Caixa de Texto Neon (Feed)": 2000, "🌈 Nickname Dourado": 5000
     }
 
     for item, preco in customizacoes.items():
         with st.container():
             col_info, col_btn = st.columns([3, 1])
-            with col_info:
-                st.markdown(f"### {item}")
-                st.markdown(f"🪙 Custo: **{preco} Silver Coins**")
+            with col_info: st.markdown(f"### {item}\n🪙 Custo: **{preco} Coins**")
             with col_btn:
                 st.write("<br>", unsafe_allow_html=True)
-                
-                # Garante que o inventário seja tratado como lista e previne bugs de nulo
-                meus_visuais = user_atual.get('itens_exclusivos')
-                if not isinstance(meus_visuais, list):
-                    meus_visuais = []
+                meus_visuais = user_atual.get('itens_exclusivos', [])
+                if not isinstance(meus_visuais, list): meus_visuais = []
                 meus_visuais = [x for x in meus_visuais if x]
                 
                 if item in meus_visuais or f"[EQUIPADO] {item}" in meus_visuais:
@@ -629,70 +494,36 @@ elif aba_ativa == "🛒 Loja do Site":
                         saldo = user_atual.get('dinheiro', 0)
                         if saldo >= preco:
                             try:
-                                novo_saldo = saldo - preco
                                 meus_visuais.append(item)
-                                
-                                # Atualiza saldo e adiciona o item comprado no array
-                                supabase.table("perfis_usuarios").update({
-                                    "dinheiro": novo_saldo, 
-                                    "itens_exclusivos": meus_visuais
-                                }).eq("username", user_atual.get('username')).execute()
-                                
-                                st.success(f"🎉 '{item}' adquirido!")
+                                supabase.table("perfis_usuarios").update({"dinheiro": saldo - preco, "itens_exclusivos": meus_visuais}).eq("username", user_atual.get('username')).execute()
+                                st.success(f"🎉 Adquirido!")
                                 st.rerun()
-                            except Exception as e: 
-                                st.error(f"Erro ao salvar no banco: {str(e)}")
-                        else: 
-                            st.error("❌ Saldo de Silver Coins insuficiente!")
+                            except Exception as e: st.error(f"Erro: {str(e)}")
+                        else: st.error("❌ Saldo insuficiente!")
             st.write("---")
 
-# --- 6. ABA MEU PERFIL (VERSÃO COMPLETA, TURBINADA E ROBUSTA) ---
+# --- 6. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
-    meus_itens_perfil = user_atual.get('itens_exclusivos')
-    if not isinstance(meus_itens_perfil, list): 
-        meus_itens_perfil = []
+    meus_itens_perfil = user_atual.get('itens_exclusivos', [])
+    if not isinstance(meus_itens_perfil, list): meus_itens_perfil = []
     meus_itens_perfil = [x for x in meus_itens_perfil if x]
     
-    # 🌟 Banner de Fundo Dinâmico baseado na Loja
     if "[EQUIPADO] 🖼️ Banner Estelar (Perfil)" in meus_itens_perfil:
-        st.markdown(
-            """
-            <div style="background: linear-gradient(135deg, #1e0034 0%, #340068 50%, #ff007f 100%); 
-            height: 120px; border-radius: 12px 12px 0px 0px; position: relative; margin-bottom: -60px;
-            box-shadow: inset 0 0 20px rgba(255,255,255,0.2);">
-            </div>
-            """, unsafe_allow_html=True
-        )
+        st.markdown('<div style="background: linear-gradient(135deg, #1e0034 0%, #340068 50%, #ff007f 100%); height: 120px; border-radius: 12px 12px 0px 0px; margin-bottom: -60px;"></div>', unsafe_allow_html=True)
     else:
-        st.markdown(
-            """
-            <div style="background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%); 
-            height: 100px; border-radius: 12px 12px 0px 0px; position: relative; margin-bottom: -50px;">
-            </div>
-            """, unsafe_allow_html=True
-        )
+        st.markdown('<div style="background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%); height: 100px; border-radius: 12px 12px 0px 0px; margin-bottom: -50px;"></div>', unsafe_allow_html=True)
 
-    selo_meu_perfil, moldura_meu_perfil = aplicar_moldura_e_selo(
-        user_atual.get('username'), user_atual.get('titulo'), meus_itens_perfil, user_atual.get('seguidores', 0)
-    )
-    
+    selo_meu_perfil, moldura_meu_perfil = aplicar_moldura_e_selo(user_atual.get('username'), user_atual.get('titulo'), meus_itens_perfil, user_atual.get('seguidores', 0))
     col_foto, col_stats = st.columns([1, 2])
     with col_foto:
-        f_perfil = user_atual.get('foto_perfil')
-        if not f_perfil or str(f_perfil).strip() in ["0", "None", ""] or not str(f_perfil).startswith("http"):
-            f_perfil = "https://img.icons8.com/colors/150/test-account.png"
-        
-        st.markdown(
-            f'<div style="padding-top: 10px; text-align: center;">'
-            f'<img src="{f_perfil}" style="{moldura_meu_perfil} background-color: #0e1117;" width="120">'
-            f'</div>', unsafe_allow_html=True
-        )
+        f_perfil = user_atual.get('foto_perfil', '')
+        if not f_perfil or str(f_perfil).strip() in ["0", "None", ""]: f_perfil = "https://img.icons8.com/colors/150/test-account.png"
+        st.markdown(f'<div style="padding-top: 10px; text-align: center;"><img src="{f_perfil}" style="{moldura_meu_perfil} background-color: #0e1117;" width="120"></div>', unsafe_allow_html=True)
             
     with col_stats:
         st.write("<br>" * 2, unsafe_allow_html=True)
         st.header(f"{user_atual.get('nickname', 'Usuário')}{selo_meu_perfil}")
-        st.caption(f"🆔 **@{user_atual.get('username', '')}** | 🎖️ Cargo: *{user_atual.get('titulo', 'Usuário')}*")
-        
+        st.caption(f"🆔 **@{user_atual.get('username', '')}** | Cargo: *{user_atual.get('titulo', 'Usuário')}*")
         m1, m2, m3 = st.columns(3)
         m1.metric("Seguidores", f"👥 {user_atual.get('seguidores', 0)}")
         m2.metric("Seguindo", f"🏃 {user_atual.get('seguindo', 0)}")
@@ -700,170 +531,117 @@ elif aba_ativa == "👤 Meu Perfil":
     
     st.write("---")
     
-    # Sistema de Nível XP integrado (Calculado por Seguidores)
-    seguidores_atuais = user_atual.get('seguidores', 0)
-    nivel_atual = (seguidores_atuais // 100) + 1
-    xp_progresso = seguidores_atuais % 100
-    
-    st.markdown(f"### 🚀 Nível do Canal: **Lv. {nivel_atual}**")
-    st.progress(xp_progresso / 100, text=f"{xp_progresso}/100 seguidores para o próximo nível")
-    
-    st.markdown(f"💬 **Biografia:** *{user_atual.get('bio', 'Nenhuma biografia definida ainda.')}*")
+    seg_at = user_atual.get('seguidores', 0)
+    st.markdown(f"### 🚀 Nível do Canal: **Lv. {(seg_at // 100) + 1}**")
+    st.progress((seg_at % 100) / 100, text=f"{seg_at % 100}/100 para o próximo nível")
+    st.write(f"💬 **Bio:** {user_atual.get('bio', 'Disponível')}")
     st.write("---")
     
-    # Sub-Abas de Gestão interna do Perfil
-    sub_aba_inventario, sub_aba_editar, sub_aba_conquistas, sub_aba_seguidores = st.tabs([
-        "🎒 Meu Inventário", 
-        "⚙️ Editar Perfil", 
-        "🏅 Minhas Conquistas",
-        "👥 Gerenciar Seguidores"
-    ])
+    sub_aba_inventario, sub_aba_editar, sub_aba_convites, sub_aba_seguidores = st.tabs(["🎒 Meu Inventário", "⚙️ Editar Perfil", "✉️ Meus Convites", "👥 Amigos"])
     
     with sub_aba_inventario:
-        st.subheader("Gerenciar Customizações Equipadas")
         if meus_itens_perfil:
-            itens_para_exibir = list(set([item.replace("[EQUIPADO] ", "") for item in meus_itens_perfil if item]))
-            for item_base in itens_para_exibir:
-                col_item_nome, col_item_acao = st.columns([3, 1])
-                esta_equipado = f"[EQUIPADO] {item_base}" in meus_itens_perfil
-                
-                with col_item_nome:
-                    if esta_equipado: st.markdown(f"🟢 **{item_base}** *(Equipado)*")
-                    else: st.markdown(f"⚪ {item_base}")
-                        
-                with col_item_acao:
-                    if esta_equipado:
-                        if st.button("🔴 Desequipar", key=f"deseq_{item_base}", use_container_width=True):
-                            nova_lista = [x for x in meus_itens_perfil if x != f"[EQUIPADO] {item_base}"] + [item_base]
-                            supabase.table("perfis_usuarios").update({"itens_exclusivos": nova_lista}).eq("username", user_atual.get('username')).execute()
+            itens_exib = list(set([i.replace("[EQUIPADO] ", "") for i in meus_itens_perfil if i]))
+            for it in itens_exib:
+                col_n, col_a = st.columns([3, 1])
+                eq = f"[EQUIPADO] {it}" in meus_itens_perfil
+                with col_n: st.markdown(f"🟢 **{it}**" if eq else f"⚪ {it}")
+                with col_a:
+                    if eq:
+                        if st.button("Desequipar", key=f"d_{it}", use_container_width=True):
+                            nl = [x for x in meus_itens_perfil if x != f"[EQUIPADO] {it}"] + [it]
+                            supabase.table("perfis_usuarios").update({"itens_exclusivos": nl}).eq("username", user_atual.get('username')).execute()
                             st.rerun()
                     else:
-                        if st.button("🟢 Equipar", key=f"eq_{item_base}", use_container_width=True):
-                            if "Moldura" in item_base:
-                                nova_lista = [x for x in meus_itens_perfil if "Moldura" not in x]
-                            elif "Banner" in item_base:
-                                nova_lista = [x for x in meus_itens_perfil if "Banner" not in x]
-                            else:
-                                nova_lista = meus_itens_perfil.copy()
-                                
-                            if item_base in nova_lista: nova_lista.remove(item_base)
-                            nova_lista.append(f"[EQUIPADO] {item_base}")
-                            
-                            supabase.table("perfis_usuarios").update({"itens_exclusivos": nova_lista}).eq("username", user_atual.get('username')).execute()
+                        if st.button("Equipar", key=f"e_{it}", use_container_width=True):
+                            nl = [x for x in meus_itens_perfil if ("Moldura" not in x or "Moldura" not in it)]
+                            if it in nl: nl.remove(it)
+                            nl.append(f"[EQUIPADO] {it}")
+                            supabase.table("perfis_usuarios").update({"itens_exclusivos": nl}).eq("username", user_atual.get('username')).execute()
                             st.rerun()
-        else: 
-            st.info("Sua mochila está vazia. Compre molduras exclusivas na Loja do Site!")
+        else: st.info("Inventário vazio.")
 
     with sub_aba_editar:
-        st.subheader("Atualizar Informações do Canal")
-        novo_nickname = st.text_input("Mudar Nome de Exibição (Nickname):", value=user_atual.get('nickname'))
-        nova_foto_url = st.text_input("Link da Nova Foto de Perfil (URL):", value=user_atual.get('foto_perfil'))
-        nova_bio = st.text_area("Escrever nova Biografia:", value=user_atual.get('bio'), max_chars=150)
-        
-        if st.button("💾 Salvar Alterações", use_container_width=True):
-            try:
-                supabase.table("perfis_usuarios").update({
-                    "nickname": novo_nickname, "foto_perfil": nova_foto_url, "bio": nova_bio
-                }).eq("username", user_atual.get('username')).execute()
-                st.success("Perfil atualizado com sucesso no Silver Tok!")
-                st.rerun()
-            except Exception as e: st.error(f"Erro ao salvar dados: {str(e)}")
+        n_nick = st.text_input("Nickname:", value=user_atual.get('nickname'))
+        n_foto = st.text_input("URL Foto:", value=user_atual.get('foto_perfil'))
+        n_bio = st.text_area("Bio:", value=user_atual.get('bio'), max_chars=150)
+        if st.button("💾 Salvar Perfil", use_container_width=True):
+            supabase.table("perfis_usuarios").update({"nickname": n_nick, "foto_perfil": n_foto, "bio": n_bio}).eq("username", user_atual.get('username')).execute()
+            st.success("Salvo!")
+            st.rerun()
 
-    with sub_aba_conquistas:
-        st.subheader("Medalhas de Honra do Canal")
-        if seguidores_atuais >= 1000:
-            st.success("🏅 **Criador VIP:** Alcançou mais de 1.000 seguidores!")
-        else: st.caption("🔒 *Criador VIP:* Alcance 1.000 seguidores para desbloquear.")
-            
-        if user_atual.get('dinheiro', 0) >= 5000:
-            st.success("💰 **Magnata Prateado:** Fortuna acumulada de mais de 5.000 Silver Coins!")
-        else: st.caption("🔒 *Magnata Prateado:* Acumule 5.000 moedas na carteira.")
-            
+    with sub_aba_convites:
+        st.subheader("✉️ Sistema de Convites Compartilhados")
         if user_atual.get('username') == "rafael_oficial":
-            st.info("👑 **Arquiteto do Sistema:** Atribuído exclusivamente ao criador do código.")
+            st.info("👑 **Vantagem de Desenvolvedor:** Seus convites são **INFINITOS** e ilimitados!")
+        else:
+            st.metric("Seus Créditos de Convite Restantes:", f"🎫 {user_atual.get('convites_restantes', 0)} de 3")
+        
+        link_gerado = f"https://silvertokv2.streamlit.app/?ref={user_atual.get('username')}"
+        st.markdown("### 🔗 Seu Link de Convite Exclusivo:")
+        st.code(link_gerado, language="text")
+        st.caption("Envie esse link para seus amigos. Ao entrarem por ele, o sistema pula o código secreto automaticamente!")
 
     with sub_aba_seguidores:
-        st.subheader("Lista de Canais que você acompanha")
-        amigo_para_add = st.text_input("Digite o @username exato de quem quer seguir:", key="input_add_amigo_perfil").strip()
-        if st.button("➕ Seguir Usuário", use_container_width=True):
-            if amigo_para_add:
-                try:
-                    checar_user = supabase.table("perfis_usuarios").select("username").eq("username", amigo_para_add).execute()
-                    if checar_user.data:
-                        lista_amigos_perfil = user_atual.get('lista_amigos', [])
-                        if not isinstance(lista_amigos_perfil, list): lista_amigos_perfil = []
-                        
-                        if amigo_para_add in lista_amigos_perfil: st.warning("Você já segue este canal!")
-                        else:
-                            lista_amigos_perfil.append(amigo_para_add)
-                            supabase.table("perfis_usuarios").update({
-                                "lista_amigos": lista_amigos_perfil,
-                                "seguindo": user_atual.get('seguindo', 0) + 1
-                            }).eq("username", user_atual.get('username')).execute()
-                            st.success(f"🎉 Agora você está seguindo @{amigo_para_add}!")
-                            st.rerun()
-                    else: st.error("Canal não encontrado no Silver Tok.")
-                except Exception as e: st.error(f"Erro ao processar: {str(e)}")
-            else: st.warning("Preencha o campo de usuário.")
+        amg_add = st.text_input("Seguir usuário (@):").strip()
+        if st.button("➕ Seguir") and amg_add:
+            chk = supabase.table("perfis_usuarios").select("username").eq("username", amg_add).execute()
+            if chk.data:
+                la = user_atual.get('lista_amigos', [])
+                if not isinstance(la, list): la = []
+                if amg_add not in la:
+                    la.append(amg_add)
+                    supabase.table("perfis_usuarios").update({"lista_amigos": la, "seguindo": user_atual.get('seguindo', 0) + 1}).eq("username", user_atual.get('username')).execute()
+                    st.success("Seguindo!")
+                    st.rerun()
 
-        st.write("---")
-        lista_amigos_perfil = user_atual.get('lista_amigos', [])
-        if lista_amigos_perfil and isinstance(lista_amigos_perfil, list):
-            for amg in lista_amigos_perfil:
-                if amg:
-                    col_amg_nome, col_amg_btn = st.columns([3, 2])
-                    with col_amg_nome: st.write(f"👤 **@{amg}**")
-                    with col_amg_btn:
-                        if st.button(f"💬 Abrir Direct", key=f"chat_seg_{amg}", use_container_width=True):
-                            st.session_state.sala_privada_atual = obter_id_sala_privada(user_atual.get('username'), amg)
-                            st.session_state.codigo_grupo_atual = None
-                            st.success("Direcionado! Vá para a aba Chat EXV.")
-        else: st.caption("Você ainda não está seguindo nenhum criador.")
-
-# --- 7. ABA VISITAR PERFIL ALHEIO ---
+# --- 7. ABA VISITAR PERFIL ---
 elif aba_ativa == "👀 Ver Perfil" and st.session_state.perfil_visitado:
     alvo = st.session_state.perfil_visitado
     try:
         res = supabase.table("perfis_usuarios").select("*").eq("username", alvo).execute()
         if res.data:
             p = res.data[0]
-            itens_alvo = p.get('itens_exclusivos', [])
-            selo_visitado, moldura_visitado = aplicar_moldura_e_selo(p.get('username'), p.get('titulo', 'Usuário'), itens_alvo, p.get('seguidores', 0))
+            selo_v, moldura_v = aplicar_moldura_e_selo(p.get('username'), p.get('titulo'), p.get('itens_exclusivos', []), p.get('seguidores', 0))
             
             col_f, col_s = st.columns([1, 2])
-            with col_f: 
-                f_vis = p.get('foto_perfil')
-                if not f_vis or str(f_vis).strip() in ["0", "None", ""] or not str(f_vis).startswith("http"):
-                    f_vis = 'https://img.icons8.com/colors/150/test-account.png'
-                st.markdown(f'<img src="{f_vis}" style="{moldura_visitado}" width="120">', unsafe_allow_html=True)
+            with col_f:
+                fv = p.get('foto_perfil', '')
+                if not fv or str(fv).strip() in ["0", "None", ""]: fv = 'https://img.icons8.com/colors/150/test-account.png'
+                st.markdown(f'<img src="{fv}" style="{moldura_v}" width="120">', unsafe_allow_html=True)
             with col_s:
-                st.header(f"{p.get('nickname', 'Usuário')}{selo_visitado}")
-                st.write(f"@{p.get('username', '')} | {p.get('titulo', 'Usuário')}")
-                st.write(f"👥 {p.get('seguidores', 0)} Seguidores")
-            st.write(f"📝 {p.get('bio', '')}")
+                st.header(f"{p.get('nickname')}{selo_v}")
+                st.write(f"@{p.get('username')} | {p.get('titulo')}\n👥 {p.get('seguidores', 0)} Seguidores")
             
+            st.write(f"📝 {p.get('bio', '')}")
             st.write("---")
-            c_btn1, c_btn2 = st.columns(2)
-            with c_btn1:
-                if st.button("👥 Adicionar como Amigo", key="btn_add_amigo_perfil_direto", use_container_width=True):
-                    lista_atual_amigos = user_atual.get('lista_amigos', [])
-                    if not isinstance(lista_atual_amigos, list): lista_atual_amigos = []
-                    if alvo not in lista_atual_amigos:
-                        lista_atual_amigos.append(alvo)
-                        supabase.table("perfis_usuarios").update({"lista_amigos": lista_atual_amigos}).eq("username", user_atual.get('username')).execute()
-                        st.success(f"🎉 @{alvo} adicionado!")
-            with c_btn2:
-                if st.button("💬 Conversa com Seguidor", key="btn_conversa_direta_perfil", use_container_width=True):
-                    st.session_state.sala_privada_atual = obter_id_sala_privada(user_atual.get('username'), alvo)
-                    st.session_state.codigo_grupo_atual = None
-                    st.success("Sala Privada configurada! Vá até o Chat EXV.")
-                
-            if st.button("Voltar ao Feed", use_container_width=True):
+            
+            try:
+                live_check = supabase.table("lives_ativas").select("*").eq("streamer_username", alvo).execute()
+                if live_check.data:
+                    st.error("🔴 ESTE CANAL ESTÁ TRANSMITINDO AO VIVO AGORA!")
+                    
+                    with st.expander("🎁 Enviar Silver Coins + Mensagem em Voz Alta (Live Pix)", expanded=True):
+                        moedas_enviar = st.number_input("Quantidade de Moedas:", min_value=10, value=50, step=10, key="coins_live_pix")
+                        msg_enviar = st.text_input("Escrever Mensagem para o Streamer ouvir:", placeholder="Manda um salve!", key="msg_live_pix")
+                        
+                        if st.button("🪙 Enviar Live Pix", use_container_width=True):
+                            saldo_meu = user_atual.get('dinheiro', 0)
+                            if saldo_meu >= moedas_enviar:
+                                if msg_enviar:
+                                    supabase.table("perfis_usuarios").update({"dinheiro": saldo_meu - moedas_enviar}).eq("username", user_atual.get('username')).execute()
+                                    supabase.table("live_alertas").insert({"live_id": live_check.data[0]["id"], "enviado_por": user_atual.get('username'), "quantidade_coins": moedas_enviar, "mensagem": msg_enviar, "lido_status": False}).execute()
+                                    st.success("🎉 Live Pix enviado!")
+                                else: st.warning("Digite uma mensagem.")
+                            else: st.error("Saldo de moedas insuficiente na carteira.")
+            except: pass
+            
+            if st.button("Voltar ao Feed"):
                 st.session_state.perfil_visitado = None
                 st.rerun()
-    except: st.error("Erro ao carregar perfil.")
+    except: pass
 
-# --- 8. PAINEL DEV ---
+  # --- 8. PAINEL DEV ---
 elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_oficial":
     st.header("Painel Secreto do Desenvolvedor 👑")
     try:
