@@ -399,7 +399,7 @@ if aba_ativa == "🎥 Gravar/Postar":
     st.title("🎥 Postar Novo Conteúdo")
     
     # Criação correta das 3 abas principais
-    aba_gravar, aba_link, aba_central = st.tabs(["🔴 Gravar Post", "🔗 Postar por Link", "🚨 Central do Streamer"])
+    aba_gravar, aba_link, aba_central = st.tabs(["🔴 Gravar Post", "🔗 Postar por Link", "🚨 Central do Streamer" "📁 Upload da Galeria"])
      
     # --- SUB-ABA 1: GRAVAR POST ---
     with aba_gravar:
@@ -429,8 +429,53 @@ if aba_ativa == "🎥 Gravar/Postar":
                     st.error(f"Erro ao salvar: {str(e)}")
             else:
                 st.warning("Por favor, insira o link do vídeo antes de publicar.")
-                   
-    # --- SUB-ABA 3: CENTRAL DO STREAMER ---
+                     # --- SUB-ABA 3: UPLOAD DIRETO DA GALERIA (VÍDEOS_FEED JÁ EXISTENTE) ---
+    with aba_upload:
+        st.subheader("📁 Enviar Vídeo da Galeria")
+        
+        legenda_upload = st.text_input("Legenda do post:", key="leg_upload")
+        
+        # Botão para o usuário escolher o arquivo do celular ou PC
+        arquivo_video = st.file_uploader("Selecione um arquivo de vídeo (.mp4):", type=["mp4", "mov", "avi"])
+        
+        if st.button("Publicar Vídeo da Galeria", use_container_width=True):
+            if arquivo_video is not None:
+                try:
+                    with st.spinner("Enviando o vídeo para o Silver Tok... Aguarde. ⏳"):
+                        # 1. Cria um nome único baseado no usuário e nome do arquivo original
+                        nome_do_arquivo = f"{user_atual.get('username')}_{arquivo_video.name}"
+                        
+                        # Ler os bytes do arquivo
+                        dados_do_video = arquivo_video.read()
+                        
+                        # 2. Faz o upload direto para a sua pasta existente 'videos_feed'
+                        supabase.storage.from_("videos_feed").upload(
+                            path=nome_do_arquivo,
+                            file=dados_do_video,
+                            file_options={"content-type": "video/mp4"}
+                        )
+                        
+                        # 3. Pega a URL pública que o seu bucket gera
+                        url_publica = supabase.storage.from_("videos_feed").get_public_url(nome_do_arquivo)
+                        
+                        # 4. Salva no banco de dados do Feed usando a URL gerada
+                        supabase.table("feed_videos").insert({
+                            "username": user_atual.get('username'), 
+                            "nickname": user_atual.get('nickname'),
+                            "url": url_publica, 
+                            "legenda": legenda_upload,
+                            "curtidas": 0,
+                            "visualizacoes": 0
+                        }).execute()
+                        
+                        st.success("Vídeo enviado e publicado com sucesso! 🎉")
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Erro ao fazer upload: {str(e)}")
+            else:
+                st.warning("Por favor, selecione um arquivo de vídeo antes de publicar.")
+                
+    # --- SUB-ABA 4: CENTRAL DO STREAMER ---
     with aba_central:
         st.subheader("🚨 Central de Controle da Live")
         st.write("Configurações adicionais e monitoramento de lives.")
