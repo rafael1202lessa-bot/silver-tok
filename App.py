@@ -251,22 +251,21 @@ if user_atual.get('username') == "rafael_oficial": abas.append("⚡ Painel Dev")
 aba_ativa = st.radio("Menu", abas, horizontal=True)
 st.write("---")
 
-# --- 1. ABA FEED (LINHA 255) ---
+# --- 1. ABA FEED ---
 if aba_ativa == "📱 Feed":
     st.title("📱 Feed de Vídeos")
     
     try:
-        # Busca os vídeos diretamente na tabela do Supabase
-        dados_feed = supabase.table("feed_videos").select("*").order("id", descending=True).execute()
+        # Busca os vídeos com o parâmetro desc=True correto
+        dados_feed = supabase.table("feed_videos").select("*").order("id", desc=True).execute()
         videos = dados_feed.data if dados_feed else []
         
         if videos:
             for vid in videos:
                 st.write(f"👤 **{vid.get('nickname', 'Usuário')}** (@{vid.get('username', 'user')})")
                 
-                # Pega o link da coluna correta do banco de dados
+                # Pega o link correto
                 link_final = vid.get('url') or vid.get('video_url')
-                
                 if link_final:
                     st.video(link_final)
                 else:
@@ -275,10 +274,10 @@ if aba_ativa == "📱 Feed":
                 st.write(f"❤️ {vid.get('curtidas', 0)} curtidas")
                 st.write("---")
         else:
-            st.info("Nenhum vídeo postado ainda.")
+            st.info("Nenhum vídeo publicado ainda. Seja o primeiro a postar na aba 🎥 Gravar/Postar!")
             
     except Exception as e:
-        st.error(f"Erro ao carregar o Feed: {str(e)}") 
+        st.error(f"Erro ao carregar o Feed: {str(e)}")
         videos = []
 
     if not videos:
@@ -341,8 +340,7 @@ if aba_ativa == "📱 Feed":
 # --- 2. ABA GRAVAR/POSTAR ---
 elif aba_ativa == "🎥 Gravar/Postar":
     st.title("🎥 Postar Novo Conteúdo")
-    # Criando apenas as abas que você vai usar de verdade
-    aba_gravas, aba_link, aba_central = st.tabs(["🔴 Gravar Post", "🔗 Postar por Link", "🚨 Central do Dev"])
+    aba_gravas, aba_link = st.tabs(["🔴 Gravar Post", "🔗 Postar por Link"])
     
     with aba_gravas:
         st.info("Função de gravação direta pela câmera em desenvolvimento!")
@@ -353,19 +351,18 @@ elif aba_ativa == "🎥 Gravar/Postar":
         if st.button("Publicar Vídeo por Link", use_container_width=True):
             if url_do_video:
                 try:
-                    # Envia para a coluna 'url' que está no seu banco
                     supabase.table("feed_videos").insert({
                         "username": user_atual.get('username'), 
                         "nickname": user_atual.get('nickname'), 
+                        "legenda": legenda, 
                         "url": url_do_video, 
                         "curtidas": 0
                     }).execute()
-                    
-                    st.success("Publicado com sucesso no Feed! Atualizando...")
+                    st.success("Publicado no Feed! Atualizando...")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro ao salvar: {str(e)}")
-                    
+                                        
     with aba_central:
         st.write("Configurações adicionais de posts de live aqui.")
  
