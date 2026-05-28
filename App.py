@@ -501,10 +501,12 @@ if aba_ativa == "🎥 Gravar/Postar":
                 except Exception as e:
                     st.error(f"Erro ao fazer upload: {str(e)}")
             else:
-                st.warning("Por favor, selecione um arquivo de vídeo antes de publicar.")
-if aba_active == "📺 Assistir Lives":
+                
+                    # --- 3. ABA ASSISTIR LIVES (PARA O PÚBLICO) ---
+if aba_ativa == "📺 Assistir Lives":
     st.title("📺 Transmissões Ao Vivo")
     st.write("Veja quem está transmitindo agora no Silver Tok!")
+    
     try:
         lives_req = supabase.table("lives_ativas").select("*").eq("status", "online").order("id", desc=True).execute()
         lista_lives = lives_req.data if lives_req else []
@@ -524,13 +526,14 @@ if aba_active == "📺 Assistir Lives":
         with st.container():
             st.markdown(f"### 🔴 {l_titulo}")
             st.caption(f"Streamer: **{l_nickname}** (@{l_streamer})")
+            
             if l_url:
                 try:
                     st.video(l_url)
                 except:
                     st.error("Transmissão indisponível ou sinal offline.")
             
-            with st.expander(f"💬 Abrir Chat da Live"):
+            with st.expander("💬 Abrir Chat da Live"):
                 try:
                     mensagens_req = supabase.table("chat_lives").select("*").eq("live_id", l_id).order("id", desc=True).limit(15).execute()
                     mensagens_chat = mensagens_req.data if mensagens_req else []
