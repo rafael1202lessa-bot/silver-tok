@@ -251,12 +251,12 @@ if user_atual.get('username') == "rafael_oficial": abas.append("⚡ Painel Dev")
 aba_ativa = st.radio("Menu", abas, horizontal=True)
 st.write("---")
 
-# --- 1. ABA FEED ---
+# # --- 1. ABA FEED ---
 elif aba_ativa == "📱 Feed":
     st.title("📱 Feed de Vídeos")
     
     try:
-        # Puxa os dados do Supabase
+        # Busca os vídeos diretamente no Supabase
         dados_feed = supabase.table("feed_videos").select("*").order("id", descending=True).execute()
         videos = dados_feed.data if dados_feed else []
         
@@ -264,8 +264,7 @@ elif aba_ativa == "📱 Feed":
             for vid in videos:
                 st.write(f"👤 **{vid.get('nickname', 'Usuário')}** (@{vid.get('username', 'user')})")
                 
-                # CORREÇÃO DA LEITURA DO VÍDEO:
-                # Tenta pegar 'url', se não achar, tenta 'video_url' por segurança
+                # Resgata o link do vídeo de forma segura (url ou video_url)
                 link_final = vid.get('url') or vid.get('video_url')
                 
                 if link_final:
