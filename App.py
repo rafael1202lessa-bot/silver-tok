@@ -1,4 +1,4 @@
-import streamlit as st
+lives_req.datapimport streamlit as st
 from supabase import create_client, Client
 import random
 import datetime
@@ -528,8 +528,66 @@ if aba_ativa == "🎥 Gravar/Postar":
                     st.error(f"Erro ao fazer upload: {str(e)}")
             else:
                 st.warning("Por favor, selecione um arquivo de vídeo antes de publicar.")
-                                     
-# --- 3. ABA CHAT EXV ---
+            # --- 3. ABA ASSISTIR LIVES (PARA O PÚBLICO) ---
+if aba_ativa == "📺 Assistir Lives":
+    st.title("📺 Transmissões Ao Vivo")
+    st.write("Veja quem está transmitindo agora no Silver Tok!")
+    
+    try:
+        lives_req = supabase.table("lives_ativas").select("*").eq("status", "online").order("id", desc=True).execute()
+        lista_lives = lives_req.data if lives_req else []
+    except:
+        lista_lives = []
+
+    if not lista_lives:
+        st.info("Nenhuma live transmitindo no momento. Que tal abrir a sua na aba 🎥 Gravar/Postar?")
+    
+    for live in lista_lives:
+        l_id = live.get('id')
+        l_streamer = live.get('streamer_username')
+        l_nickname = live.get('streamer_nickname')
+        l_titulo = live.get('titulo_live')
+        l_url = live.get('url_transmissao')
+        
+        with st.container():
+            st.markdown(f"### 🔴 {l_titulo}")
+            st.caption(f"Streamer: **{l_nickname}** (@{l_streamer})")
+            
+            # Renderiza o player da live para o espectador
+            if l_url:
+                try:
+                    st.video(l_url)
+                except:
+                    st.error("Transmissão indisponível ou sinal offline.")
+            
+            # Expansor para abrir o Chat da Live
+            with st.expander(f"💬 Abrir Chat da Live"):
+                # Carrega mensagens enviadas
+                try:
+                    mensagens_req = supabase.table("chat_lives").select("*").eq("live_id", l_id).order("id", desc=True).limit(15).execute()
+                    mensagens_chat = mensagens_req.data if mensagens_req else []
+                    for msg in reversed(mensagens_chat):
+                        st.markdown(f"**{msg.get('nickname')}**: {msg.get('mensagem')}")
+                except:
+                    st.caption("Erro ao carregar mensagens.")
+                
+                # Campo para o espectador enviar mensagem
+                nova_msg_live = st.text_input("Envie uma mensagem no chat...", key=f"chat_in_{l_id}")
+                if st.button("Enviar", key=f"chat_btn_{l_id}"):
+                    if nova_msg_live.strip():
+                        try:
+                            supabase.table("chat_lives").insert({
+                                "live_id": l_id,
+                                "username": user_atual.get('username'),
+                                "nickname": user_atual.get('nickname'),
+                                "mensagem": nova_msg_live.strip()
+                            }).execute()
+                            st.rerun()
+                        except:
+                            st.error("Erro ao enviar mensagem.")
+            st.write("---")
+        
+# --- 4. ABA CHAT EXV ---
 elif aba_ativa == "💬 Chat EXV":
     st.title("💬 Chat EXV")
     aba_dm, aba_grp = st.tabs(["🔒 Conversas Privadas", "👥 Grupos por Código"])
@@ -605,7 +663,7 @@ elif aba_ativa == "💬 Chat EXV":
                 st.session_state.chat_grupos[cod_g]['mensagens'].append({"remetente": user_atual.get('username'), "conteudo": msg_g})
                 st.rerun()
             
-# --- 4. ABA SILVER IA ---
+# --- 5. ABA SILVER IA ---
 elif aba_ativa == "🧠 Silver IA":
     st.title("🧠 Silver IA")
     prompt_usuario = st.text_input("O que deseja saber?", placeholder="Ex: Me dê ideias de vídeos para o meu feed")
@@ -617,7 +675,7 @@ elif aba_ativa == "🧠 Silver IA":
         st.info(f"❓ **Você:** {chat['pergunta']}")
         st.success(f"🤖 **Silver:** {chat['resposta']}")
 
-# --- 5. ABA LOJA DO SITE ---
+# --- 6. ABA LOJA DO SITE ---
 elif aba_ativa == "🛒 Loja do Site":
     st.title("🛒 Loja de Customizações")
     st.write(f"🪙 **Carteira:** {user_atual.get('dinheiro', 0)} Silver Coins")
@@ -653,7 +711,7 @@ elif aba_ativa == "🛒 Loja do Site":
                         else: st.error("❌ Saldo insuficiente!")
             st.write("---")
 
-# --- 6. ABA MEU PERFIL ---
+# --- 7. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
     meus_itens_perfil = user_atual.get('itens_exclusivos', [])
     if not isinstance(meus_itens_perfil, list): meus_itens_perfil = []
@@ -752,7 +810,7 @@ elif aba_ativa == "👤 Meu Perfil":
                     st.success("Seguindo!")
                     st.rerun()
 
-# --- 7. ABA VISITAR PERFIL ---
+# --- 8. ABA VISITAR PERFIL ---
 elif aba_ativa == "👀 Ver Perfil" and st.session_state.perfil_visitado:
     alvo = st.session_state.perfil_visitado
     try:
@@ -798,7 +856,7 @@ elif aba_ativa == "👀 Ver Perfil" and st.session_state.perfil_visitado:
                 st.rerun()
     except: pass
 
-  # --- 8. PAINEL DEV ---
+  # --- 9. PAINEL DEV ---
 elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_oficial":
     st.header("Painel Secreto do Desenvolvedor 👑")
     try:
