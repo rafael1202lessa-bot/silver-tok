@@ -431,7 +431,7 @@ if aba_ativa == "🎥 Gravar/Postar":
                 
                      
     # --- SUB-ABA 3: UPLOAD DIRETO DA GALERIA ---
- with aba_upload:
+  with aba_upload:
         st.subheader("📁 Enviar Vídeo da Galeria")
         
         legenda_upload = st.text_input("Legenda do post:", key="leg_upload")
