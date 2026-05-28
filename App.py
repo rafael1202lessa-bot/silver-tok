@@ -559,32 +559,31 @@ elif aba_ativa == "👤 Meu Perfil":
     sub_aba_inventario, sub_aba_editar, sub_aba_convites, sub_aba_seguidores = st.tabs(["🎒 Meu Inventário", "⚙️ Editar Perfil", "✉️ Meus Convites", "👥 Amigos"])
    with sub_aba_inventario:
         if meus_itens_perfil:
-            # Remove duplicatas visuais para exibição
             itens_exib = list(set([i.replace("[EQUIPADO] ", "") for i in meus_itens_perfil if i]))
             for it in itens_exib:
                 col_n, col_a = st.columns([3, 1])
                 eq = f"[EQUIPADO] {it}" in meus_itens_perfil
-                with col_n: st.markdown(f"🟢 **{it}**" if eq else f"⚪ {it}")
+                with col_n:
+                    st.markdown(f"🟢 **{it}**" if eq else f"⚪ {it}")
                 with col_a:
                     if eq:
                         if st.button("Desequipar", key=f"d_{it}", use_container_width=True):
-                            # CORREÇÃO AQUI: Remove o equipado E adiciona o item normal de volta à lista
                             nl = [x for x in meus_itens_perfil if x != f"[EQUIPADO] {it}"]
                             if it not in nl:
-                                nl.append(it) # Garante que o item continua guardado com você!
+                                nl.append(it)
                             supabase.table("perfis_usuarios").update({"itens_exclusivos": nl}).eq("username", user_atual.get('username')).execute()
                             st.rerun()
                     else:
                         if st.button("Equipar", key=f"e_{it}", use_container_width=True):
-                            # Remove qualquer outra moldura equipada antes de colocar a nova
                             nl = [x for x in meus_itens_perfil if not ("Moldura" in x and "Moldura" in it)]
-                            if it in nl: 
+                            if it in nl:
                                 nl.remove(it)
                             nl.append(f"[EQUIPADO] {it}")
                             supabase.table("perfis_usuarios").update({"itens_exclusivos": nl}).eq("username", user_atual.get('username')).execute()
                             st.rerun()
-        else: st.info("Inventário vazio.")
-
+        else:
+            st.info("Inventário vazio.")
+            
     with sub_aba_editar:
         n_nick = st.text_input("Nickname:", value=user_atual.get('nickname'))
         n_foto = st.text_input("URL Foto:", value=user_atual.get('foto_perfil'))
