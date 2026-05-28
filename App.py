@@ -563,57 +563,60 @@ elif aba_ativa == "👤 Meu Perfil":
     meus_itens_perfil = u_perfil.get('itens_exclusivos', [])
     if not isinstance(meus_itens_perfil, list): 
         meus_itens_perfil = []
-        
-            # --- LOGICA CORRIGIDA DO INVENTÁRIO (SEM QUEBRAR OUTRAS SUB-ABAS) ---
-        # 1. Busca os dados de perfil do usuário de maneira resiliente
-        u_perfil = user_atual if 'user_atual' in locals() else st.session_state.get('user_atual', {})
-        if not u_perfil and 'usuario_atual' in locals():
-            u_perfil = usuario_atual
-        elif not u_perfil:
-            u_perfil = st.session_state.get('usuario', {})
+            # Mantém a tua linha original: with sub_aba_inventario:
+    # E cola isto mesmo abaixo dela (repara no alinhamento de espaços para a direita):
+    
+    # 1. Procura os dados do utilizador de forma segura no teu sistema
+    u_perfil = user_atual if 'user_atual' in locals() else st.session_state.get('user_atual', {})
+    if not u_perfil and 'usuario_atual' in locals():
+        u_perfil = usuario_atual
+    elif not u_perfil:
+        u_perfil = st.session_state.get('usuario', {})
 
-        meus_itens_perfil = u_perfil.get('itens_exclusivos', [])
-        if not isinstance(meus_itens_perfil, list): 
-            meus_itens_perfil = []
-            
-        if meus_itens_perfil:
-            # Filtra e limpa a lista tirando a tag de equipado para a listagem visual
-            itens_exib = list(set([i.replace("[EQUIPADO] ", "") for i in meus_itens_perfil if i]))
-            for it in itens_exib:
-                col_n, col_a = st.columns([3, 1])
-                eq = f"[EQUIPADO] {it}" in meus_itens_perfil
-                with col_n:
-                    st.markdown(f"🟢 **{it}**" if eq else f"⚪ {it}")
-                with col_a:
-                    if eq:
-                        if st.button("Desequipar", key=f"d_{it}", use_container_width=True):
-                            # Remove a tag de equipado, mas mantém o item salvo puro na sua mochila
-                            nl = [x for x in meus_itens_perfil if x != f"[EQUIPADO] {it}"]
-                            if it not in nl:
-                                nl.append(it)
-                            
-                            db = supabase if 'supabase' in locals() else st.session_state.get('supabase')
-                            db.table("perfis_usuarios").update({"itens_exclusivos": nl}).eq("username", u_perfil.get('username')).execute()
-                            st.rerun()
-                    else:
-                        if st.button("Equipar", key=f"e_{it}", use_container_width=True):
-                            nova_lista = []
-                            for x in meus_itens_perfil:
-                                # Se for outra moldura que já estava equipada, desequipa voltando ela a ser um item normal
-                                if "Moldura" in x and "[EQUIPADO]" in x:
-                                    nova_lista.append(x.replace("[EQUIPADO] ", ""))
-                                else:
-                                    nova_lista.append(x)
-                            
-                            if it in nova_lista:
-                                nova_lista.remove(it)
-                            nova_lista.append(f"[EQUIPADO] {it}")
-                            
-                            db = supabase if 'supabase' in locals() else st.session_state.get('supabase')
-                            db.table("perfis_usuarios").update({"itens_exclusivos": nova_lista}).eq("username", u_perfil.get('username')).execute()
-                            st.rerun()
-        else:
-            st.info("Inventário vazio.")
+    meus_itens_perfil = u_perfil.get('itens_exclusivos', [])
+    if not isinstance(meus_itens_perfil, list): 
+        meus_itens_perfil = []
+        
+    if meus_itens_perfil:
+        # Limpa os nomes para exibição na lista
+        itens_exib = list(set([i.replace("[EQUIPADO] ", "") for i in meus_itens_perfil if i]))
+        for it in itens_exib:
+            col_n, col_a = st.columns([3, 1])
+            eq = f"[EQUIPADO] {it}" in meus_itens_perfil
+            with col_n:
+                st.markdown(f"🟢 **{it}**" if eq else f"⚪ {it}")
+            with col_a:
+                if eq:
+                    if st.button("Desequipar", key=f"d_{it}", use_container_width=True):
+                        # Remove o equipado e mantém o item salvo puro na lista
+                        nl = [x for x in meus_itens_perfil if x != f"[EQUIPADO] {it}"]
+                        if it not in nl:
+                            nl.append(it)
+                        
+                        # Deteta o nome correto do cliente supabase
+                        db = supabase if 'supabase' in locals() else st.session_state.get('supabase')
+                        db.table("perfis_usuarios").update({"itens_exclusivos": nl}).eq("username", u_perfil.get('username')).execute()
+                        st.rerun()
+                else:
+                    if st.button("Equipar", key=f"e_{it}", use_container_width=True):
+                        nova_lista = []
+                        for x in meus_itens_perfil:
+                            # Se for outra moldura já equipada, desequipa-a mantendo o item guardado
+                            if "Moldura" in x and "[EQUIPADO]" in x:
+                                nova_lista.append(x.replace("[EQUIPADO] ", ""))
+                            else:
+                                nova_lista.append(x)
+                        
+                        if it in nova_lista:
+                            nova_lista.remove(it)
+                        nova_lista.append(f"[EQUIPADO] {it}")
+                        
+                        # Deteta o nome correto do cliente supabase
+                        db = supabase if 'supabase' in locals() else st.session_state.get('supabase')
+                        db.table("perfis_usuarios").update({"itens_exclusivos": nova_lista}).eq("username", u_perfil.get('username')).execute()
+                        st.rerun()
+    else:
+        st.info("Inventário vazio.")
                 
     with sub_aba_editar:
         n_nick = st.text_input("Nickname:", value=user_atual.get('nickname'))
