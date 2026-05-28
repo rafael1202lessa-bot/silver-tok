@@ -254,30 +254,24 @@ st.write("---")
 # --- 1. ABA FEED ---
 if aba_ativa == "📱 Feed":
     st.title("📱 Feed de Vídeos")
-    
     try:
-        # Busca os vídeos com o parâmetro desc=True correto
         dados_feed = supabase.table("feed_videos").select("*").order("id", desc=True).execute()
         videos = dados_feed.data if dados_feed else []
         
         if videos:
             for vid in videos:
                 st.write(f"👤 **{vid.get('nickname', 'Usuário')}** (@{vid.get('username', 'user')})")
-                
-                # Pega o link correto
                 link_final = vid.get('url') or vid.get('video_url')
                 if link_final:
                     st.video(link_final)
                 else:
                     st.warning("Link do vídeo não encontrado.")
-                    
                 st.write(f"❤️ {vid.get('curtidas', 0)} curtidas")
                 st.write("---")
         else:
             st.info("Nenhum vídeo publicado ainda. Seja o primeiro a postar na aba 🎥 Gravar/Postar!")
-            
     except Exception as e:
-        st.error(f"Erro ao carregar o Feed: {str(e)}")
+        st.error(f"Erro ao carregar o Feed: {str(e)}")       
         videos = []
 
     if not videos:
@@ -338,8 +332,10 @@ if aba_ativa == "📱 Feed":
                 st.write("---")
 
 # --- 2. ABA GRAVAR/POSTAR ---
-elif aba_ativa == "🎥 Gravar/Postar":
+if aba_ativa == "🎥 Gravar/Postar":
     st.title("🎥 Postar Novo Conteúdo")
+    
+    # Criando apenas as duas abas reais que você usa na tela!
     aba_gravas, aba_link = st.tabs(["🔴 Gravar Post", "🔗 Postar por Link"])
     
     with aba_gravas:
@@ -354,15 +350,14 @@ elif aba_ativa == "🎥 Gravar/Postar":
                     supabase.table("feed_videos").insert({
                         "username": user_atual.get('username'), 
                         "nickname": user_atual.get('nickname'), 
-                        "legenda": legenda, 
                         "url": url_do_video, 
                         "curtidas": 0
                     }).execute()
-                    st.success("Publicado no Feed! Atualizando...")
+                    st.success("Publicado com sucesso no Feed! Atualizando...")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro ao salvar: {str(e)}")
-                                        
+                                                            
     with aba_central:
         st.write("Configurações adicionais de posts de live aqui.")
  
