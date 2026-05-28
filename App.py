@@ -244,7 +244,7 @@ if st.sidebar.button("Sair da Conta"):
     st.rerun()
 
 # --- MENU PRINCIPAL ---
-abas = ["📱 Feed", "🎥 Gravar/Postar", "💬 Chat EXV", "🧠 Silver IA", "🛒 Loja do Site", "👤 Meu Perfil"]
+abas = ["📱 Feed", "🎥 Gravar/Postar", "💬 Chat EXV", "🧠 Silver IA", "🛒 Loja do Site", "👤 Meu Perfil" "📺 assistir live" ]
 if st.session_state.perfil_visitado: abas.append("👀 Ver Perfil")
 if user_atual.get('username') == "rafael_oficial": abas.append("⚡ Painel Dev")
 
@@ -424,11 +424,74 @@ if aba_ativa == "🎥 Gravar/Postar":
             else:
                 st.warning("Por favor, insira o link do vídeo.")
 
-    # --- SUB-ABA 2: CENTRAL DO STREAMER ---
+        # --- SUB-ABA 2: CENTRAL DO STREAMER (COMPLETA) ---
     with aba_central:
-        st.subheader("🚨 Central do Streamer")
-        st.info("Configurações adicionais e monitoramento de lives.")
+        st.subheader("🚨 Painel de Controle da sua Transmissão")
+        
+        # Formulário para configurar a Live
+        titulo_da_live = st.text_input("Título da sua Live:", placeholder="Ex: Jogando com os inscritos!")
+        url_da_live = st.text_input("Link da Transmissão (HLS, YouTube Live, M3U8 ou MP4):", placeholder="https://...")
+        
+        # Verifica se o usuário já tem uma live aberta
+        try:
+            live_existente = supabase.table("lives_ativas").select("*").eq("streamer_username", user_atual.get('username')).eq("status", "online").execute()
+            status_live = live_existente.data if live_existente else []
+        except:
+            status_live = []
 
+        if not status_live:
+            # Se não tem live online, mostra botão de Iniciar
+            if st.button("🔴 ENTRAR AO VIVO AGORA", use_container_width=True):
+                if titulo_da_live.strip() and url_da_live.strip():
+                    try:
+                        supabase.table("lives_ativas").insert({
+                            "streamer_username": user_atual.get('username'),
+                            "streamer_nickname": user_atual.get('nickname'),
+                            "titulo_live": titulo_da_live.strip(),
+                            "url_transmissao": url_da_live.strip(),
+                            "status": "online"
+                        }).execute()
+                        st.success("Sua live está oficialmente aberta para o público! 🎉")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao abrir live: {str(e)}")
+                else:
+                    st.warning("Por favor, preencha o título e o link da transmissão.")
+        else:
+            # Se já está ao vivo, mostra os dados de monitoramento e o botão de encerrar
+            dados_da_live = status_live[0]
+            live_id_atual = dados_da_live.get('id')
+            
+            st.success(f"🎥 VOCÊ ESTÁ AO VIVO: {dados_da_live.get('titulo_live')}")
+            
+            # Retorno de Monitor (O streamer vê o próprio player)
+            try:
+                st.video(dados_da_live.get('url_transmissao'))
+            except:
+                st.caption("Aguardando sinal de vídeo...")
+
+            # Chat da Live em Tempo Real para o Streamer ler
+            st.write("---")
+            st.write("💬 Chat da Live (Atualiza automático ao interagir)")
+            try:
+                mensagens_req = supabase.table("chat_lives").select("*").eq("live_id", live_id_atual).order("id", desc=True).limit(10).execute()
+                mensagens_chat = mensagens_req.data if mensagens_req else []
+                for msg in reversed(mensagens_chat):
+                    st.markdown(f"**{msg.get('nickname')}**: {msg.get('mensagem')}")
+            except:
+                st.caption("Não foi possível carregar o chat.")
+
+            # Botão de Encerrar Transmissão
+            st.write("---")
+            if st.button("⏹️ ENCERRAR LIVE", type="primary", use_container_width=True):
+                try:
+                    # Muda o status para offline ou deleta para sumir da lista
+                    supabase.table("lives_ativas").delete().eq("id", live_id_atual).execute()
+                    st.error("Transmissão encerrada!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro ao fechar live: {str(e)}")
+                
     # --- SUB-ABA 3: UPLOAD DIRETO DA GALERIA ---
     with aba_upload:
         st.subheader("📁 Enviar Vídeo da Galeria")
