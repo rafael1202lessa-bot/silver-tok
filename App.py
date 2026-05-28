@@ -333,7 +333,6 @@ if aba_ativa == "📱 Feed":
 
 # --- 2. ABA GRAVAR/POSTAR ---
 if aba_ativa == "🎥 Gravar/Postar":
-if aba_ativa == "🎥 Gravar/Postar":
     st.title("🎥 Postar Novo Conteúdo")
     
     # Adicionando explicitamente a aba_central para corrigir o NameError
