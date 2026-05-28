@@ -252,7 +252,7 @@ aba_ativa = st.radio("Menu", abas, horizontal=True)
 st.write("---")
 
 # --- 1. ABA FEED (LINHA 255) ---
-elif aba_ativa == "📱 Feed":
+if aba_ativa == "📱 Feed":
     st.title("📱 Feed de Vídeos")
     
     try:
