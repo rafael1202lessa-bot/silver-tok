@@ -554,7 +554,7 @@ elif aba_ativa == "👤 Meu Perfil":
     st.write(f"💬 **Bio:** {user_atual.get('bio', 'Disponível')}")
     st.write("---")
     
-       with sub_aba_inventario:
+    with sub_aba_inventario:
         if meus_itens_perfil:
             # Limpa os nomes para exibição na lista
             itens_exib = list(set([i.replace("[EQUIPADO] ", "") for i in meus_itens_perfil if i]))
