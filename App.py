@@ -1,5 +1,4 @@
-lives_req.datapimport streamlit as st
-from supabase import create_client, Client
+import create_client, Client
 import random
 import datetime
 
