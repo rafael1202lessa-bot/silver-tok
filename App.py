@@ -428,9 +428,8 @@ if aba_ativa == "🎥 Gravar/Postar":
                 except Exception as e:
                     st.error(f"Erro ao salvar: {str(e)}")
             else:
-                
-                     
-    # --- SUB-ABA 3: UPLOAD DIRETO DA GALERIA ---
+                             
+        # --- SUB-ABA 3: UPLOAD DIRETO DA GALERIA (NOMES DE COLUNAS AJUSTADOS) ---
     with aba_upload:
         st.subheader("📁 Enviar Vídeo da Galeria")
         
@@ -439,35 +438,43 @@ if aba_ativa == "🎥 Gravar/Postar":
         
         if st.button("Publicar Vídeo da Galeria", use_container_width=True):
             if arquivo_video is not None:
-                try:
-                    with st.spinner("Enviando o vídeo para o Silver Tok... Aguarde. ⏳"):
-                        nome_do_arquivo = f"{user_atual.get('username')}_{arquivo_video.name}"
-                        dados_do_video = arquivo_video.read()
-                        
-                        supabase.storage.from_("videos_feed").upload(
-                            path=nome_do_arquivo,
-                            file=dados_do_video,
-                            file_options={"content-type": "video/mp4"}
-                        )
-                        
-                        url_publica = supabase.storage.from_("videos_feed").get_public_url(nome_do_arquivo)
-                        
-                        supabase.table("feed_videos").insert({
-                            "username": user_atual.get('username'), 
-                            "nickname": user_atual.get('nickname'),
-                            "url": url_publica, 
-                            "legenda": legenda_upload,
-                            "curtidas": 0,
-                            "visualizacoes": 0
-                        }).execute()
-                        
-                        st.success("Vídeo enviado e publicado com sucesso! 🎉")
-                        st.rerun()
-                except Exception as e:
-                    st.error(f"Erro ao fazer upload: {str(e)}")
+                tamanho_mb = arquivo_video.size / (1024 * 1024)
+                
+                if tamanho_mb > 50:
+                    st.error(f"❌ Vídeo muito pesado ({tamanho_mb:.1f} MB)! O limite máximo permitido é de 50 MB.")
+                else:
+                    try:
+                        with st.spinner("Enviando o vídeo para o Silver Tok... Aguarde. ⏳"):
+                            # 1. Gera o nome do arquivo usando o dicionário do usuário atual
+                            nome_do_arquivo = f"{user_atual.get('username')}_{arquivo_video.name}"
+                            dados_do_video = arquivo_video.read()
+                            
+                            # 2. Upload para o balde do Supabase Storage
+                            supabase.storage.from_("videos_feed").upload(
+                                path=nome_do_arquivo,
+                                file=dados_do_video,
+                                file_options={"content-type": "video/mp4"}
+                            )
+                            
+                            # 3. Pega o link público gerado
+                            url_publica = supabase.storage.from_("videos_feed").get_public_url(nome_do_arquivo)
+                            
+                            # 4. Salva na tabela do Feed batendo com as colunas reais do seu app (usuario, video_url, legenda)
+                            supabase.table("feed_videos").insert({
+                                "usuario": user_atual.get('username'), 
+                                "video_url": url_publica, 
+                                "legenda": legenda_upload,
+                                "curtidas": 0,
+                                "visualizacoes": 0
+                            }).execute()
+                            
+                            st.success("Vídeo enviado e publicado no seu feed com sucesso! 🎉")
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao fazer upload: {str(e)}")
             else:
                 st.warning("Por favor, selecione um arquivo de vídeo antes de publicar.")
-                
+                                    
     # --- SUB-ABA 4: CENTRAL DO STREAMER ---
     with aba_central:
         st.subheader("🚨 Central de Controle da Live")
