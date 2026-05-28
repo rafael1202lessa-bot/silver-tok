@@ -406,7 +406,8 @@ elif aba_ativa == "💬 Chat EXV":
         try:
             todos_req = supabase.table("perfis_usuarios").select("username, nickname").execute()
             lista_usuarios = [u for u in todos_req.data if u['username'] != user_atual.get('username')]
-        except: lista_usuarios = []
+        except: 
+            lista_usuarios = []
         
         if lista_usuarios:
             opcoes_usuarios = {u['username']: f"{u['nickname']} (@{u['username']})" for u in lista_usuarios}
@@ -415,7 +416,7 @@ elif aba_ativa == "💬 Chat EXV":
                 st.session_state.sala_privada_atual = obter_id_sala_privada(user_atual.get('username'), usuario_selecionado)
                 st.session_state.codigo_grupo_atual = None
         
-                if st.session_state.sala_privada_atual:
+        if st.session_state.sala_privada_atual:
             sala_id = st.session_state.sala_privada_atual
             outro_usuario = sala_id.replace(user_atual.get('username'), "").replace("_", "")
             st.markdown(f"### 💬 Sala: **@{user_atual.get('username')}** & **@{outro_usuario}**")
@@ -431,7 +432,6 @@ elif aba_ativa == "💬 Chat EXV":
                         foto_avatar = user_atual.get('foto_perfil')
                 else:
                     try:
-                        # Busca a foto do outro usuário direto no banco de dados
                         outro_req = supabase.table("perfis_usuarios").select("foto_perfil").eq("username", msg['remetente']).execute()
                         if outro_req.data and outro_req.data[0].get('foto_perfil'):
                             if str(outro_req.data[0].get('foto_perfil')).startswith("http"):
@@ -466,12 +466,13 @@ elif aba_ativa == "💬 Chat EXV":
         if st.session_state.codigo_grupo_atual:
             cod_g = st.session_state.codigo_grupo_atual
             st.markdown(f"### Grupo: **{st.session_state.chat_grupos[cod_g]['nome']}**")
-            for m_g in st.session_state.chat_grupos[cod_g]['mensagens']: st.write(f"**@{m_g['remetente']}:** {m_g['conteudo']}")
+            for m_g in st.session_state.chat_grupos[cod_g]['mensagens']: 
+                st.write(f"**@{m_g['remetente']}:** {m_g['conteudo']}")
             msg_g = st.text_input("Escrever...", key="input_msg_grp")
             if st.button("Enviar Grupo") and msg_g:
                 st.session_state.chat_grupos[cod_g]['mensagens'].append({"remetente": user_atual.get('username'), "conteudo": msg_g})
                 st.rerun()
-
+            
 # --- 4. ABA SILVER IA ---
 elif aba_ativa == "🧠 Silver IA":
     st.title("🧠 Silver IA")
