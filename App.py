@@ -252,20 +252,34 @@ aba_ativa = st.radio("Menu", abas, horizontal=True)
 st.write("---")
 
 # --- 1. ABA FEED ---
-if aba_ativa == "📱 Feed":
-    st.title("📱 Silver Tok")
-    
-    # ... (bloco das lives ativas permanece igual) ...
-
-    termo = st.text_input("🔍 Pesquisar no feed...", "").strip().lower()
-    st.write("---")
+elif aba_ativa == "📱 Feed":
+    st.title("📱 Feed de Vídeos")
     
     try:
-        # Puxa todas as colunas da tabela de vídeos ordenando pelo ID mais recente
-        req = supabase.table("feed_videos").select("*").order("id", desc=True).execute()
-        videos = req.data if req.data else []
-    except Exception as e: 
-        st.error(f"Erro ao carregar feed: {str(e)}")
+        # Puxa os dados do Supabase
+        dados_feed = supabase.table("feed_videos").select("*").order("id", descending=True).execute()
+        videos = dados_feed.data if dados_feed else []
+        
+        if videos:
+            for vid in videos:
+                st.write(f"👤 **{vid.get('nickname', 'Usuário')}** (@{vid.get('username', 'user')})")
+                
+                # CORREÇÃO DA LEITURA DO VÍDEO:
+                # Tenta pegar 'url', se não achar, tenta 'video_url' por segurança
+                link_final = vid.get('url') or vid.get('video_url')
+                
+                if link_final:
+                    st.video(link_final)
+                else:
+                    st.warning("Link do vídeo não encontrado para este post.")
+                
+                st.write(f"❤️ {vid.get('curtidas', 0)} curtidas")
+                st.write("---")
+        else:
+            st.info("Nenhum vídeo postado ainda. Seja o primeiro!")
+            
+    except Exception as e:
+        st.error(f"Erro ao carregar o Feed: {str(e)}")
         videos = []
 
     if not videos:
