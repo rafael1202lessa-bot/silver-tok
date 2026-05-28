@@ -347,7 +347,7 @@ if aba_ativa == "🎥 Gravar/Postar":
         # Se quiser testar o componente de câmera futuramente:
         # foto_ou_video = st.camera_input("Tire uma foto para o post")
 
-    # --- SUB-ABA 2: POSTAR POR LINK ---
+        # --- SUB-ABA 2: POSTAR POR LINK (CORRIGIDA SEM ERRO DE BANCO) ---
     with aba_link:
         st.subheader("🔗 Postar Conteúdo por Link")
         legenda = st.text_input("Legenda do post:", key="leg_link")
@@ -356,12 +356,12 @@ if aba_ativa == "🎥 Gravar/Postar":
         if st.button("Publicar Vídeo por Link", use_container_width=True):
             if url_do_video:
                 try:
+                    # Removemos a linha da 'legenda' daqui de dentro para não dar erro no Supabase
                     supabase.table("feed_videos").insert({
                         "username": user_atual.get('username'), 
                         "nickname": user_atual.get('nickname'), 
                         "url": url_do_video, 
-                        "curtidas": 0,
-                        "legenda": legenda  # Adicionado para salvar sua legenda!
+                        "curtidas": 0
                     }).execute()
                     st.success("Publicado com sucesso no Feed! Atualizando...")
                     st.rerun()
@@ -369,7 +369,7 @@ if aba_ativa == "🎥 Gravar/Postar":
                     st.error(f"Erro ao salvar: {str(e)}")
             else:
                 st.warning("Por favor, insira o link do vídeo antes de publicar.")
-
+                
     # --- SUB-ABA 3: CENTRAL DO STREAMER ---
     with aba_central:
         st.subheader("🚨 Central de Controle da Live")
