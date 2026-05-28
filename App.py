@@ -441,13 +441,13 @@ with col_video_retorno:
                 for alerta in st.session_state.live_alertas[-3:]:
                     st.warning(f"🎁 **{alerta['usuario']}** enviou **{alerta['moedas']} Silver Coins**:\n*{alerta['msg']}*")
             
-                with col_chat_live:
+                            with col_chat_live:
                 st.markdown("### 💬 Chat da Live")
-                
-                with st.container(border=True, height=250):
-                    for msg_l in st.session_state.live_chat:
+                with st.container(border=True, height=200):
+                    # Garanta que o loop 'for' tenha 4 espaços a mais que o 'with' de cima
+                    for msg_l in st.session_state.live_chat: 
                         st.write(f"**@{msg_l['remetente']}:** {msg_l['conteudo']}")
-                
+
                 st.write("---")
                 st.caption("🧪 Simulador de Público (Modo Dev)")
                 sim_user = st.text_input("Usuário do fã:", value="seguidor_vip_01", key="sim_u")
