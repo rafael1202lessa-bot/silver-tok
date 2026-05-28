@@ -474,7 +474,7 @@ def checar_e_ler_alertas_da_live(live_id_atual):
 # --- 3. ABA CHAT EXV ---
 elif aba_ativa == "💬 Chat EXV":
     st.title("💬 Chat EXV")
-    aba_dm, aba_grp = st.tabs(["🔒 Conversas Privadas (Salas)", "👥 Grupos por Código"])
+    aba_dm, aba_grp = st.tabs(["🔒 Conversas Privadas", "👥 Grupos por Código"])
     
     with aba_dm:
         try:
