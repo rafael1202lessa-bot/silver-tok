@@ -331,16 +331,19 @@ if aba_ativa == "📱 Feed":
                         except: pass
                 st.write("---")
 
-# --- 2. ABA GRAVAR/POSTAR ---
 if aba_ativa == "🎥 Gravar/Postar":
+    # 1. Título da aba de gravação
     st.title("🎥 Postar Novo Conteúdo")
     
-    # Adicionando explicitamente a aba_central para corrigir o NameError
-    aba_gravas, aba_link, aba_central = st.tabs(["🔴 Gravar Post", "🔗 Postar por Link", "🚨 Central do Dev"])
+    # Se estás a usar sub-abas (Gravar Post, Postar por Link, Central)
+    # Garante que o código da Gravação Direta tem o "pass" ou a mensagem de desenvolvimento:
     
-    with aba_gravas:
-        st.info("Função de gravação direta pela câmera em desenvolvimento!")
-        
+    # Exemplo para a sub-aba de Gravar Post:
+    st.info("Função de gravação direta pela câmera em desenvolvimento!")
+    
+    # Se quiseres colocar um botão de teste para a câmara do Streamlit:
+    # foto_ou_video = st.camera_input("Tire uma foto para o post")
+     
     with aba_link:
         legenda = st.text_input("Legenda do post:", key="leg_link")
         url_do_video = st.text_input("Link do vídeo (.mp4):", key="url_mp4")
