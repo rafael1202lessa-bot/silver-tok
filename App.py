@@ -346,7 +346,7 @@ elif aba_ativa == "🎥 Gravar/Postar":
         video_arquivo = st.file_uploader("Selecione o arquivo de vídeo", type=["mp4", "mov"])
         if st.button("Publicar Vídeo Gravado", use_container_width=True): st.success("Vídeo processado!")
                     
-            with aba_link:
+    with aba_link:
         legenda = st.text_input("Legenda do post:", key="leg_link")
         url_do_video = st.text_input("Link do vídeo (.mp4):", key="url_mp4")
         if st.button("Publicar Vídeo por Link", use_container_width=True):
