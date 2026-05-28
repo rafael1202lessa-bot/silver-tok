@@ -1,4 +1,4 @@
-import streamlit as st
+.import streamlit as st
 from supabase import create_client, Client
 import random
 import datetime
@@ -341,7 +341,7 @@ aba_gravar, aba_link, aba_central = st.tabs(["🔴 Gravar Post", "🔗 Postar po
     # Se quiseres colocar um botão de teste para a câmara do Streamlit:
     # foto_ou_video = st.camera_input("Tire uma foto para o post")
 
-with aba_link:
+ with aba_link:
         legenda = st.text_input("Legenda do post:", key="leg_link")
         url_do_video = st.text_input("Link do vídeo (.mp4):", key="url_mp4")
         if st.button("Publicar Vídeo por Link", use_container_width=True):
