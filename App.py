@@ -557,7 +557,7 @@ elif aba_ativa == "👤 Meu Perfil":
     st.write("---")
     
     sub_aba_inventario, sub_aba_editar, sub_aba_convites, sub_aba_seguidores = st.tabs(["🎒 Meu Inventário", "⚙️ Editar Perfil", "✉️ Meus Convites", "👥 Amigos"])
-   with sub_aba_inventario:
+       with sub_aba_inventario:
         if meus_itens_perfil:
             itens_exib = list(set([i.replace("[EQUIPADO] ", "") for i in meus_itens_perfil if i]))
             for it in itens_exib:
