@@ -356,28 +356,7 @@ if aba_ativa == "🎥 Gravar/Postar":
                     st.success("Publicado com sucesso no Feed! Atualizando...")
                     st.rerun()
                 except Exception as e:
-                    st.error(f"Erro ao salvar: {str(e)}")
-                    # Verifique se a sub-aba ou botão selecionado é o de "Postar por Link"
-
-st.subheader("🔗 Postar Conteúdo por Link")
-
-# 1. Campo para o usuário colar o link do vídeo
-url_video = st.text_input("Cole o link do vídeo aqui (YouTube, MP4, etc.):", placeholder="https://...")
-
-# 2. Campo opcional para dar um título ao vídeo
-titulo_video = st.text_input("Título do Vídeo:", placeholder="Digite um título para o seu post")
-
-# 3. Botão para processar e salvar o post
-if st.button("Publicar Vídeo"):
-    if url_video:
-        # Aqui vamos colocar a lógica para salvar o link (em uma lista ou banco de dados)
-        st.success("Vídeo publicado com sucesso!")
-        
-        # Exemplo temporário para testar se o vídeo carrega na tela:
-        st.video(url_video)
-    else:
-        st.error("Por favor, insira um link válido antes de publicar.")
-    
+                    st.error(f"Erro ao salvar: {str(e)}")                
     with aba_central:
         st.write("Configurações adicionais e monitoramento de lives.")
  
