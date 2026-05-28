@@ -429,7 +429,8 @@ def checar_e_ler_alertas_da_live(live_id_atual):
         pass
 
     st.write("---")
-            col_video_retorno, col_chat_live = st.columns([4, 3])
+        
+     col_video_retorno, col_chat_live = st.columns([4, 3])
             
             with col_video_retorno:
                 st.markdown("### 🖥️ Retorno do seu Vídeo")
