@@ -433,7 +433,7 @@ def checar_e_ler_alertas_da_live(live_id_atual):
     col_video_retorno, col_chat_live = st.columns([4, 3])
             
     
-with col_video_retorno:
+    with col_video_retorno:
                 st.markdown("### 🖥️ Retorno do seu Vídeo")
                 st.camera_input("Monitor da Câmera", key="monitor_live_cam")
                 
@@ -441,7 +441,7 @@ with col_video_retorno:
                 for alerta in st.session_state.live_alertas[-3:]:
                     st.warning(f"🎁 **{alerta['usuario']}** enviou **{alerta['moedas']} Silver Coins**:\n*{alerta['msg']}*")
             
-                            with col_chat_live:
+    with col_chat_live:
                 st.markdown("### 💬 Chat da Live")
                 with st.container(border=True, height=200):
                     # Garanta que o loop 'for' tenha 4 espaços a mais que o 'with' de cima
