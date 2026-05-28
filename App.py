@@ -251,12 +251,12 @@ if user_atual.get('username') == "rafael_oficial": abas.append("⚡ Painel Dev")
 aba_ativa = st.radio("Menu", abas, horizontal=True)
 st.write("---")
 
-# # --- 1. ABA FEED ---
+# --- 1. ABA FEED (LINHA 255) ---
 elif aba_ativa == "📱 Feed":
     st.title("📱 Feed de Vídeos")
     
     try:
-        # Busca os vídeos diretamente no Supabase
+        # Busca os vídeos diretamente na tabela do Supabase
         dados_feed = supabase.table("feed_videos").select("*").order("id", descending=True).execute()
         videos = dados_feed.data if dados_feed else []
         
@@ -264,21 +264,21 @@ elif aba_ativa == "📱 Feed":
             for vid in videos:
                 st.write(f"👤 **{vid.get('nickname', 'Usuário')}** (@{vid.get('username', 'user')})")
                 
-                # Resgata o link do vídeo de forma segura (url ou video_url)
+                # Pega o link da coluna correta do banco de dados
                 link_final = vid.get('url') or vid.get('video_url')
                 
                 if link_final:
                     st.video(link_final)
                 else:
-                    st.warning("Link do vídeo não encontrado para este post.")
-                
+                    st.warning("Link do vídeo não encontrado.")
+                    
                 st.write(f"❤️ {vid.get('curtidas', 0)} curtidas")
                 st.write("---")
         else:
-            st.info("Nenhum vídeo postado ainda. Seja o primeiro!")
+            st.info("Nenhum vídeo postado ainda.")
             
     except Exception as e:
-        st.error(f"Erro ao carregar o Feed: {str(e)}")
+        st.error(f"Erro ao carregar o Feed: {str(e)}") 
         videos = []
 
     if not videos:
