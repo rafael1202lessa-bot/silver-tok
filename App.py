@@ -395,13 +395,11 @@ if aba_ativa == "📱 Feed":
 # ==========================================
 # --- 2. ABA GRAVAR / POSTAR (CORRIGIDA) ---
 # ==========================================
-if aba_ativa == "🎥 Gravar/Postar":
+  if aba_active == "🎥 Gravar/Postar":
     st.title("🎥 Postar Novo Conteúdo")
     
-        # 1. Criação das 3 sub-abas principais na mesma linha
     aba_link, aba_central, aba_upload = st.tabs(["🔗 Postar por Link", "🚨 Central do Streamer", "📁 Upload da Galeria"])
     
-    # --- SUB-ABA 1: POSTAR POR LINK ---
     with aba_link:
         st.subheader("🔗 Postar Conteúdo por Link")
         legenda_link = st.text_input("Legenda do post:", key="leg_link")
@@ -424,15 +422,11 @@ if aba_ativa == "🎥 Gravar/Postar":
             else:
                 st.warning("Por favor, insira o link do vídeo.")
 
-        # --- SUB-ABA 2: CENTRAL DO STREAMER (COMPLETA) ---
     with aba_central:
         st.subheader("🚨 Painel de Controle da sua Transmissão")
+        titulo_da_live = st.text_input("Título da sua Live:", placeholder="Ex: Jogando ao vivo!")
+        url_da_live = st.text_input("Link da Transmissão (HLS, YouTube Live ou MP4):", placeholder="https://...")
         
-        # Formulário para configurar a Live
-        titulo_da_live = st.text_input("Título da sua Live:", placeholder="Ex: Jogando com os inscritos!")
-        url_da_live = st.text_input("Link da Transmissão (HLS, YouTube Live, M3U8 ou MP4):", placeholder="https://...")
-        
-        # Verifica se o usuário já tem uma live aberta
         try:
             live_existente = supabase.table("lives_ativas").select("*").eq("streamer_username", user_atual.get('username')).eq("status", "online").execute()
             status_live = live_existente.data if live_existente else []
@@ -440,7 +434,6 @@ if aba_ativa == "🎥 Gravar/Postar":
             status_live = []
 
         if not status_live:
-            # Se não tem live online, mostra botão de Iniciar
             if st.button("🔴 ENTRAR AO VIVO AGORA", use_container_width=True):
                 if titulo_da_live.strip() and url_da_live.strip():
                     try:
@@ -451,28 +444,23 @@ if aba_ativa == "🎥 Gravar/Postar":
                             "url_transmissao": url_da_live.strip(),
                             "status": "online"
                         }).execute()
-                        st.success("Sua live está oficialmente aberta para o público! 🎉")
+                        st.success("Sua live está aberta para o público! 🎉")
                         st.rerun()
                     except Exception as e:
                         st.error(f"Erro ao abrir live: {str(e)}")
                 else:
                     st.warning("Por favor, preencha o título e o link da transmissão.")
         else:
-            # Se já está ao vivo, mostra os dados de monitoramento e o botão de encerrar
             dados_da_live = status_live[0]
             live_id_atual = dados_da_live.get('id')
-            
             st.success(f"🎥 VOCÊ ESTÁ AO VIVO: {dados_da_live.get('titulo_live')}")
-            
-            # Retorno de Monitor (O streamer vê o próprio player)
             try:
                 st.video(dados_da_live.get('url_transmissao'))
             except:
                 st.caption("Aguardando sinal de vídeo...")
 
-            # Chat da Live em Tempo Real para o Streamer ler
             st.write("---")
-            st.write("💬 Chat da Live (Atualiza automático ao interagir)")
+            st.write("💬 Chat da Live")
             try:
                 mensagens_req = supabase.table("chat_lives").select("*").eq("live_id", live_id_atual).order("id", desc=True).limit(10).execute()
                 mensagens_chat = mensagens_req.data if mensagens_req else []
@@ -481,21 +469,17 @@ if aba_ativa == "🎥 Gravar/Postar":
             except:
                 st.caption("Não foi possível carregar o chat.")
 
-            # Botão de Encerrar Transmissão
             st.write("---")
             if st.button("⏹️ ENCERRAR LIVE", type="primary", use_container_width=True):
                 try:
-                    # Muda o status para offline ou deleta para sumir da lista
                     supabase.table("lives_ativas").delete().eq("id", live_id_atual).execute()
                     st.error("Transmissão encerrada!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro ao fechar live: {str(e)}")
-                
-    # --- SUB-ABA 3: UPLOAD DIRETO DA GALERIA ---
+
     with aba_upload:
         st.subheader("📁 Enviar Vídeo da Galeria")
-        
         legenda_upload = st.text_input("Legenda do post:", key="leg_upload")
         arquivo_video = st.file_uploader("Selecione um arquivo de vídeo (.mp4):", type=["mp4", "mov", "avi"])
         
@@ -505,15 +489,8 @@ if aba_ativa == "🎥 Gravar/Postar":
                     with st.spinner("Enviando o vídeo para o Silver Tok... Aguarde. ⏳"):
                         nome_do_arquivo = f"{user_atual.get('username')}_{arquivo_video.name}"
                         dados_do_video = arquivo_video.read()
-                        
-                        supabase.storage.from_("videos_feed").upload(
-                            path=nome_do_arquivo,
-                            file=dados_do_video,
-                            file_options={"content-type": "video/mp4"}
-                        )
-                        
+                        supabase.storage.from_("videos_feed").upload(path=nome_do_arquivo, file=dados_do_video, file_options={"content-type": "video/mp4"})
                         url_publica = supabase.storage.from_("videos_feed").get_public_url(nome_do_arquivo)
-                        
                         supabase.table("feed_videos").insert({
                             "usuario": user_atual.get('username'), 
                             "video_url": url_publica, 
@@ -521,20 +498,16 @@ if aba_ativa == "🎥 Gravar/Postar":
                             "curtidas": 0,
                             "visualizacoes": 0
                         }).execute()
-                        
                         st.success("Vídeo enviado e publicado com sucesso! 🎉")
                         st.rerun()
                 except Exception as e:
                     st.error(f"Erro ao fazer upload: {str(e)}")
             else:
                 st.warning("Por favor, selecione um arquivo de vídeo antes de publicar.")
-                
-# --- 3. ABA ASSISTIR LIVES (PARA O PÚBLICO) ---
-            
-if aba_ativa == "📺 Assistir Lives":
+
+if aba_active == "📺 Assistir Lives":
     st.title("📺 Transmissões Ao Vivo")
     st.write("Veja quem está transmitindo agora no Silver Tok!")
-    
     try:
         lives_req = supabase.table("lives_ativas").select("*").eq("status", "online").order("id", desc=True).execute()
         lista_lives = lives_req.data if lives_req else []
@@ -554,17 +527,13 @@ if aba_ativa == "📺 Assistir Lives":
         with st.container():
             st.markdown(f"### 🔴 {l_titulo}")
             st.caption(f"Streamer: **{l_nickname}** (@{l_streamer})")
-            
-            # Renderiza o player da live para o espectador
             if l_url:
                 try:
                     st.video(l_url)
                 except:
                     st.error("Transmissão indisponível ou sinal offline.")
             
-            # Expansor para abrir o Chat da Live
             with st.expander(f"💬 Abrir Chat da Live"):
-                # Carrega mensagens enviadas
                 try:
                     mensagens_req = supabase.table("chat_lives").select("*").eq("live_id", l_id).order("id", desc=True).limit(15).execute()
                     mensagens_chat = mensagens_req.data if mensagens_req else []
@@ -573,7 +542,6 @@ if aba_ativa == "📺 Assistir Lives":
                 except:
                     st.caption("Erro ao carregar mensagens.")
                 
-                # Campo para o espectador enviar mensagem
                 nova_msg_live = st.text_input("Envie uma mensagem no chat...", key=f"chat_in_{l_id}")
                 if st.button("Enviar", key=f"chat_btn_{l_id}"):
                     if nova_msg_live.strip():
