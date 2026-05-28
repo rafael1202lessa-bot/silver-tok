@@ -565,7 +565,7 @@ elif aba_ativa == "👤 Meu Perfil":
                 with col_a:
                     if eq:
                         if st.button("Desequipar", key=f"d_{it}", use_container_width=True):
-                            # Remove o status de equipado e mantém o item limpo na lista
+                            # Remove o equipado e mantém o item salvo puro na lista
                             nl = [x for x in meus_itens_perfil if x != f"[EQUIPADO] {it}"]
                             if it not in nl:
                                 nl.append(it)
@@ -575,22 +575,20 @@ elif aba_ativa == "👤 Meu Perfil":
                         if st.button("Equipar", key=f"e_{it}", use_container_width=True):
                             nova_lista = []
                             for x in meus_itens_perfil:
-                                # Se for outra moldura já equipada, desequipa ela mantendo o item puro
+                                # Se for outra moldura já equipada, desequipa ela mantendo o item guardado
                                 if "Moldura" in x and "[EQUIPADO]" in x:
                                     nova_lista.append(x.replace("[EQUIPADO] ", ""))
                                 else:
                                     nova_lista.append(x)
                             
-                            # Agora remove o item puro que vai ser equipado e adiciona a versão equipada
                             if it in nova_lista:
                                 nova_lista.remove(it)
                             nova_lista.append(f"[EQUIPADO] {it}")
-                            
                             supabase.table("perfis_usuarios").update({"itens_exclusivos": nova_lista}).eq("username", user_atual.get('username')).execute()
                             st.rerun()
         else:
             st.info("Inventário vazio.")
-         
+            
     with sub_aba_editar:
         n_nick = st.text_input("Nickname:", value=user_atual.get('nickname'))
         n_foto = st.text_input("URL Foto:", value=user_atual.get('foto_perfil'))
