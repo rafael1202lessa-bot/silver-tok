@@ -546,78 +546,42 @@ elif aba_ativa == "👤 Meu Perfil":
         m3.metric("Saldo", f"🪙 {user_atual.get('dinheiro', 0)}")
     
     st.write("---")
-    sub_aba_perfil, sub_aba_inventario, sub_aba_editar, sub_aba_convites, sub_aba_amigos = st.tabs(["📋 Meus Dados", "🎒 Meu Inventário", "⚙️ Editar Perfil", "✉️ Convites", "👥 Amigos"])
-
-    seg_at = user_atual.get('seguidores', 0)
-    st.markdown(f"### 🚀 Nível do Canal: **Lv. {(seg_at // 100) + 1}**")
-    st.progress((seg_at % 100) / 100, text=f"{seg_at % 100}/100 para o próximo nível")
-    st.write(f"💬 **Bio:** {user_atual.get('bio', 'Disponível')}")
-    st.write("---")
+        # 1. LINHA CORRIGIDA DAS ABAS (Usando sub_aba_seguidores que seu código precisa)
+    sub_aba_perfil, sub_aba_inventario, sub_aba_editar, sub_aba_convites, sub_aba_seguidores = st.tabs(["📋 Meus Dados", "🎒 Meu Inventário", "⚙️ Editar Perfil", "✉️ Convites", "👥 Amigos"])
     
-        # 1. Procura os dados do utilizador de forma segura no teu sistema
-    u_perfil = user_atual if 'user_atual' in locals() else st.session_state.get('user_atual', {})
-    if not u_perfil and 'usuario_atual' in locals():
-        u_perfil = usuario_atual
-    elif not u_perfil:
-        u_perfil = st.session_state.get('usuario', {})
-
-    meus_itens_perfil = u_perfil.get('itens_exclusivos', [])
-    if not isinstance(meus_itens_perfil, list): 
-        meus_itens_perfil = []
-            # Mantém a tua linha original: with sub_aba_inventario:
-    # E cola isto mesmo abaixo dela (repara no alinhamento de espaços para a direita):
-    
-    # 1. Procura os dados do utilizador de forma segura no teu sistema
-    u_perfil = user_atual if 'user_atual' in locals() else st.session_state.get('user_atual', {})
-    if not u_perfil and 'usuario_atual' in locals():
-        u_perfil = usuario_atual
-    elif not u_perfil:
-        u_perfil = st.session_state.get('usuario', {})
-
-    meus_itens_perfil = u_perfil.get('itens_exclusivos', [])
-    if not isinstance(meus_itens_perfil, list): 
-        meus_itens_perfil = []
-        
-    if meus_itens_perfil:
-        # Limpa os nomes para exibição na lista
-        itens_exib = list(set([i.replace("[EQUIPADO] ", "") for i in meus_itens_perfil if i]))
-        for it in itens_exib:
-            col_n, col_a = st.columns([3, 1])
-            eq = f"[EQUIPADO] {it}" in meus_itens_perfil
-            with col_n:
-                st.markdown(f"🟢 **{it}**" if eq else f"⚪ {it}")
-            with col_a:
-                if eq:
-                    if st.button("Desequipar", key=f"d_{it}", use_container_width=True):
-                        # Remove o equipado e mantém o item salvo puro na lista
-                        nl = [x for x in meus_itens_perfil if x != f"[EQUIPADO] {it}"]
-                        if it not in nl:
-                            nl.append(it)
-                        
-                        # Deteta o nome correto do cliente supabase
-                        db = supabase if 'supabase' in locals() else st.session_state.get('supabase')
-                        db.table("perfis_usuarios").update({"itens_exclusivos": nl}).eq("username", u_perfil.get('username')).execute()
-                        st.rerun()
-                else:
-                    if st.button("Equipar", key=f"e_{it}", use_container_width=True):
-                        nova_lista = []
-                        for x in meus_itens_perfil:
-                            # Se for outra moldura já equipada, desequipa-a mantendo o item guardado
-                            if "Moldura" in x and "[EQUIPADO]" in x:
-                                nova_lista.append(x.replace("[EQUIPADO] ", ""))
-                            else:
-                                nova_lista.append(x)
-                        
-                        if it in nova_lista:
-                            nova_lista.remove(it)
-                        nova_lista.append(f"[EQUIPADO] {it}")
-                        
-                        # Deteta o nome correto do cliente supabase
-                        db = supabase if 'supabase' in locals() else st.session_state.get('supabase')
-                        db.table("perfis_usuarios").update({"itens_exclusivos": nova_lista}).eq("username", u_perfil.get('username')).execute()
-                        st.rerun()
-    else:
-        st.info("Inventário vazio.")
+    # 2. SEU INVENTÁRIO (Note as 4 posições de espaço para a direita, colocando ele DENTRO da aba)
+    with sub_aba_inventario:
+        if meus_itens_perfil:
+            # Filtra e limpa a lista para exibição
+            itens_exib = list(set([i.replace("[EQUIPADO] ", "") for i in meus_itens_perfil if i]))
+            for it in itens_exib:
+                col_n, col_a = st.columns([3, 1])
+                eq = f"[EQUIPADO] {it}" in meus_itens_perfil
+                with col_n: 
+                    st.markdown(f"🟢 **{it}**" if eq else f"⚪ {it}")
+                with col_a:
+                    if eq:
+                        if st.button("Desequipar", key=f"d_{it}", use_container_width=True):
+                            nl = [x for x in meus_itens_perfil if x != f"[EQUIPADO] {it}"]
+                            if it not in nl: 
+                                nl.append(it)
+                            supabase.table("perfis_usuarios").update({"itens_exclusivos": nl}).eq("username", user_atual.get('username')).execute()
+                            st.rerun()
+                    else:
+                        if st.button("Equipar", key=f"e_{it}", use_container_width=True):
+                            nl = []
+                            for x in meus_itens_perfil:
+                                if "Moldura" in x and "[EQUIPADO]" in x:
+                                    nl.append(x.replace("[EQUIPADO] ", ""))
+                                else:
+                                    nl.append(x)
+                            if it in nl: 
+                                nl.remove(it)
+                            nl.append(f"[EQUIPADO] {it}")
+                            supabase.table("perfis_usuarios").update({"itens_exclusivos": nl}).eq("username", user_atual.get('username')).execute()
+                            st.rerun()
+        else:
+            st.info("Inventário vazio.")
                 
     with sub_aba_editar:
         n_nick = st.text_input("Nickname:", value=user_atual.get('nickname'))
