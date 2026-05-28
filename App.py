@@ -433,7 +433,7 @@ def checar_e_ler_alertas_da_live(live_id_atual):
     col_video_retorno, col_chat_live = st.columns([4, 3])
             
     
-  with col_video_retorno:
+with col_video_retorno:
                 st.markdown("### 🖥️ Retorno do seu Vídeo")
                 st.camera_input("Monitor da Câmera", key="monitor_live_cam")
                 
