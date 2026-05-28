@@ -331,18 +331,28 @@ if aba_ativa == "📱 Feed":
                         except: pass
                 st.write("---")
 
+# ==========================================
+# --- 2. ABA GRAVAR / POSTAR (CORRIGIDA) ---
+# ==========================================
 if aba_ativa == "🎥 Gravar/Postar":
-    # 1. Título da aba de gravação
     st.title("🎥 Postar Novo Conteúdo")
     
-    # Certifique-se de que definiu os três nomes antes do '='
-aba_gravar, aba_link, aba_central = st.tabs(["🔴 Gravar Post", "🔗 Postar por Link", "🚨 Central do..."])
+    # Criação correta das 3 abas principais
+    aba_gravar, aba_link, aba_central = st.tabs(["🔴 Gravar Post", "🔗 Postar por Link", "🚨 Central do Streamer"])
      
-    # Se quiseres colocar um botão de teste para a câmara do Streamlit:
-    # foto_ou_video = st.camera_input("Tire uma foto para o post")
-with aba_link:
+    # --- SUB-ABA 1: GRAVAR POST ---
+    with aba_gravar:
+        st.subheader("🔴 Gravação Direta")
+        st.info("Função de gravação direta pela câmera em desenvolvimento!")
+        # Se quiser testar o componente de câmera futuramente:
+        # foto_ou_video = st.camera_input("Tire uma foto para o post")
+
+    # --- SUB-ABA 2: POSTAR POR LINK ---
+    with aba_link:
+        st.subheader("🔗 Postar Conteúdo por Link")
         legenda = st.text_input("Legenda do post:", key="leg_link")
         url_do_video = st.text_input("Link do vídeo (.mp4):", key="url_mp4")
+        
         if st.button("Publicar Vídeo por Link", use_container_width=True):
             if url_do_video:
                 try:
@@ -350,39 +360,55 @@ with aba_link:
                         "username": user_atual.get('username'), 
                         "nickname": user_atual.get('nickname'), 
                         "url": url_do_video, 
-                        "curtidas": 0
+                        "curtidas": 0,
+                        "legenda": legenda  # Adicionado para salvar sua legenda!
                     }).execute()
                     st.success("Publicado com sucesso no Feed! Atualizando...")
                     st.rerun()
                 except Exception as e:
-                    st.error(f"Erro ao salvar: {str(e)}")                
-        with aba_central:
-    st.write("Configurações adicionais e monitoramento de lives.")
+                    st.error(f"Erro ao salvar: {str(e)}")
+            else:
+                st.warning("Por favor, insira o link do vídeo antes de publicar.")
+
+    # --- SUB-ABA 3: CENTRAL DO STREAMER ---
+    with aba_central:
+        st.subheader("🚨 Central de Controle da Live")
+        st.write("Configurações adicionais e monitoramento de lives.")
+        
         if not st.session_state.live_ativa:
             titulo_live = st.text_input("Título da sua Live:", placeholder="Ex: Programando o Silver Tok v2! 🔥")
             if st.button("🔴 INICIAR LIVE GLOBAL", use_container_width=True):
                 if titulo_live:
                     try:
                         supabase.table("lives_ativas").delete().eq("streamer_username", user_atual.get('username')).execute()
-                        supabase.table("lives_ativas").insert({"streamer_username": user_atual.get('username'), "streamer_nickname": user_atual.get('nickname'), "titulo_live": titulo_live, "status": "online"}).execute()
+                        supabase.table("lives_ativas").insert({
+                            "streamer_username": user_atual.get('username'), 
+                            "streamer_nickname": user_atual.get('nickname'), 
+                            "titulo_live": titulo_live, 
+                            "status": "online"
+                        }).execute()
                         st.session_state.live_ativa = True
                         st.session_state.live_chat = [{"remetente": "Sistema", "conteudo": "Sua transmissão está pública no feed!"}]
                         st.session_state.live_alertas = []
                         st.rerun()
-                    except Exception as e: st.error(f"Erro ao abrir transmissão: {str(e)}")
+                    except Exception as e: 
+                        st.error(f"Erro ao abrir transmissão: {str(e)}")
         else:
             st.success("🎥 VOCÊ ESTÁ AO VIVO!")
             if st.button("⏹️ Encerrar Transmissão", use_container_width=True):
                 st.session_state.live_ativa = False
-                try: supabase.table("lives_ativas").delete().eq("streamer_username", user_atual.get('username')).execute()
-                except: pass
+                try: 
+                    supabase.table("lives_ativas").delete().eq("streamer_username", user_atual.get('username')).execute()
+                except: 
+                    pass
                 st.rerun()
             
             try:
                 live_req = supabase.table("lives_ativas").select("id").eq("streamer_username", user_atual.get('username')).execute()
                 if live_req.data:
                     checar_e_ler_alertas_da_live(live_req.data[0]["id"])
-            except: pass
+            except: 
+                pass
             
             st.write("---")
             col_video_retorno, col_chat_live = st.columns([4, 3])
@@ -394,7 +420,7 @@ with aba_link:
                 st.markdown("### 💬 Chat da Live")
                 with st.container(border=True, height=200):
                     for msg_l in st.session_state.live_chat: 
-                        st.write(f"**@{msg_l['remetente']}:** {msg_l['conteudo']}")
+                        st.write(f"**@{msg_l['remetente']}:** {msg_l['conteudo']}")                        
 
 # --- 3. ABA CHAT EXV ---
 elif aba_ativa == "💬 Chat EXV":
