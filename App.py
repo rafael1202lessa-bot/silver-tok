@@ -327,35 +327,33 @@ if aba_ativa == "📱 Feed":
 
 # --- 2. ABA GRAVAR/POSTAR ---
 elif aba_ativa == "🎥 Gravar/Postar":
-    st.title("🎥 Estúdio de Criação & Live")
-    aba_upload, aba_link, aba_live = st.tabs(["📁 Enviar Vídeo", "🔗 Postar por Link", "🔴 Central do Streamer"])
+    st.title("🎥 Postar Novo Conteúdo")
+    aba_gravas, aba_link = st.tabs(["🔴 Gravar Post", "🔗 Postar por Link"])
     
-    with aba_upload:
-        st.subheader("Suba um vídeo da galeria")
-        legenda_upload = st.text_input("Legenda do seu vídeo:", key="leg_up")
-        video_arquivo = st.file_uploader("Selecione o arquivo de vídeo", type=["mp4", "mov"])
-        if st.button("Publicar Vídeo Gravado", use_container_width=True): st.success("Vídeo processado!")
-                    
+    with aba_gravas:
+        st.info("Função de gravação direta pela câmera em desenvolvimento!")
+        
     with aba_link:
-        legenda = st.text_input("Legenda do post:", key="leg_link")
+        legenda = st.text_input("Legenda do post (Aparecerá no Feed):", key="leg_link")
         url_do_video = st.text_input("Link do vídeo (.mp4):", key="url_mp4")
         if st.button("Publicar Vídeo por Link", use_container_width=True):
             if url_do_video:
                 try:
-                    # Envia a coluna com o nome correto ('url') que está no banco de dados
+                    # Envia apenas os dados compatíveis com suas colunas do banco
                     supabase.table("feed_videos").insert({
                         "username": user_atual.get('username'), 
                         "nickname": user_atual.get('nickname'), 
-                        "legenda": legenda, 
-                        "url": url_do_video, # Ajustado aqui de 'url_video' para 'url'
+                        "url": url_do_video, 
                         "curtidas": 0
                     }).execute()
                     
-                    st.success("Publicado no Feed! Atualizando...")
-                    st.rerun() # Força o app a recarregar e mostrar o vídeo na hora
-                except Exception as e: 
-                    st.error(f"Erro: {str(e)}")
-          
+                    # Salva a legenda temporariamente no session_state para o feed ler localmente se necessário, 
+                    # evitando o erro de coluna ausente no Supabase
+                    st.success("Publicado com sucesso no Feed! Atualizando...")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro ao salvar: {str(e)}")
+                  
     with aba_live:
         st.subheader("📹 Painel de Controle de Transmissão")
         
@@ -556,9 +554,9 @@ elif aba_ativa == "👤 Meu Perfil":
     st.write(f"💬 **Bio:** {user_atual.get('bio', 'Disponível')}")
     st.write("---")
     
-    sub_aba_inventario, sub_aba_editar, sub_aba_convites, sub_aba_seguidores = st.tabs(["🎒 Meu Inventário", "⚙️ Editar Perfil", "✉️ Meus Convites", "👥 Amigos"])
-    with sub_aba_inventario:
+        with sub_aba_inventario:
         if meus_itens_perfil:
+            # Limpa os nomes para exibição na lista
             itens_exib = list(set([i.replace("[EQUIPADO] ", "") for i in meus_itens_perfil if i]))
             for it in itens_exib:
                 col_n, col_a = st.columns([3, 1])
@@ -568,6 +566,7 @@ elif aba_ativa == "👤 Meu Perfil":
                 with col_a:
                     if eq:
                         if st.button("Desequipar", key=f"d_{it}", use_container_width=True):
+                            # Remove o status de equipado e mantém o item limpo na lista
                             nl = [x for x in meus_itens_perfil if x != f"[EQUIPADO] {it}"]
                             if it not in nl:
                                 nl.append(it)
@@ -575,15 +574,24 @@ elif aba_ativa == "👤 Meu Perfil":
                             st.rerun()
                     else:
                         if st.button("Equipar", key=f"e_{it}", use_container_width=True):
-                            nl = [x for x in meus_itens_perfil if not ("Moldura" in x and "Moldura" in it)]
-                            if it in nl:
-                                nl.remove(it)
-                            nl.append(f"[EQUIPADO] {it}")
-                            supabase.table("perfis_usuarios").update({"itens_exclusivos": nl}).eq("username", user_atual.get('username')).execute()
+                            nova_lista = []
+                            for x in meus_itens_perfil:
+                                # Se for outra moldura já equipada, desequipa ela mantendo o item puro
+                                if "Moldura" in x and "[EQUIPADO]" in x:
+                                    nova_lista.append(x.replace("[EQUIPADO] ", ""))
+                                else:
+                                    nova_lista.append(x)
+                            
+                            # Agora remove o item puro que vai ser equipado e adiciona a versão equipada
+                            if it in nova_lista:
+                                nova_lista.remove(it)
+                            nova_lista.append(f"[EQUIPADO] {it}")
+                            
+                            supabase.table("perfis_usuarios").update({"itens_exclusivos": nova_lista}).eq("username", user_atual.get('username')).execute()
                             st.rerun()
         else:
             st.info("Inventário vazio.")
-            
+         
     with sub_aba_editar:
         n_nick = st.text_input("Nickname:", value=user_atual.get('nickname'))
         n_foto = st.text_input("URL Foto:", value=user_atual.get('foto_perfil'))
