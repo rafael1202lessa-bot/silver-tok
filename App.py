@@ -15,7 +15,44 @@ try:
 except Exception as e:
     st.error(f"Erro crítico de conexão: {str(e)}")
     st.stop()
+    
+# --- 1. FUNÇÃO QUE FAZ O NAVEGADOR FALAR ---
+def emitir_alerta_voz(texto_mensagem):
+    """Injeta um script JavaScript discreto para ler a mensagem em voz alta."""
+    js_code = f"""
+    <script>
+    if ('speechSynthesis' in window) {{
+        window.speechSynthesis.cancel(); 
+        var msg = new SpeechSynthesisUtterance({repr(texto_mensagem)});
+        msg.lang = 'pt-BR';
+        msg.rate = 1.1; 
+        window.speechSynthesis.speak(msg);
+    }}
+    </script>
+    """
+    st.components.v1.html(js_code, height=0, width=0)
 
+
+# --- 2. FUNÇÃO QUE CHECA AS MOEDAS NO BANCO DE DADOS ---
+def checar_e_ler_alertas_da_live(live_id_atual):
+    try:
+        # Pega os alertas com moedas da live que ainda não foram lidos
+        alertas_nao_lidos = supabase.table("live_alertas").select("*").eq("live_id", live_id_atual).eq("lido_status", False).order("criado_em", desc=False).execute()
+        for alerta in alertas_nao_lidos.data:
+            usuario = alerta.get("enviado_por")
+            coins = alerta.get("quantidade_coins")
+            msg_texto = alerta.get("mensagem", "")
+            
+            # Monta a frase e ativa o som
+            texto_para_falar = f"{usuario} enviou {coins} Silver Coins! Mensagem: {msg_texto}"
+            emitir_alerta_voz(texto_para_falar)
+            
+            # Marca como lido no Supabase para não repetir a voz
+            supabase.table("live_alertas").update({"lido_status": True}).eq("id", alerta.get("id")).execute()
+            st.toast(f"📢 Voz lendo doação de @{usuario}!", icon="🔊")
+    except: 
+        pass
+        
 # --- ESTADO DE DESENVOLVIMENTO ---
 ESTADO_DESENVOLVIMENTO = True 
 
