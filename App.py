@@ -656,15 +656,10 @@ elif aba_ativa == "🧠 Silver IA":
         st.success(f"🤖 **Silver:** {chat['resposta']}")
                # --- ABA DA LOJA DO SITE (CONTROLO ABSOLUTO POR SESSION STATE) ---
 
-# 1. Procurar qual é a aba que está realmente selecionada no teu menu
-aba_atual_selecionada = None
-for chave_state in ["aba_ativa", "abas", "menu", "aba_selecionada"]:
-    if chave_state in st.session_state and st.session_state[chave_state]:
-        aba_atual_selecionada = str(st.session_state[chave_state])
-        break
-elif abas == "🛒 Loja do Site":
+# Chamada da loja de forma isolada e segura
+if 'abas' in locals() and abas == "🛒 Loja do Site":
     nova_loja_silver_tok()
-
+    
             # --- 7. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
     meus_itens_perfil = user_atual.get('itens_exclusivos', [])
