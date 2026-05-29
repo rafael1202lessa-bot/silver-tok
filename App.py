@@ -457,7 +457,7 @@ if aba_ativa == "🎥 Gravar/Postar":
         else:
             st.success("🎥 VOCÊ ESTÁ AO VIVO!")
             if st.button("⏹️ Encerrar Transmissão", use_container_width=True):
-      with aba_link:
+        with aba_link:
         st.subheader("🔗 Postar Conteúdo por Link")
         legenda_link = st.text_input("Legenda do post:", key="leg_link")
         url_link = st.text_input("Link do vídeo (.mp4):", key="url_link")
