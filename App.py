@@ -886,35 +886,7 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
                     supabase.table("perfis_usuarios").update({"itens_exclusivos": inventario_atual}).eq("username", usuario_alvo).execute()
                     st.success(f"🎉 Item injetado!")
                     st.rerun()
-                        aba_loja_dev = st.container() # Cria o espaço para a loja
     
-    with aba_loja_dev:
-        st.subheader("🆕 Cadastrar Novo Item na Loja")
-        
-        # Campos do formulário para criar o produto
-        nome_produto = st.text_input("Nome do Produto:", placeholder="Ex: Conta VIP Silver Tok")
-        preco_produto = st.number_input("Preço do Item (R$):", min_value=0.0, value=5.0, step=1.0)
-        imagem_produto = st.text_input("Link da Imagem/Ícone:", placeholder="https://...")
-        desc_produto = st.text_area("Descrição/Benefícios do Produto:", placeholder="O que o usuário ganha ao comprar...")
-        
-        if st.button("🚀 Publicar na Loja Oficial", use_container_width=True):
-            if nome_produto.strip() and preco_produto > 0:
-                try:
-                    # Envia os dados direto para a tabela do seu Supabase
-                    supabase.table("loja_itens").insert({
-                        "nome_produto": nome_produto.strip(),
-                        "preco": preco_produto,
-                        "imagem_url": imagem_produto.strip(),
-                        "descricao": desc_produto.strip()
-                    }).execute()
-                    
-                    st.success(f"🎉 Item '{nome_produto}' adicionado com sucesso à loja!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Erro ao salvar no banco: {str(e)}")
-            else:
-                st.warning("Por favor, preencha o nome do produto e defina um preço válido.")
-                
         st.write("---")
         st.subheader("⚙️ Ações Globais")
         col_glob1, col_glob2 = st.columns(2)
