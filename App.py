@@ -655,8 +655,8 @@ elif aba_ativa == "🧠 Silver IA":
         st.info(f"❓ **Você:** {chat['pergunta']}")
         st.success(f"🤖 **Silver:** {chat['resposta']}")
                                                                                                         
-# --- ABA DA LOJA DO SITE (CORRIGIDA E ISOLADA) ---
-if abas == "🛒 Loja do Site":
+# --- ABA DA LOJA DO SITE (ENCAIXE SEGURO EM ELIF) ---
+elif abas == "🛒 Loja do Site":
     st.title("🛒 Loja Oficial Silver Tok")
     st.write("Use suas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
     st.write("---")
