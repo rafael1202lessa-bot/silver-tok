@@ -655,17 +655,30 @@ elif aba_ativa == "🧠 Silver IA":
         st.info(f"❓ **Você:** {chat['pergunta']}")
         st.success(f"🤖 **Silver:** {chat['resposta']}")
 
-# --- ABA DA LOJA DO SITE (MÉTODO ULTRA SEGURO ISOLADO) ---
+# --- ABA DA LOJA DO SITE (CONTROLE POR ESTADO) ---
 import sys
 _mod = sys.modules['__main__']
 
-# Verifica se o usuário de fato clicou na Loja do Site
-if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _v.startswith("_")):
-    # st.empty() ajuda a limpar conteúdos residuais da tela se necessário
+# 1. Verifica se o texto "Loja do Site" foi clicado no menu de rádio do seu app
+loja_clicada = any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _v.startswith("_"))
+
+# 2. Se foi clicado, ativa o modo loja no sistema
+if loja_clicada:
+    st.session_state["ver_loja"] = True
+
+# 3. Renderiza a loja APENAS se o estado estiver ativo
+if st.session_state.get("ver_loja", False):
     st.title("🛒 Loja Oficial Silver Tok")
     st.write("Use suas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
     
-    # 1. Puxar apenas os itens ativos do banco de dados
+    # Botão para o usuário conseguir voltar para as outras abas se quiser
+    if st.button("⬅️ Voltar para o Aplicativo", use_container_width=True):
+        st.session_state["ver_loja"] = False
+        st.rerun()
+    
+    st.write("---")
+
+    # Puxar apenas os itens ativos do banco de dados
     try:
         resposta = supabase.table("loja_itens").select("*").eq("ativo", True).execute()
         itens = resposta.data if hasattr(resposta, 'data') else resposta.get('data', [])
@@ -673,11 +686,9 @@ if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _
         st.error("Erro ao carregar os itens da loja.")
         itens = []
 
-    # 2. Se não houver nenhum item cadastrado ou ativo
     if not itens:
         st.info("A loja está sendo reabastecida pelo administrador. Volte em breve! 🌟")
     else:
-        # 3. Mostrar os itens em um formato bonito
         for item in itens:
             with st.container():
                 col_img, col_txt = st.columns([1, 3])
@@ -686,7 +697,7 @@ if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _
                     if item.get("imagem_url") and item["imagem_url"].startswith("http"):
                         st.image(item["imagem_url"], use_container_width=True)
                     else:
-                        st.subheader("🖼️") # Ícone padrão caso a imagem quebre ou seja um link temporário
+                        st.subheader("🖼️")
                         
                 with col_txt:
                     st.subheader(item["nome_produto"])
@@ -694,9 +705,12 @@ if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _
                     st.markdown(f"**Preço:** 💰 {item['preco']} moedas")
                     
                     if st.button(f"Comprar {item['nome_produto']}", key=f"buy_{item['id']}", use_container_width=True):
-                        st.info("Processando compra... (Vamos ativar o desconto de saldo já já!)")
+                        st.info("Processando compra...")
             st.write("---")
             
+    # Trava a renderização aqui para NÃO vazar nada das outras abas para baixo
+    st.stop()
+             
     # CRUCIAL: Interrompe a renderização aqui para que as abas seguintes não vazem para dentro da loja
     st.stop()
                   
