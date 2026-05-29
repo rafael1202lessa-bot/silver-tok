@@ -408,7 +408,7 @@ except:
     
                 
                 # --- 2. ABA GRAVAR / POSTAR ---
-if aba_selecionada == "🎥 Gravar/Postar":
+if aba_ativa == "🎥 Gravar/Postar":
     st.title("🎥 Postar Novo Conteúdo")
     
     aba_link, aba_central, aba_upload = st.tabs(["🔗 Postar por Link", "🚨 Central do Streamer", "📁 Upload da Galeria"])
