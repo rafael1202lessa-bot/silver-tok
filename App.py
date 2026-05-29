@@ -462,7 +462,7 @@ if aba_active == "🎥 Gravar/Postar":
             try:
                 mensagens_req = supabase.table("chat_lives").select("*").eq("live_id", live_id_atual).order("id", desc=True).limit(10).execute()
                 mensagens_c# --- 2. ABA GRAVAR / POSTAR ---
-if aba_ativa == "🎥 Gravar/Postar":
+elif aba_ativa == "🎥 Gravar/Postar":
     st.title("🎥 Postar Novo Conteúdo")
     
     aba_link, aba_central, aba_upload = st.tabs(["🔗 Postar por Link", "🚨 Central do Streamer", "📁 Upload da Galeria"])
