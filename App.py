@@ -430,8 +430,7 @@ if st.button("Publicar Vídeo por Link", use_container_width=True):
                 except Exception as e:
                     st.error(f"Erro ao salvar: {str(e)}")
                 else:
-                st.warning("Por favor, insira o link do vídeo.")
-
+    st.warning("Por favor, insira o link do vídeo.")
     with aba_central:
         st.subheader("📹 Painel de Controle de Transmissão")
         
