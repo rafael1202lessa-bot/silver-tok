@@ -905,9 +905,7 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
                 vids = supabase.table("feed_videos").select("id").execute()
                 for v in vids.data: supabase.table("feed_videos").delete().eq("id", v['id']).execute()
                 st.rerun()
-                        # (A linha 907 é o st.rerun() do botão de apagar vídeos que já está lá)
-    st.rerun()
-
+                            # Mantenha o botão de apagar acima e cole este bloco exatamente com estes espaços na frente:
     st.write("---")
     st.subheader("🆕 Cadastrar Novo Item na Loja")
     
@@ -931,5 +929,8 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
                 st.error(f"Erro ao salvar no banco: {str(e)}")
         else:
             st.warning("Por favor, preencha o nome do produto e defina um preço válido.")
+            
+
+    
             
             
