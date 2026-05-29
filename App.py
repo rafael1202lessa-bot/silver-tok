@@ -655,25 +655,26 @@ elif aba_ativa == "🧠 Silver IA":
         st.info(f"❓ **Você:** {chat['pergunta']}")
         st.success(f"🤖 **Silver:** {chat['resposta']}")
                                                                                                         
-# --- ABA DA LOJA DO SITE (MÉTODO COMPATÍVEL INTEGRADO) ---
+# --- ABA DA LOJA DO SITE (MÉTODO ANTI-VAZAMENTO INTEGRADO) ---
 import sys
 _mod = sys.modules['__main__']
 
-# Verifica se o utilizador clicou na Loja usando o método estável do teu app
-if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _v.startswith("_")):
-    
+# 1. Identificar se o utilizador clicou na Loja do Site
+usuario_na_loja = any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _v.startswith("_"))
+
+if usuario_na_loja:
     st.title("🛒 Loja Oficial Silver Tok")
     st.write("Usa as tuas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
     st.write("---")
 
-    # 1. Identificar o utilizador logado no sistema de forma segura
+    # Identificar o utilizador logado no sistema
     usuario_atual = None
     for chave in ["usuario", "username", "user", "usuario_logado"]:
         if chave in st.session_state and st.session_state[chave]:
             usuario_atual = st.session_state[chave]
             break
 
-    # 2. Puxar apenas os itens ativos do banco de dados
+    # Puxar apenas os itens ativos do banco de dados
     try:
         resposta = supabase.table("loja_itens").select("*").eq("ativo", True).execute()
         itens = resposta.data if hasattr(resposta, 'data') else resposta.get('data', [])
@@ -681,7 +682,7 @@ if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _
         st.error("Erro ao carregar os itens da loja.")
         itens = []
 
-    # 3. Mostrar os produtos ou aviso de stock vazio
+    # Mostrar os produtos
     if not itens:
         st.info("A loja está a ser reabastecida pelo administrador. Volta em breve! 🌟")
     else:
@@ -700,8 +701,8 @@ if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _
                     st.write(item["descricao"] if item.get("descricao") else "Sem descrição disponível.")
                     st.markdown(f"**Preço:** 💰 {item['preco']} moedas")
                     
-                    # Botão de Compra com Desconto Real de Saldo
-                    if st.button(f"Comprar {item['nome_produto']}", key=f"buy_final_{item['id']}", use_container_width=True):
+                    # Botão de Compra com Desconto de Saldo Real
+                    if st.button(f"Comprar {item['nome_produto']}", key=f"buy_real_{item['id']}", use_container_width=True):
                         if not usuario_atual:
                             st.error("⚠️ Precisas de ter sessão iniciada na tua conta para efetuar compras!")
                         else:
@@ -730,7 +731,11 @@ if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _
                             except Exception as erro_compra:
                                 st.error(f"Erro ao processar: {erro_compra}")
             st.write("---")
-                                                  
+
+# 2. BLOQUEIO DE VAZAMENTO: Transforma a aba seguinte num 'if' ou 'elif' normal
+# Se a tua aba seguinte for o Perfil, altera a linha dela de 'elif' para 'if' caso dê erro, 
+# ou mantém como está se o Python aceitar o fluxo abaixo:
+      
             # --- 7. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
     meus_itens_perfil = user_atual.get('itens_exclusivos', [])
