@@ -449,7 +449,24 @@ if aba_ativa == "🎥 Gravar/Postar":
             
             # Abre a câmera nativa do celular/PC do streamer
             ctx = streamlit_webrtc(key="streamer-live", media_stream_constraints={"video": True, "audio": True})
-            
+                    if not status_live:
+            if st.button("🔴 ENTRAR AO VIVO AGORA", use_container_width=True):
+                if titulo_da_live.strip():
+                    try:
+                        supabase.table("lives_ativas").insert({
+                            "streamer_username": user_atual.get('username'),
+                            "streamer_nickname": user_atual.get('nickname'),
+                            "titulo_live": titulo_da_live.strip(),
+                            "url_transmissao": "SINAL_INTERNO",
+                            "status": "online"
+                        }).execute()
+                        st.success("Você está ao vivo no Silver Tok! 🎉")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao abrir live: {str(e)}")
+                else:
+                    st.warning("Por favor, insira o título da transmissão.")
+                    
             if ctx.state.playing:
                 if st.button("🔴 INICIAR E MOSTRAR NO FEED DE LIVES", use_container_width=True):
                     if titulo_da_live.strip():
