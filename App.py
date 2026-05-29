@@ -655,13 +655,20 @@ elif aba_ativa == "🧠 Silver IA":
         st.info(f"❓ **Você:** {chat['pergunta']}")
         st.success(f"🤖 **Silver:** {chat['resposta']}")
 
-# --- ABA DA LOJA DO SITE ---
+# --- ABA DA LOJA DO SITE (TOTALMENTE ALINHADO À ESQUERDA) ---
 if abas == "🛒 Loja do Site":
     st.title("🛒 Loja Oficial Silver Tok")
     st.write("Use suas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
     st.write("---")
 
-    # Puxar os itens do banco de dados de forma direta
+    # 1. Identificar o usuário que está mexendo no app
+    usuario_atual = None
+    for chave in ["usuario", "username", "user", "usuario_logado"]:
+        if chave in st.session_state and st.session_state[chave]:
+            usuario_atual = st.session_state[chave]
+            break
+
+    # 2. Puxar os itens ativos do banco de dados de forma direta
     try:
         resposta = supabase.table("loja_itens").select("*").eq("ativo", True).execute()
         itens = resposta.data
@@ -669,7 +676,7 @@ if abas == "🛒 Loja do Site":
         st.error(f"Erro ao conectar com o banco: {e}")
         itens = []
 
-    # Mostrar os produtos
+    # 3. Mostrar os produtos
     if not itens:
         st.info("Nenhum produto ativo encontrado na loja no momento. 🌟")
     else:
@@ -678,11 +685,44 @@ if abas == "🛒 Loja do Site":
             st.write(item.get("descricao", "Sem descrição."))
             st.markdown(f"**Preço:** 💰 {item['preco']} moedas")
             
-            # Botão simples
+            # Botão de compra com desconto de moedas real
             if st.button(f"Comprar {item['nome_produto']}", key=f"btn_{item['id']}", use_container_width=True):
-                st.info("Botão clicado! Lógica de desconto desativada temporariamente para testes.")
+                if not usuario_atual:
+                    st.error("⚠️ Você precisa estar logado na sua conta para fazer compras!")
+                else:
+                    try:
+                        # Buscar o perfil do usuário logado na tabela 'profiles'
+                        busca_user = supabase.table("profiles").select("*").eq("username", usuario_atual).execute()
+                        
+                        if busca_user.data:
+                            perfil = busca_user.data[0]
+                            # Verifica se o saldo está gravado como 'moedas' ou 'saldo'
+                            coluna_saldo = "moedas" if "moedas" in perfil else ("saldo" if "saldo" in perfil else None)
+                            
+                            if coluna_saldo:
+                                saldo_atual = float(perfil[coluna_saldo])
+                                preco_item = float(item["preco"])
+                                
+                                # Condição: Tem dinheiro suficiente?
+                                if saldo_atual >= preco_item:
+                                    novo_saldo = saldo_atual - preco_item
+                                    
+                                    # Deduzir as moedas lá no Supabase
+                                    supabase.table("profiles").update({coluna_saldo: novo_saldo}).eq("username", usuario_atual).execute()
+                                    
+                                    st.success(f"🎉 Compra realizada! Você adquiriu: {item['nome_produto']}.")
+                                    st.balloons() # Solta balões na tela comemorando
+                                    st.rerun()
+                                else:
+                                    st.error(f"❌ Saldo insuficiente! Seu saldo atual é de 💰 {saldo_atual} moedas.")
+                            else:
+                                st.error("A coluna de moedas não foi encontrada no seu perfil do banco de dados.")
+                        else:
+                            st.error(f"Não encontramos o perfil do usuário '{usuario_atual}' no banco.")
+                    except Exception as erro_transacao:
+                        st.error(f"Erro ao processar a compra: {erro_transacao}")
             st.write("---")
-                                                                   
+                                                                     
 # --- 7. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
     meus_itens_perfil = user_atual.get('itens_exclusivos', [])
