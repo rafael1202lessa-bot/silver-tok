@@ -411,7 +411,7 @@ except Exception as e:
 if aba_ativa == "🎥 Gravar/Postar":
     st.title("🎥 Postar Novo Conteúdo")
     
-    aba_link, aba_central, aba_upload = st.tabs(["🔗 Postar por Link")
+    aba_link, aba_central, aba_upload = st.tabs(["🔗 Postar por Link"])
         legenda_link = st.text_input("Legenda do post:", key="leg_link")
         url_link = st.text_input("Link do vídeo (.mp4):", key="url_link")
         
