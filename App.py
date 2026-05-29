@@ -33,7 +33,7 @@ if "chat_privado_salas" not in st.session_state:
 if "chat_grupos" not in st.session_state:
     st.session_state.chat_grupos = {} 
 if "sala_privada_atual" not in st.session_state:
-    st.session_state.sala_privada_atual = None
+    rua. estado_sessão . sala_privada_atual = Nenhum
 if "codigo_grupo_atual" not in st.session_state:
     st.session_state.codigo_grupo_atual = None
 if "live_ativa" not in st.session_state:
@@ -1000,12 +1000,16 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
                 with col_btn:
                     st.write("<br>", unsafe_allow_html=True)
                     
-                    # Se o item está ativo, o botão altera para Falso (Oculta da loja)
+                                        # Se o item está ativo, o botão altera para Falso (Oculta da loja)
                     if item["ativo"]:
                         if st.button("Remover", key=f"dev_rem_{item['id']}", use_container_width=True):
                             try:
-                                supabase.table("loja_itens").update({"ativo": False}).eq("id", item["id"]).execute()
+                                # Forçamos o update e pedimos os dados de volta para garantir que mudou
+                                transacao = supabase.table("loja_itens").update({"ativo": False}).eq("id", item["id"]).execute()
+                                
                                 st.success("Item removido com sucesso!")
+                                # Força o Streamlit a limpar o cache e reler o banco de dados atualizado
+                                st.session_state["loja_atualizada"] = True 
                                 st.rerun()
                             except Exception as erro:
                                 st.error(f"Erro ao remover: {erro}")
@@ -1013,10 +1017,12 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
                         # Se já está desativado, permite ativar de volta
                         if st.button("Ativar", key=f"dev_atv_{item['id']}", use_container_width=True):
                             try:
-                                supabase.table("loja_itens").update({"ativo": True}).eq("id", item["id"]).execute()
+                                transacao = supabase.table("loja_itens").update({"ativo": True}).eq("id", item["id"]).execute()
+                                
                                 st.success("Item reativado na loja!")
+                                st.session_state["loja_atualizada"] = True
                                 st.rerun()
                             except Exception as erro:
-                                st.error(f"Erro ao ativar: {erro}")
+                                st.error(f"Erro ao ativar: {erro}")          
             st.write("---")
             
