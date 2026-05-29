@@ -656,14 +656,17 @@ elif aba_ativa == "🧠 Silver IA":
         st.success(f"🤖 **Silver:** {chat['resposta']}")
 
 # --- 6. ABA LOJA DO SITE ---
-if escolha == "🛒 Loja do Site": 
+# --- ABA DA LOJA DO SITE (MÉTODO ULTRA SEGURO) ---
+import sys
+_mod = sys.modules['__main__']
+if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _v.startswith("_")):
     st.title("🛒 Loja Oficial Silver Tok")
     st.write("Use suas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
     
     # 1. Puxar apenas os itens ativos do banco de dados
     try:
         resposta = supabase.table("loja_itens").select("*").eq("ativo", True).execute()
-        itens = resposta.data
+        itens = response.data if hasattr(resposta, 'data') else resposta.get('data', [])
     except Exception as e:
         st.error("Erro ao carregar os itens da loja.")
         itens = []
@@ -678,7 +681,6 @@ if escolha == "🛒 Loja do Site":
                 col_img, col_txt = st.columns([1, 3])
                 
                 with col_img:
-                    # Se tiver link de imagem, mostra a foto, senão usa um emoji padrão
                     if item.get("imagem_url"):
                         st.image(item["imagem_url"], use_container_width=True)
                     else:
@@ -689,11 +691,10 @@ if escolha == "🛒 Loja do Site":
                     st.write(item["descricao"])
                     st.markdown(f"**Preço:** 💰 {item['preco']} moedas")
                     
-                    # Botão de compra (a lógica de desconto faremos a seguir)
                     if st.button(f"Comprar {item['nome_produto']}", key=f"buy_{item['id']}", use_container_width=True):
                         st.info("Processando compra... (Vamos ativar o desconto de saldo já já!)")
             st.write("---")
-            
+                  
 # --- 7. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
     meus_itens_perfil = user_atual.get('itens_exclusivos', [])
