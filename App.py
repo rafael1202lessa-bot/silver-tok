@@ -968,51 +968,55 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
                 st.error(f"Erro ao salvar no banco: {str(e)}")
         else:
             st.warning("Por favor, preencha o nome do produto e defina um preço válido.")
-# --- GERENCIADOR DE ITENS DA LOJA (DENTRO DO PAINEL DEV) ---
-st.write("---")
-st.subheader("📦 Gerenciar Itens da Loja")
-
-try:
-    # Puxa todos os itens (ativos e inativos) para o Dev conseguir controlar
-    todos_itens = supabase.table("loja_itens").select("*").execute().data
-except Exception as e:
-    st.error(f"Erro ao carregar itens no painel: {e}")
-    todos_itens = []
-
-if not todos_itens:
-    st.info("Nenhum produto cadastrado no banco de dados.")
-else:
-    for item in todos_itens:
-        status = "🟢 Ativo na Loja" if item["ativo"] else "🔴 Inativo (Oculto)"
-        
-        # Organiza em colunas para ficar bonito no celular
-        col_nome, col_status, col_btn = st.columns([2, 1, 1])
-        
-        with col_nome:
-            st.write(f"**{item['nome_produto']}**\n(💰 {item['preco']} moedas)")
-        
-        with col_status:
-            st.write(f"Status:\n{status}")
             
-        with col_btn:
-            # Se o item está ativo, mostra o botão de desativar
-            if item["ativo"]:
-                if st.button("Remover", key=f"del_{item['id']}", use_container_width=True):
-                    try:
-                        # Muda o status para False no Supabase (MÉTODO SEGURO)
-                        supabase.table("loja_itens").update({"ativo": False}).eq("id", item["id"]).execute()
-                        st.success(f"Item removido!")
-                        st.rerun()
-                    except Exception as erro_del:
-                        st.error(f"Erro: {erro_del}")
-            else:
-                # Se já está inativo, dá a opção de ativar de volta se quiseres
-                if st.button("Ativar", key=f"ativar_{item['id']}", use_container_width=True):
-                    try:
-                        supabase.table("loja_itens").update({"ativo": True}).eq("id", item["id"]).execute()
-                        st.success(f"Item reativado!")
-                        st.rerun()
-                    except Exception as erro_ativar:
-                        st.error(f"Erro: {erro_ativar}")
-        st.write("---")
-        
+    # =========================================================
+    #     GERENCIADOR DE ITENS DA LOJA (INTEGRADO AO DEV)
+    # =========================================================
+    st.write("---")
+    st.subheader("📦 Gerenciar Itens da Loja")
+
+    try:
+        # Puxa os itens direto do banco para o painel
+        todos_itens = supabase.table("loja_itens").select("*").execute().data
+    except Exception as e:
+        todos_itens = []
+
+    if not todos_itens:
+        st.info("Nenhum produto cadastrado no banco de dados.")
+    else:
+        for item in todos_itens:
+            # Mostra o status atual de cada um
+            status_texto = "🟢 Ativo na Loja" if item["ativo"] else "🔴 Ocultado/Removido"
+            
+            with st.container():
+                col_nome, col_status, col_btn = st.columns([2, 1, 1])
+                
+                with col_nome:
+                    st.markdown(f"**{item['nome_produto']}**\n\n💰 {item['preco']} Coins")
+                
+                with col_status:
+                    st.write(f"Status:\n{status_texto}")
+                    
+                with col_btn:
+                    st.write("<br>", unsafe_allow_html=True)
+                    
+                    # Se o item está ativo, o botão altera para Falso (Oculta da loja)
+                    if item["ativo"]:
+                        if st.button("Remover", key=f"dev_rem_{item['id']}", use_container_width=True):
+                            try:
+                                supabase.table("loja_itens").update({"ativo": False}).eq("id", item["id"]).execute()
+                                st.success("Item removido com sucesso!")
+                                st.rerun()
+                            except Exception as erro:
+                                st.error(f"Erro ao remover: {erro}")
+                    else:
+                        # Se já está desativado, permite ativar de volta
+                        if st.button("Ativar", key=f"dev_atv_{item['id']}", use_container_width=True):
+                            try:
+                                supabase.table("loja_itens").update({"ativo": True}).eq("id", item["id"]).execute()
+                                st.success("Item reativado na loja!")
+                                st.rerun()
+                            except Exception as erro:
+                                st.error(f"Erro ao ativar: {erro}")
+            st.write("---")
+            
