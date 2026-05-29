@@ -457,6 +457,52 @@ if aba_ativa == "🎥 Gravar/Postar":
         else:
             st.success("🎥 VOCÊ ESTÁ AO VIVO!")
             if st.button("⏹️ Encerrar Transmissão", use_container_width=True):
+      with aba_link:
+        st.subheader("🔗 Postar Conteúdo por Link")
+        legenda_link = st.text_input("Legenda do post:", key="leg_link")
+        url_link = st.text_input("Link do vídeo (.mp4):", key="url_link")
+        
+        if st.button("Publicar Vídeo por Link", use_container_width=True):
+            if url_link.strip():
+                try:
+                    supabase.table("feed_videos").insert({
+                        "usuario": user_atual.get('username'),
+                        "video_url": url_link.strip(),
+                        "legenda": legenda_link.strip(),
+                        "curtidas": 0,
+                        "visualizacoes": 0
+                    }).execute()
+                    st.success("Vídeo publicado com sucesso!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro ao salvar: {str(e)}")
+            else:
+                st.warning("Por favor, insira o link do vídeo.")
+
+    with aba_central:
+        st.subheader("📹 Painel de Controle de Transmissão")
+        
+        if not st.session_state.get('live_ativa', False):
+            titulo_live = st.text_input("Título da sua Live:", placeholder="Ex: Programando o Silver Tok v2! 🔥")
+            if st.button("🔴 INICIAR LIVE GLOBAL", use_container_width=True):
+                if titulo_live:
+                    try:
+                        supabase.table("lives_ativas").delete().eq("streamer_username", user_atual.get('username')).execute()
+                        supabase.table("lives_ativas").insert({
+                            "streamer_username": user_atual.get('username'), 
+                            "streamer_nickname": user_atual.get('nickname'), 
+                            "titulo_live": titulo_live, 
+                            "status": "online"
+                        }).execute()
+                        st.session_state.live_ativa = True
+                        st.session_state.live_chat = [{"remetente": "Sistema", "conteudo": "Sua transmissão está pública no feed!"}]
+                        st.session_state.live_alertas = []
+                        st.rerun()
+                    except Exception as e: 
+                        st.error(f"Erro ao abrir transmissão: {str(e)}")
+        else:
+            st.success("🎥 VOCÊ ESTÁ AO VIVO!")
+            if st.button("⏹️ Encerrar Transmissão", use_container_width=True):
                 st.session_state.live_ativa = False
                 try: 
                     supabase.table("lives_ativas").delete().eq("streamer_username", user_atual.get('username')).execute()
@@ -484,7 +530,6 @@ if aba_ativa == "🎥 Gravar/Postar":
                     if 'live_chat' in st.session_state:
                         for msg_l in st.session_state.live_chat: 
                             st.write(f"**@{msg_l['remetente']}:** {msg_l['conteudo']}")
-
                     else:
                         st.caption("Nenhuma mensagem no chat ainda.")         
     with aba_upload:
