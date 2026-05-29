@@ -655,27 +655,25 @@ elif aba_ativa == "🧠 Silver IA":
         st.info(f"❓ **Você:** {chat['pergunta']}")
         st.success(f"🤖 **Silver:** {chat['resposta']}")
                                                                                                         
-# --- ABA DA LOJA DO SITE (MÉTODO ULTRA COMPATÍVEL SEM VAZAMENTO) ---
+# --- ABA DA LOJA DO SITE (MÉTODO COMPATÍVEL INTEGRADO) ---
 import sys
 _mod = sys.modules['__main__']
 
-# 1. Identificar o usuário logado de forma segura
-usuario_atual = None
-for chave in ["usuario", "username", "user", "usuario_logado"]:
-    if chave in st.session_state and st.session_state[chave]:
-        usuario_atual = st.session_state[chave]
-        break
-
-# Cria um espaço na tela para controlar o que aparece abaixo
-conteudo_abaixo = st.empty()
-
-# Verifica se o usuário de fato clicou na Loja do Site
+# Verifica se o utilizador clicou na Loja usando o método estável do teu app
 if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _v.startswith("_")):
-    st.title("🛒 Loja Oficial Silver Tok")
-    st.write("Use suas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
-    st.write("---")
     
-    # Puxar apenas os itens ativos do banco de dados
+    st.title("🛒 Loja Oficial Silver Tok")
+    st.write("Usa as tuas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
+    st.write("---")
+
+    # 1. Identificar o utilizador logado no sistema de forma segura
+    usuario_atual = None
+    for chave in ["usuario", "username", "user", "usuario_logado"]:
+        if chave in st.session_state and st.session_state[chave]:
+            usuario_atual = st.session_state[chave]
+            break
+
+    # 2. Puxar apenas os itens ativos do banco de dados
     try:
         resposta = supabase.table("loja_itens").select("*").eq("ativo", True).execute()
         itens = resposta.data if hasattr(resposta, 'data') else resposta.get('data', [])
@@ -683,8 +681,9 @@ if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _
         st.error("Erro ao carregar os itens da loja.")
         itens = []
 
+    # 3. Mostrar os produtos ou aviso de stock vazio
     if not itens:
-        st.info("A loja está sendo reabastecida pelo administrador. Volte em breve! 🌟")
+        st.info("A loja está a ser reabastecida pelo administrador. Volta em breve! 🌟")
     else:
         for item in itens:
             with st.container():
@@ -701,10 +700,10 @@ if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _
                     st.write(item["descricao"] if item.get("descricao") else "Sem descrição disponível.")
                     st.markdown(f"**Preço:** 💰 {item['preco']} moedas")
                     
-                    # Botão de Compra com Processamento Real de Saldo
-                    if st.button(f"Comprar {item['nome_produto']}", key=f"buy_real_{item['id']}", use_container_width=True):
+                    # Botão de Compra com Desconto Real de Saldo
+                    if st.button(f"Comprar {item['nome_produto']}", key=f"buy_final_{item['id']}", use_container_width=True):
                         if not usuario_atual:
-                            st.error("⚠️ Você precisa estar logado na sua conta para efetuar compras!")
+                            st.error("⚠️ Precisas de ter sessão iniciada na tua conta para efetuar compras!")
                         else:
                             try:
                                 dados_user = supabase.table("profiles").select("*").eq("username", usuario_atual).execute()
@@ -719,24 +718,19 @@ if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _
                                         if saldo_atual >= preco_item:
                                             novo_saldo = saldo_atual - preco_item
                                             supabase.table("profiles").update({coluna_saldo: novo_saldo}).eq("username", usuario_atual).execute()
-                                            st.success(f"🎉 Compra realizada com sucesso! Você adquiriu: {item['nome_produto']}.")
+                                            st.success(f"🎉 Compra realizada com sucesso! Adquiriste: {item['nome_produto']}.")
                                             st.balloons()
                                             st.rerun()
                                         else:
-                                            st.error(f"❌ Saldo insuficiente! Você tem 💰 {saldo_atual} moedas.")
+                                            st.error(f"❌ Saldo insuficiente! Tens 💰 {saldo_atual} moedas.")
                                     else:
-                                        st.error("Não localizamos a coluna de moedas/saldo no banco.")
+                                        st.error("Não localizámos a coluna de moedas/saldo no banco.")
                                 else:
-                                    st.error("Perfil do usuário não encontrado.")
+                                    st.error("Perfil do utilizador não encontrado.")
                             except Exception as erro_compra:
                                 st.error(f"Erro ao processar: {erro_compra}")
             st.write("---")
-
-# 2. SE NÃO ESTIVER NA LOJA: Abre o contêiner para renderizar o resto do arquivo normalmente
-else:
-    with conteudo_abaixo.container():
-        pass # O resto do seu script original vai rodar aqui automaticamente
-                   
+                                                  
             # --- 7. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
     meus_itens_perfil = user_atual.get('itens_exclusivos', [])
