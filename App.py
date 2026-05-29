@@ -403,8 +403,11 @@ try:
     else:
         # Se o sistema não achar, ele tenta ler direto do estado do Streamlit
         v_aba = st.session_state.get('menu_principal', '🎥 Gravar/Postar')
-
+except Exception as e:
+    pass
+    
 # --- 2. ABA GRAVAR / POSTAR ---
+    
 if aba_ativa == "🎥 Gravar/Postar":
     st.title("🎥 Postar Novo Conteúdo")
     
