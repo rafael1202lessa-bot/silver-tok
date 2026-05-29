@@ -413,7 +413,7 @@ if aba_ativa == "🎥 Gravar/Postar":
     
     aba_link, aba_central, aba_upload = st.tabs(["🔗 Postar por Link"])
     legenda_link = st.text_input("Legenda do post:", key="leg_link")
-        url_link = st.text_input("Link do vídeo (.mp4):", key="url_link")
+    url_link = st.text_input("Link do vídeo (.mp4):", key="url_link")
         
         if st.button("Publicar Vídeo por Link", use_container_width=True):
             if url_link.strip():
