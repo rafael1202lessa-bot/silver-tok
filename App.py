@@ -554,53 +554,10 @@ if aba_selecionada == "🎥 Gravar/Postar":
             streamlit_webrtc(key="streamer-live-ativa", media_stream_constraints={"video": True, "audio": True})
 
             st.write("---")
-            st.write("💬 Chat da Live")
-            try:
-                mensagens_req = supabase.table("chat_lives").select("*").eq("live_id", live_id_atual).order("id", desc=True).limit(10).execute()
-                mensagens_chat = mensagens_req.data if mensagens_req else []
-                for msg in reversed(mensagens_chat):
-                    st.markdown(f"**{msg.get('nickname')}**: {msg.get('mensagem')}")
-            except:
-                st.caption("Não foi possível carregar o chat.")
-
-            st.write("---")
-            if st.button("⏹️ ENCERRAR LIVE DO SILVER TOK", type="primary", use_container_width=True):
-                try:
-                    supabase.table("lives_ativas").delete().eq("id", live_id_atual).execute()
-                    st.error("Transmissão encerrada!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Erro ao fechar live: {str(e)}")
-
-    with aba_upload:
-        st.subheader("📁 Enviar Vídeo da Galeria")
-        legenda_upload = st.text_input("Legenda do post:", key="leg_upload")
-        arquivo_video = st.file_uploader("Selecione um arquivo de vídeo (.mp4):", type=["mp4", "mov", "avi"])
-        
-        if st.button("Publicar Vídeo da Galeria", use_container_width=True):
-            if arquivo_video is not None:
-                try:
-                    with st.spinner("Enviando o vídeo para o Silver Tok... Aguarde. ⏳"):
-                        nome_do_arquivo = f"{user_atual.get('username')}_{arquivo_video.name}"
-                        dados_do_video = arquivo_video.read()
-                        supabase.storage.from_("videos_feed").upload(path=nome_do_arquivo, file=dados_do_video, file_options={"content-type": "video/mp4"})
-                        url_publica = supabase.storage.from_("videos_feed").get_public_url(nome_do_arquivo)
-                        supabase.table("feed_videos").insert({
-                            "usuario": user_atual.get('username'), 
-                            "video_url": url_publica, 
-                            "legenda": legenda_upload,
-                            "curtidas": 0,
-                            "visualizacoes": 0
-                        }).execute()
-                        st.success("Vídeo enviado e publicado com sucesso! 🎉")
-                        st.rerun()
-                except Exception as e:
-                    st.error(f"Erro ao fazer upload: {str(e)}")
-            else:
-                st.warning("Por favor, selecione um arquivo de vídeo antes de publicar.")
+avor, selecione um arquivo de vídeo antes de publicar.")
 
 # --- 3. ABA ASSISTIR LIVES (PARA O PÚBLICO) ---
-if aba_selecionada == "📺 Assistir Lives":
+if aba_ativa == "📺 Assistir Lives":
     st.title("📺 Transmissões Ao Vivo")
     st.write("Veja quem está transmitindo agora no Silver Tok!")
     
