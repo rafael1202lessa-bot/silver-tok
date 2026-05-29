@@ -656,7 +656,6 @@ elif aba_ativa == "🧠 Silver IA":
         st.success(f"🤖 **Silver:** {chat['resposta']}")
                # --- ABA DA LOJA DO SITE (CONTROLO ABSOLUTO POR SESSION STATE) ---
 
-# Chamada da loja de forma isolada e segura
 if 'abas' in locals() and abas == "🛒 Loja do Site":
     nova_loja_silver_tok()
     
@@ -905,21 +904,21 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
 
 
 # =========================================================
-#             NOVA LOJA OFICIAL SILVER TOK
+#             LOJA OFICIAL SILVER TOK (NATIVA)
 # =========================================================
-def nova_loja_silver_tok():
+if 'abas' in locals() and abas == "🛒 Loja do Site":
     st.title("🛒 Loja Oficial Silver Tok")
     st.write("Use suas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
     st.write("---")
 
-    # 1. Identificar o usuário logado no session_state
+    # 1. Identificar o usuário logado
     usuario_atual = None
     for chave in ["usuario", "username", "user", "usuario_logado"]:
         if chave in st.session_state and st.session_state[chave]:
             usuario_atual = st.session_state[chave]
             break
 
-    # 2. Puxar apenas os itens ativos direto do Supabase
+    # 2. Puxar itens ativos do Supabase
     try:
         resposta = supabase.table("loja_itens").select("*").eq("ativo", True).execute()
         itens = resposta.data if hasattr(resposta, 'data') else resposta.get('data', [])
@@ -933,27 +932,25 @@ def nova_loja_silver_tok():
     else:
         for item in itens:
             with st.container():
-                # Organiza foto de um lado e texto do outro
                 col_img, col_txt = st.columns([1, 3])
                 
                 with col_img:
                     if item.get("imagem_url") and str(item["imagem_url"]).startswith("http"):
                         st.image(item["imagem_url"], use_container_width=True)
                     else:
-                        st.subheader("🖼️") # Emoji padrão se não tiver foto
+                        st.subheader("🖼️")
                         
                 with col_txt:
                     st.subheader(item["nome_produto"])
                     st.write(item["descricao"] if item.get("descricao") else "Sem descrição disponível.")
                     st.markdown(f"**Preço:** 💰 {item['preco']} moedas")
                     
-                    # Sistema Real de Compra e Desconto de Saldo
+                    # Sistema de Compra com Desconto de Saldo
                     if st.button(f"Comprar {item['nome_produto']}", key=f"n_loja_{item['id']}", use_container_width=True):
                         if not usuario_atual:
                             st.error("⚠️ Você precisa estar logado para efetuar compras!")
                         else:
                             try:
-                                # Busca o saldo do usuário na tabela profiles
                                 dados_user = supabase.table("profiles").select("*").eq("username", usuario_atual).execute()
                                 if dados_user.data:
                                     perfil = dados_user.data[0]
@@ -964,7 +961,6 @@ def nova_loja_silver_tok():
                                         preco_item = float(item["preco"])
                                         
                                         if saldo_atual >= preco_item:
-                                            # Calcula e atualiza o novo saldo no banco
                                             novo_saldo = saldo_atual - preco_item
                                             supabase.table("profiles").update({coluna_saldo: novo_saldo}).eq("username", usuario_atual).execute()
                                             
@@ -980,4 +976,3 @@ def nova_loja_silver_tok():
                             except Exception as erro_compra:
                                 st.error(f"Erro ao processar transação: {erro_compra}")
             st.write("---")
-            
