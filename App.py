@@ -461,6 +461,75 @@ if aba_active == "🎥 Gravar/Postar":
             st.write("💬 Chat da Live")
             try:
                 mensagens_req = supabase.table("chat_lives").select("*").eq("live_id", live_id_atual).order("id", desc=True).limit(10).execute()
+                mensagens_c# --- 2. ABA GRAVAR / POSTAR ---
+if aba_ativa == "🎥 Gravar/Postar":
+    st.title("🎥 Postar Novo Conteúdo")
+    
+    aba_link, aba_central, aba_upload = st.tabs(["🔗 Postar por Link", "🚨 Central do Streamer", "📁 Upload da Galeria"])
+    
+    with aba_link:
+        st.subheader("🔗 Postar Conteúdo por Link")
+        legenda_link = st.text_input("Legenda do post:", key="leg_link")
+        url_link = st.text_input("Link do vídeo (.mp4):", key="url_link")
+        
+        if st.button("Publicar Vídeo por Link", use_container_width=True):
+            if url_link.strip():
+                try:
+                    supabase.table("feed_videos").insert({
+                        "usuario": user_atual.get('username'),
+                        "video_url": url_link.strip(),
+                        "legenda": legenda_link.strip(),
+                        "curtidas": 0,
+                        "visualizacoes": 0
+                    }).execute()
+                    st.success("Vídeo publicado com sucesso!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro ao salvar: {str(e)}")
+            else:
+                st.warning("Por favor, insira o link do vídeo.")
+
+    with aba_central:
+        st.subheader("🚨 Painel de Controle da sua Transmissão")
+        titulo_da_live = st.text_input("Título da sua Live:", placeholder="Ex: Jogando ao vivo!")
+        url_da_live = st.text_input("Link da Transmissão (HLS, YouTube Live ou MP4):", placeholder="https://...")
+        
+        try:
+            live_existente = supabase.table("lives_ativas").select("*").eq("streamer_username", user_atual.get('username')).eq("status", "online").execute()
+            status_live = live_existente.data if live_existente else []
+        except:
+            status_live = []
+
+        if not status_live:
+            if st.button("🔴 ENTRAR AO VIVO AGORA", use_container_width=True):
+                if titulo_da_live.strip() and url_da_live.strip():
+                    try:
+                        supabase.table("lives_ativas").insert({
+                            "streamer_username": user_atual.get('username'),
+                            "streamer_nickname": user_atual.get('nickname'),
+                            "titulo_live": titulo_da_live.strip(),
+                            "url_transmissao": url_da_live.strip(),
+                            "status": "online"
+                        }).execute()
+                        st.success("Sua live está aberta para o público! 🎉")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao abrir live: {str(e)}")
+                else:
+                    st.warning("Por favor, preencha o título e o link da transmissão.")
+        else:
+            dados_da_live = status_live[0]
+            live_id_atual = dados_da_live.get('id')
+            st.success(f"🎥 VOCÊ ESTÁ AO VIVO: {dados_da_live.get('titulo_live')}")
+            try:
+                st.video(dados_da_live.get('url_transmissao'))
+            except:
+                st.caption("Aguardando sinal de vídeo...")
+
+            st.write("---")
+            st.write("💬 Chat da Live")
+            try:
+                mensagens_req = supabase.table("chat_lives").select("*").eq("live_id", live_id_atual).order("id", desc=True).limit(10).execute()
                 mensagens_chat = mensagens_req.data if mensagens_req else []
                 for msg in reversed(mensagens_chat):
                     st.markdown(f"**{msg.get('nickname')}**: {msg.get('mensagem')}")
@@ -504,7 +573,7 @@ if aba_active == "🎥 Gravar/Postar":
                 st.warning("Por favor, selecione um arquivo de vídeo antes de publicar.")
 
 # --- 3. ABA ASSISTIR LIVES (PARA O PÚBLICO) ---
-if aba_active == "📺 Assistir Lives":
+if aba_ativa == "📺 Assistir Lives":
     st.title("📺 Transmissões Ao Vivo")
     st.write("Veja quem está transmitindo agora no Silver Tok!")
     
@@ -532,7 +601,32 @@ if aba_active == "📺 Assistir Lives":
                 try:
                     st.video(l_url)
                 except:
-                           
+                    st.error("Transmissão indisponível ou sinal offline.")
+            
+            with st.expander("💬 Abrir Chat da Live"):
+                try:
+                    mensagens_req = supabase.table("chat_lives").select("*").eq("live_id", l_id).order("id", desc=True).limit(15).execute()
+                    mensagens_chat = mensagens_req.data if mensagens_req else []
+                    for msg in reversed(mensagens_chat):
+                        st.markdown(f"**{msg.get('nickname')}**: {msg.get('mensagem')}")
+                except:
+                    st.caption("Erro ao carregar mensagens.")
+                
+                nova_msg_live = st.text_input("Envie uma mensagem no chat...", key=f"chat_in_{l_id}")
+                if st.button("Enviar", key=f"chat_btn_{l_id}"):
+                    if nova_msg_live.strip():
+                        try:
+                            supabase.table("chat_lives").insert({
+                                "live_id": l_id,
+                                "username": user_atual.get('username'),
+                                "nickname": user_atual.get('nickname'),
+                                "mensagem": nova_msg_live.strip()
+                            }).execute()
+                            st.rerun()
+                        except:
+                            st.error("Erro ao enviar mensagem.")
+            st.write("---")
+                                 
 # --- 4. ABA CHAT EXV ---
 elif aba_ativa == "💬 Chat EXV":
     st.title("💬 Chat EXV")
