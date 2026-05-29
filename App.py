@@ -405,9 +405,7 @@ try:
         v_aba = st.session_state.get('menu_principal', '🎥 Gravar/Postar')
 except:
     v_aba = "🎥 Gravar/Postar"
-     import streamlit as f"st"
-from streamlit_webrtc import streamlit_webrtc
-
+     
 # --- 2. ABA GRAVAR / POSTAR ---
 if aba_selecionada == "🎥 Gravar/Postar":
     st.title("🎥 Postar Novo Conteúdo")
