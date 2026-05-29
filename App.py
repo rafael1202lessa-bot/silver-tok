@@ -656,9 +656,18 @@ elif aba_ativa == "🧠 Silver IA":
         st.success(f"🤖 **Silver:** {chat['resposta']}")
 
 # --- ABA DA LOJA DO SITE (CONTROLE POR ESTADO) ---
+# --- CODIGO TEMPORARIO PARA DESCOBRIR A VARIAVEL ---
 import sys
 _mod = sys.modules['__main__']
+st.write("### 🔍 Procurando a variável certa...")
 
+# Varre o sistema procurando onde foi parar o clique da loja
+for _v in dir(_mod):
+    if not _v.startswith("_"):
+        valor = str(getattr(_mod, _v, ""))
+        if "Loja do Site" in valor:
+            st.success(f"🎯 ENCONTRADA! Use o nome: **{_v}**")
+            
 # 1. Verifica se o texto "Loja do Site" foi clicado no menu de rádio do seu app
 loja_clicada = any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _v.startswith("_"))
 
