@@ -33,7 +33,7 @@ if "chat_privado_salas" not in st.session_state:
 if "chat_grupos" not in st.session_state:
     st.session_state.chat_grupos = {} 
 if "sala_privada_atual" not in st.session_state:
-    st. estado_sessão . sala_privada_atual = None
+    rua. estado_sessão . sala_privada_atual = Nenhum
 if "codigo_grupo_atual" not in st.session_state:
     st.session_state.codigo_grupo_atual = None
 if "live_ativa" not in st.session_state:
@@ -411,10 +411,7 @@ except Exception as e:
 if aba_ativa == "🎥 Gravar/Postar":
     st.title("🎥 Postar Novo Conteúdo")
     
-    aba_link, aba_central, aba_upload = st.tabs(["🔗 Postar por Link", "🚨 Central do Streamer", "📁 Upload da Galeria"])
-    
-    with aba_link:
-        st.subheader("🔗 Postar Conteúdo por Link")
+    aba_link, aba_central, aba_upload = st.tabs(["🔗 Postar por Link")
         legenda_link = st.text_input("Legenda do post:", key="leg_link")
         url_link = st.text_input("Link do vídeo (.mp4):", key="url_link")
         
@@ -1025,4 +1022,3 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
                             except Exception as erro:
                                 st.error(f"Erro ao ativar: {erro}")          
             st.write("---")
-            
