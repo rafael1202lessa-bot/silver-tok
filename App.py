@@ -655,82 +655,30 @@ elif aba_ativa == "🧠 Silver IA":
         st.info(f"❓ **Você:** {chat['pergunta']}")
         st.success(f"🤖 **Silver:** {chat['resposta']}")
                                                                                                         
-# --- ABA DA LOJA DO SITE (ENCAIXE SEGURO EM ELIF) ---
-elif abas == "🛒 Loja do Site":
+# --- ABA DA LOJA DO SITE ---
+if abas == "🛒 Loja do Site":
     st.title("🛒 Loja Oficial Silver Tok")
     st.write("Use suas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
     st.write("---")
 
-    # 1. Identificar o usuário logado no sistema
-    usuario_atual = None
-    for chave in ["usuario", "username", "user", "usuario_logado"]:
-        if chave in st.session_state and st.session_state[chave]:
-            usuario_atual = st.session_state[chave]
-            break
-
-    # 2. Puxar apenas os itens ativos do banco de dados
     try:
         resposta = supabase.table("loja_itens").select("*").eq("ativo", True).execute()
         itens = resposta.data if hasattr(resposta, 'data') else resposta.get('data', [])
     except Exception as e:
-        st.error(f"Erro ao carregar os itens da loja: {e}")
+        st.error("Aguardando conexão estável com o banco de dados...")
         itens = []
 
-    # 3. Mostrar os produtos ou aviso de estoque vazio
     if not itens:
         st.info("A loja está sendo reabastecida pelo administrador. Volte em breve! 🌟")
     else:
         for item in itens:
-            with st.container():
-                col_img, col_txt = st.columns([1, 3])
-                
-                with col_img:
-                    if item.get("imagem_url") and str(item["imagem_url"]).startswith("http"):
-                        st.image(item["imagem_url"], use_container_width=True)
-                    else:
-                        st.subheader("🖼️")
-                        
-                with col_txt:
-                    st.subheader(item["nome_produto"])
-                    st.write(item["descricao"] if item.get("descricao") else "Sem descrição disponível.")
-                    st.markdown(f"**Preço:** 💰 {item['preco']} moedas")
-                    
-                    # Botão de Compra com Processamento Real de Saldo
-                    if st.button(f"Comprar {item['nome_produto']}", key=f"buy_{item['id']}", use_container_width=True):
-                        if not usuario_atual:
-                            st.error("⚠️ Você precisa estar logado na sua conta para efetuar compras!")
-                        else:
-                            try:
-                                # Buscar saldo atual do usuário na tabela 'profiles'
-                                dados_user = supabase.table("profiles").select("*").eq("username", usuario_atual).execute()
-                                
-                                if dados_user.data:
-                                    perfil = dados_user.data[0]
-                                    coluna_saldo = "moedas" if "moedas" in perfil else ("saldo" if "saldo" in perfil else None)
-                                    
-                                    if coluna_saldo:
-                                        saldo_atual = float(perfil[coluna_saldo])
-                                        preco_item = float(item["preco"])
-                                        
-                                        if saldo_atual >= preco_item:
-                                            novo_saldo = saldo_atual - preco_item
-                                            
-                                            # Atualizar o saldo do usuário no Supabase
-                                            supabase.table("profiles").update({coluna_saldo: novo_saldo}).eq("username", usuario_atual).execute()
-                                            
-                                            st.success(f"🎉 Compra realizada com sucesso! Você adquiriu: {item['nome_produto']}.")
-                                            st.balloons()
-                                            st.rerun()
-                                        else:
-                                            st.error(f"❌ Saldo insuficiente! Você tem 💰 {saldo_atual} moedas, mas precisa de 💰 {preco_item}.")
-                                    else:
-                                        st.error("Não localizamos a coluna de moedas/saldo no seu perfil do banco de dados.")
-                                else:
-                                    st.error(f"Perfil do usuário '{usuario_atual}' não foi encontrado no banco de dados.")
-                            except Exception as erro_compra:
-                                st.error(f"Erro ao processar a transação: {erro_compra}")
+            st.subheader(item["nome_produto"])
+            st.write(item.get("descricao", "Sem descrição."))
+            st.markdown(f"**Preço:** 💰 {item['preco']} moedas")
+            if st.button(f"Comprar {item['nome_produto']}", key=f"lj_btn_{item['id']}", use_container_width=True):
+                st.info("Botão funcionando! Ajustaremos o desconto automático assim que a tela carregar.")
             st.write("---")
-            
+              
             # --- 7. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
     meus_itens_perfil = user_atual.get('itens_exclusivos', [])
