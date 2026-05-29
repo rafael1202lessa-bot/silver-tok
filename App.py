@@ -434,7 +434,7 @@ if aba_ativa == "🎥 Gravar/Postar":
             else:
                 st.warning("Por favor, insira o link do vídeo.")
 
-        with aba_central:
+            with aba_central:
         st.subheader("📹 Painel de Controle de Transmissão")
         
         if not st.session_state.get('live_ativa', False):
@@ -454,9 +454,7 @@ if aba_ativa == "🎥 Gravar/Postar":
                         st.session_state.live_alertas = []
                         st.rerun()
                     except Exception as e: 
-                        st.error(f"Erro ao abrir transmission: {str(e)}")
-                else:
-                    st.warning("Por favor, insira um título para a sua live.")
+                        st.error(f"Erro ao abrir transmissão: {str(e)}")
         else:
             st.success("🎥 VOCÊ ESTÁ AO VIVO!")
             if st.button("⏹️ Encerrar Transmissão", use_container_width=True):
@@ -479,15 +477,15 @@ if aba_ativa == "🎥 Gravar/Postar":
             
             with col_video_retorno:
                 st.markdown("### 🖥️ Retorno de Vídeo")
-                st.caption("Abaixo está o monitor interno do Silver Tok:")
                 st.camera_input("Monitor", key="monitor_live_cam")
                 
             with col_chat_live:
                 st.markdown("### 💬 Chat da Live")
-                with st.container(border=True, height=250):
+                with st.container(border=True, height=200):
                     if 'live_chat' in st.session_state:
                         for msg_l in st.session_state.live_chat: 
                             st.write(f"**@{msg_l['remetente']}:** {msg_l['conteudo']}")
+
                     else:
                         st.caption("Nenhuma mensagem no chat ainda.")         
     with aba_upload:
