@@ -655,30 +655,46 @@ elif aba_ativa == "🧠 Silver IA":
         st.info(f"❓ **Você:** {chat['pergunta']}")
         st.success(f"🤖 **Silver:** {chat['resposta']}")
                                                                                                         
-# --- ABA DA LOJA DO SITE (FORMATO ELIF) ---
-elif abas == "🛒 Loja do Site":
+# --- ABA DA LOJA DO SITE (MÉTODO COMPATÍVEL CORRIGIDO) ---
+import sys
+_mod = sys.modules['__main__']
+
+# Verifica se o usuário clicou na Loja usando o método que seu app aceita
+if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _v.startswith("_")):
     st.title("🛒 Loja Oficial Silver Tok")
     st.write("Use suas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
     st.write("---")
-
+    
+    # Puxar os itens ativos do banco de dados
     try:
         resposta = supabase.table("loja_itens").select("*").eq("ativo", True).execute()
         itens = resposta.data if hasattr(resposta, 'data') else resposta.get('data', [])
     except Exception as e:
-        st.error("Aguardando conexão estável com o banco de dados...")
+        st.error("Erro ao carregar os itens da loja.")
         itens = []
 
     if not itens:
         st.info("A loja está sendo reabastecida pelo administrador. Volte em breve! 🌟")
     else:
         for item in itens:
-            st.subheader(item["nome_produto"])
-            st.write(item.get("descricao", "Sem descrição."))
-            st.markdown(f"**Preço:** 💰 {item['preco']} moedas")
-            if st.button(f"Comprar {item['nome_produto']}", key=f"lj_btn_{item['id']}", use_container_width=True):
-                st.info("Botão funcionando! Ajustaremos o desconto automático assim que a tela carregar.")
+            with st.container():
+                col_img, col_txt = st.columns([1, 3])
+                
+                with col_img:
+                    if item.get("imagem_url") and str(item["imagem_url"]).startswith("http"):
+                        st.image(item["imagem_url"], use_container_width=True)
+                    else:
+                        st.subheader("🖼️")
+                        
+                with col_txt:
+                    st.subheader(item["nome_produto"])
+                    st.write(item["descricao"] if item.get("descricao") else "Sem descrição disponível.")
+                    st.markdown(f"**Preço:** 💰 {item['preco']} moedas")
+                    
+                    if st.button(f"Comprar {item['nome_produto']}", key=f"buy_oficial_{item['id']}", use_container_width=True):
+                        st.info("Processando compra... (O botão respondeu!)")
             st.write("---")
-            
+             
             # --- 7. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
     meus_itens_perfil = user_atual.get('itens_exclusivos', [])
