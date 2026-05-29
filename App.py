@@ -655,69 +655,6 @@ elif aba_ativa == "🧠 Silver IA":
         st.info(f"❓ **Você:** {chat['pergunta']}")
         st.success(f"🤖 **Silver:** {chat['resposta']}")
 
-    # --- ABA DA LOJA DO SITE ---
-if abas == "🛒 Loja do Site":
-    st.title("🛒 Loja Oficial Silver Tok")
-    st.write("Use suas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
-    st.write("---")
-
-    # 1. Tentar capturar o usuário logado de qualquer forma possível no session_state
-    usuario_atual = None
-    for chave in ["usuario", "username", "user", "usuario_logado", "current_user"]:
-        if chave in st.session_state and st.session_state[chave]:
-            usuario_atual = st.session_state[chave]
-            break
-
-    # 2. Puxar os itens ativos do banco de dados de forma segura
-    itens = []
-    try:
-        resposta = supabase.table("loja_itens").select("*").eq("ativo", True).execute()
-        if hasattr(resposta, 'data'):
-            itens = resposta.data
-        elif isinstance(resposta, dict) and 'data' in resposta:
-            itens = resposta['data']
-        else:
-            itens = getattr(resposta, 'data', [])
-    except Exception as e:
-        st.error(f"Nota: Aguardando sincronização com a tabela do banco de dados.")
-        itens = []
-
-    # 3. Mostrar os produtos ou aviso de estoque vazio
-    if not itens:
-        st.info("A loja está sendo reabastecida pelo administrador. Volte em breve! 🌟")
-    else:
-        for item in itens:
-            with st.container():
-                col_img, col_txt = st.columns([1, 3])
-                
-                with col_img:
-                    if item.get("imagem_url") and str(item["imagem_url"]).startswith("http"):
-                        st.image(item["imagem_url"], use_container_width=True)
-                    else:
-                        st.subheader("🖼️")
-                        
-                with col_txt:
-                    st.subheader(item["nome_produto"])
-                    st.write(item["descricao"] if item.get("descricao") else "Sem descrição disponível.")
-                    st.markdown(f"**Preço:** 💰 {item['preco']} moedas")
-                    
-                    # Botão de Compra com validações blindadas
-                    if st.button(f"Comprar {item['nome_produto']}", key=f"buy_{item['id']}", use_container_width=True):
-                        if not usuario_atual:
-                            st.error("⚠️ Você precisa estar logado na sua conta para efetuar compras!")
-                        else:
-                            try:
-                                # Tenta buscar na tabela 'profiles' ou 'perfis'
-                                dados_user = None
-                                for tabela_perfil in ["profiles", "perfis", "usuarios"]:
-                                    try:
-                                        # Tenta buscar por username ou email
-                                        for coluna_busca in ["username", "user", "email"]:
-                                            busca = supabase.table(tabela_perfil).select("*").eq(coluna_busca, usuario_atual).execute()
-                                            if busca.data:
-                                                dados_user = busca.data[0]
-                                                break
-                                        if dados_user:
 # --- ABA DA LOJA DO SITE ---
 if abas == "🛒 Loja do Site":
     st.title("🛒 Loja Oficial Silver Tok")
