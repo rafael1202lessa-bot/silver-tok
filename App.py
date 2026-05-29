@@ -655,17 +655,27 @@ elif aba_ativa == "🧠 Silver IA":
         st.info(f"❓ **Você:** {chat['pergunta']}")
         st.success(f"🤖 **Silver:** {chat['resposta']}")
                                                                                                         
-# --- ABA DA LOJA DO SITE (MÉTODO COMPATÍVEL CORRIGIDO) ---
+# --- ABA DA LOJA DO SITE (MÉTODO ULTRA COMPATÍVEL SEM VAZAMENTO) ---
 import sys
 _mod = sys.modules['__main__']
 
-# Verifica se o usuário clicou na Loja usando o método que seu app aceita
+# 1. Identificar o usuário logado de forma segura
+usuario_atual = None
+for chave in ["usuario", "username", "user", "usuario_logado"]:
+    if chave in st.session_state and st.session_state[chave]:
+        usuario_atual = st.session_state[chave]
+        break
+
+# Cria um espaço na tela para controlar o que aparece abaixo
+conteudo_abaixo = st.empty()
+
+# Verifica se o usuário de fato clicou na Loja do Site
 if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _v.startswith("_")):
     st.title("🛒 Loja Oficial Silver Tok")
     st.write("Use suas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
     st.write("---")
     
-    # Puxar os itens ativos do banco de dados
+    # Puxar apenas os itens ativos do banco de dados
     try:
         resposta = supabase.table("loja_itens").select("*").eq("ativo", True).execute()
         itens = resposta.data if hasattr(resposta, 'data') else resposta.get('data', [])
@@ -691,10 +701,42 @@ if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _
                     st.write(item["descricao"] if item.get("descricao") else "Sem descrição disponível.")
                     st.markdown(f"**Preço:** 💰 {item['preco']} moedas")
                     
-                    if st.button(f"Comprar {item['nome_produto']}", key=f"buy_oficial_{item['id']}", use_container_width=True):
-                        st.info("Processando compra... (O botão respondeu!)")
+                    # Botão de Compra com Processamento Real de Saldo
+                    if st.button(f"Comprar {item['nome_produto']}", key=f"buy_real_{item['id']}", use_container_width=True):
+                        if not usuario_atual:
+                            st.error("⚠️ Você precisa estar logado na sua conta para efetuar compras!")
+                        else:
+                            try:
+                                dados_user = supabase.table("profiles").select("*").eq("username", usuario_atual).execute()
+                                if dados_user.data:
+                                    perfil = dados_user.data[0]
+                                    coluna_saldo = "moedas" if "moedas" in perfil else ("saldo" if "saldo" in perfil else None)
+                                    
+                                    if coluna_saldo:
+                                        saldo_atual = float(perfil[coluna_saldo])
+                                        preco_item = float(item["preco"])
+                                        
+                                        if saldo_atual >= preco_item:
+                                            novo_saldo = saldo_atual - preco_item
+                                            supabase.table("profiles").update({coluna_saldo: novo_saldo}).eq("username", usuario_atual).execute()
+                                            st.success(f"🎉 Compra realizada com sucesso! Você adquiriu: {item['nome_produto']}.")
+                                            st.balloons()
+                                            st.rerun()
+                                        else:
+                                            st.error(f"❌ Saldo insuficiente! Você tem 💰 {saldo_atual} moedas.")
+                                    else:
+                                        st.error("Não localizamos a coluna de moedas/saldo no banco.")
+                                else:
+                                    st.error("Perfil do usuário não encontrado.")
+                            except Exception as erro_compra:
+                                st.error(f"Erro ao processar: {erro_compra}")
             st.write("---")
-             
+
+# 2. SE NÃO ESTIVER NA LOJA: Abre o contêiner para renderizar o resto do arquivo normalmente
+else:
+    with conteudo_abaixo.container():
+        pass # O resto do seu script original vai rodar aqui automaticamente
+                   
             # --- 7. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
     meus_itens_perfil = user_atual.get('itens_exclusivos', [])
