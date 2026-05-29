@@ -718,37 +718,34 @@ if abas == "🛒 Loja do Site":
                                                 dados_user = busca.data[0]
                                                 break
                                         if dados_user:
-                                            break
-                                    except:
-                                        continue
-                                
-                                if dados_user:
-                                    # Identifica qual coluna guarda o saldo (moedas ou saldo)
-                                    coluna_moedas = "moedas" if "moedas" in dados_user else ("saldo" if "saldo" in dados_user else None)
-                                    
-                                    if coluna_moedas:
-                                        saldo_atual = float(dados_user[coluna_moedas])
-                                        preco_item = float(item["preco"])
-                                        
-                                        if saldo_atual >= preco_item:
-                                            novo_saldo = saldo_atual - preco_item
-                                            
-                                            # Atualiza de volta no banco de dados
-                                            supabase.table(tabela_perfil).update({coluna_moedas: novo_saldo}).eq(coluna_busca, usuario_atual).execute()
-                                            
-                                            st.success(f"🎉 Compra realizada! Você adquiriu: {item['nome_produto']}.")
-                                            st.balloons()
-                                            st.rerun()
-                                        else:
-                                            st.error(f"❌ Saldo insuficiente! Você tem 💰 {saldo_atual} moedas.")
-                                    else:
-                                        st.error("Não foi possível localizar a coluna de saldo do usuário.")
-                                else:
-                                    st.error("Perfil de usuário não localizado no banco de dados.")
-                            except Exception as erro_interno:
-                                st.error(f"Erro na transação: {erro_interno}")
+# --- ABA DA LOJA DO SITE ---
+if abas == "🛒 Loja do Site":
+    st.title("🛒 Loja Oficial Silver Tok")
+    st.write("Use suas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
+    st.write("---")
+
+    # Puxar os itens do banco de dados de forma direta
+    try:
+        resposta = supabase.table("loja_itens").select("*").eq("ativo", True).execute()
+        itens = resposta.data
+    except Exception as e:
+        st.error(f"Erro ao conectar com o banco: {e}")
+        itens = []
+
+    # Mostrar os produtos
+    if not itens:
+        st.info("Nenhum produto ativo encontrado na loja no momento. 🌟")
+    else:
+        for item in itens:
+            st.subheader(item["nome_produto"])
+            st.write(item.get("descricao", "Sem descrição."))
+            st.markdown(f"**Preço:** 💰 {item['preco']} moedas")
+            
+            # Botão simples
+            if st.button(f"Comprar {item['nome_produto']}", key=f"btn_{item['id']}", use_container_width=True):
+                st.info("Botão clicado! Lógica de desconto desativada temporariamente para testes.")
             st.write("---")
-                                                              
+                                                                   
 # --- 7. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
     meus_itens_perfil = user_atual.get('itens_exclusivos', [])
