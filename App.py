@@ -655,18 +655,17 @@ elif aba_ativa == "🧠 Silver IA":
         st.info(f"❓ **Você:** {chat['pergunta']}")
         st.success(f"🤖 **Silver:** {chat['resposta']}")
 
-# --- 6. ABA LOJA DO SITE ---
-# --- ABA DA LOJA DO SITE (MÉTODO ULTRA SEGURO) ---
+# --- ABA DA LOJA DO SITE (MÉTODO ULTRA SEGURO CORRIGIDO) ---
 import sys
 _mod = sys.modules['__main__']
 if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _v.startswith("_")):
     st.title("🛒 Loja Oficial Silver Tok")
     st.write("Use suas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
     
-    # 1. Puxar apenas os itens ativos do banco de dados
+    # 1. Puxar apenas os itens ativos do banco de dados (Variável corrigida de 'response' para 'resposta')
     try:
         resposta = supabase.table("loja_itens").select("*").eq("ativo", True).execute()
-        itens = response.data if hasattr(resposta, 'data') else resposta.get('data', [])
+        itens = resposta.data if hasattr(resposta, 'data') else resposta.get('data', [])
     except Exception as e:
         st.error("Erro ao carregar os itens da loja.")
         itens = []
@@ -693,7 +692,7 @@ if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _
                     
                     if st.button(f"Comprar {item['nome_produto']}", key=f"buy_{item['id']}", use_container_width=True):
                         st.info("Processando compra... (Vamos ativar o desconto de saldo já já!)")
-            st.write("---")
+            st.write("---")            
                   
 # --- 7. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
