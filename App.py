@@ -415,7 +415,7 @@ if aba_ativa == "🎥 Gravar/Postar":
     legenda_link = st.text_input("Legenda do post:", key="leg_link")
     url_link = st.text_input("Link do vídeo (.mp4):", key="url_link")
         
-    if st.button("Publicar Vídeo por Link", use_container_width=True):
+if st.button("Publicar Vídeo por Link", use_container_width=True):
     if url_link.strip():
                 try:
                     supabase.table("feed_videos").insert({
