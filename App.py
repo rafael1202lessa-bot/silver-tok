@@ -655,8 +655,8 @@ elif aba_ativa == "🧠 Silver IA":
         st.info(f"❓ **Você:** {chat['pergunta']}")
         st.success(f"🤖 **Silver:** {chat['resposta']}")
                                                                                                         
-# --- ABA DA LOJA DO SITE ---
-if abas == "🛒 Loja do Site":
+# --- ABA DA LOJA DO SITE (FORMATO ELIF) ---
+elif abas == "🛒 Loja do Site":
     st.title("🛒 Loja Oficial Silver Tok")
     st.write("Use suas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
     st.write("---")
@@ -678,7 +678,7 @@ if abas == "🛒 Loja do Site":
             if st.button(f"Comprar {item['nome_produto']}", key=f"lj_btn_{item['id']}", use_container_width=True):
                 st.info("Botão funcionando! Ajustaremos o desconto automático assim que a tela carregar.")
             st.write("---")
-              
+            
             # --- 7. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
     meus_itens_perfil = user_atual.get('itens_exclusivos', [])
