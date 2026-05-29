@@ -534,7 +534,7 @@ if aba_active == "📺 Assistir Lives":
                 except:
                            
 # --- 4. ABA CHAT EXV ---
-if aba_ativa == "💬 Chat EXV":
+elif aba_ativa == "💬 Chat EXV":
     st.title("💬 Chat EXV")
     aba_dm, aba_grp = st.tabs(["🔒 Conversas Privadas", "👥 Grupos por Código"])
     
