@@ -921,4 +921,3 @@ elif aba_ativa == "⚡ Painel Dev" and user_atual.get('username') == "rafael_ofi
                 st.error(f"Erro ao salvar no banco: {str(e)}")
         else:
             st.warning("Por favor, preencha o nome do produto e defina um preço válido.")
-            
