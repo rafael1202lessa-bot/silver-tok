@@ -33,7 +33,7 @@ if "chat_privado_salas" not in st.session_state:
 if "chat_grupos" not in st.session_state:
     st.session_state.chat_grupos = {} 
 if "sala_privada_atual" not in st.session_state:
-    rua. estado_sessão . sala_privada_atual = None
+    st. estado_sessão . sala_privada_atual = None
 if "codigo_grupo_atual" not in st.session_state:
     st.session_state.codigo_grupo_atual = None
 if "live_ativa" not in st.session_state:
