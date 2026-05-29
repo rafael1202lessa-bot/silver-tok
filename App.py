@@ -655,14 +655,17 @@ elif aba_ativa == "🧠 Silver IA":
         st.info(f"❓ **Você:** {chat['pergunta']}")
         st.success(f"🤖 **Silver:** {chat['resposta']}")
 
-# --- ABA DA LOJA DO SITE (MÉTODO ULTRA SEGURO CORRIGIDO) ---
+# --- ABA DA LOJA DO SITE (MÉTODO ULTRA SEGURO ISOLADO) ---
 import sys
 _mod = sys.modules['__main__']
+
+# Verifica se o usuário de fato clicou na Loja do Site
 if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _v.startswith("_")):
+    # st.empty() ajuda a limpar conteúdos residuais da tela se necessário
     st.title("🛒 Loja Oficial Silver Tok")
     st.write("Use suas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
     
-    # 1. Puxar apenas os itens ativos do banco de dados (Variável corrigida de 'response' para 'resposta')
+    # 1. Puxar apenas os itens ativos do banco de dados
     try:
         resposta = supabase.table("loja_itens").select("*").eq("ativo", True).execute()
         itens = resposta.data if hasattr(resposta, 'data') else resposta.get('data', [])
@@ -680,19 +683,22 @@ if any("Loja do Site" in str(getattr(_mod, _v, "")) for _v in dir(_mod) if not _
                 col_img, col_txt = st.columns([1, 3])
                 
                 with col_img:
-                    if item.get("imagem_url"):
+                    if item.get("imagem_url") and item["imagem_url"].startswith("http"):
                         st.image(item["imagem_url"], use_container_width=True)
                     else:
-                        st.subheader("📦")
+                        st.subheader("🖼️") # Ícone padrão caso a imagem quebre ou seja um link temporário
                         
                 with col_txt:
                     st.subheader(item["nome_produto"])
-                    st.write(item["descricao"])
+                    st.write(item["descricao"] if item.get("descricao") else "Sem descrição disponível.")
                     st.markdown(f"**Preço:** 💰 {item['preco']} moedas")
                     
                     if st.button(f"Comprar {item['nome_produto']}", key=f"buy_{item['id']}", use_container_width=True):
                         st.info("Processando compra... (Vamos ativar o desconto de saldo já já!)")
-            st.write("---")            
+            st.write("---")
+            
+    # CRUCIAL: Interrompe a renderização aqui para que as abas seguintes não vazem para dentro da loja
+    st.stop()
                   
 # --- 7. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
