@@ -655,17 +655,21 @@ elif aba_ativa == "🧠 Silver IA":
         st.info(f"❓ **Você:** {chat['pergunta']}")
         st.success(f"🤖 **Silver:** {chat['resposta']}")
         
-if 'abas' in locals() and abas == "🛒 Loja do Site":
+# --- ABA DA LOJA DO SITE ---
+if abas == "🛒 Loja do Site":
     st.title("🛒 Loja Oficial Silver Tok")
-    st.write("A loja está viva! Se você está vendo isso, funcionou!")
-    
+    st.write("Use suas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
+    st.write("---")
+
+    # Puxar os itens de forma direta (Como funcionou antes)
     try:
         resposta = supabase.table("loja_itens").select("*").eq("ativo", True).execute()
         itens = resposta.data
     except Exception as e:
-        st.error(f"Erro de conexão: {e}")
+        st.error(f"Erro ao conectar com o banco: {e}")
         itens = []
 
+    # Mostrar os produtos na tela
     if not itens:
         st.info("Nenhum produto ativo encontrado na loja no momento. 🌟")
     else:
@@ -674,10 +678,11 @@ if 'abas' in locals() and abas == "🛒 Loja do Site":
             st.write(item.get("descricao", "Sem descrição."))
             st.markdown(f"**Preço:** 💰 {item['preco']} moedas")
             
-            if st.button(f"Comprar {item['nome_produto']}", key=f"btn_loja_{item['id']}", use_container_width=True):
-                st.info("Botão funcionando! Ajustaremos o desconto assim que a tela carregar.")
+            # Botão simples que não quebra o app
+            if st.button(f"Comprar {item['nome_produto']}", key=f"btn_lj_{item['id']}", use_container_width=True):
+                st.success(f"🛒 Você clicou para comprar {item['nome_produto']}! O botão está funcionando.")
             st.write("---")
-                                                                                        
+                                                                                                  
 # --- 7. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
     meus_itens_perfil = user_atual.get('itens_exclusivos', [])
