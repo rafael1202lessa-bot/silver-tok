@@ -656,41 +656,45 @@ elif aba_ativa == "🧠 Silver IA":
         st.success(f"🤖 **Silver:** {chat['resposta']}")
 
 # --- 6. ABA LOJA DO SITE ---
-elif aba_ativa == "🛒 Loja do Site":
-    st.title("🛒 Loja de Customizações")
-    st.write(f"🪙 **Carteira:** {user_atual.get('dinheiro', 0)} Silver Coins")
-    st.write("---")
+# --- ABA DA LOJA DO SITE ---
+if aba == "🛒 Loja do Site":
+    st.title("🛒 Loja Oficial Silver Tok")
+    st.write("Use suas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
+    
+    # 1. Puxar apenas os itens ativos do banco de dados
+    try:
+        resposta = supabase.table("loja_itens").select("*").eq("ativo", True).execute()
+        itens = resposta.data
+    except Exception as e:
+        st.error("Erro ao carregar os itens da loja.")
+        itens = []
 
-    customizacoes = {
-        "🖼️ Moldura de Fogo 🔥": 1000, "💎 Moldura de Diamante ✨": 2500,
-        "🖼️ Banner Estelar (Perfil)": 1500, "💬 Caixa de Texto Neon (Feed)": 2000, "🌈 Nickname Dourado": 5000
-    }
-
-    for item, preco in customizacoes.items():
-        with st.container():
-            col_info, col_btn = st.columns([3, 1])
-            with col_info: st.markdown(f"### {item}\n🪙 Custo: **{preco} Coins**")
-            with col_btn:
-                st.write("<br>", unsafe_allow_html=True)
-                meus_visuais = user_atual.get('itens_exclusivos', [])
-                if not isinstance(meus_visuais, list): meus_visuais = []
-                meus_visuais = [x for x in meus_visuais if x]
+    # 2. Se não houver nenhum item cadastrado ou ativo
+    if not itens:
+        st.info("A loja está sendo reabastecida pelo administrador. Volte em breve! 🌟")
+    else:
+        # 3. Mostrar os itens em um formato bonito
+        for item in itens:
+            with st.container():
+                col_img, col_txt = st.columns([1, 3])
                 
-                if item in meus_visuais or f"[EQUIPADO] {item}" in meus_visuais:
-                    st.button("✅ Adquirido", key=f"loja_{item}", disabled=True, use_container_width=True)
-                else:
-                    if st.button(f"🛒 Adquirir", key=f"comprar_{item}", use_container_width=True):
-                        saldo = user_atual.get('dinheiro', 0)
-                        if saldo >= preco:
-                            try:
-                                meus_visuais.append(item)
-                                supabase.table("perfis_usuarios").update({"dinheiro": saldo - preco, "itens_exclusivos": meus_visuais}).eq("username", user_atual.get('username')).execute()
-                                st.success(f"🎉 Adquirido!")
-                                st.rerun()
-                            except Exception as e: st.error(f"Erro: {str(e)}")
-                        else: st.error("❌ Saldo insuficiente!")
+                with col_img:
+                    # Se tiver link de imagem, mostra a foto, senão usa um emoji padrão
+                    if item.get("imagem_url"):
+                        st.image(item["imagem_url"], use_container_width=True)
+                    else:
+                        st.subheader("📦")
+                        
+                with col_txt:
+                    st.subheader(item["nome_produto"])
+                    st.write(item["descricao"])
+                    st.markdown(f"**Preço:** 💰 {item['preco']} moedas")
+                    
+                    # Botão de compra (a lógica de desconto faremos a seguir)
+                    if st.button(f"Comprar {item['nome_produto']}", key=f"buy_{item['id']}", use_container_width=True):
+                        st.info("Processando compra... (Vamos ativar o desconto de saldo já já!)")
             st.write("---")
-
+            
 # --- 7. ABA MEU PERFIL ---
 elif aba_ativa == "👤 Meu Perfil":
     meus_itens_perfil = user_atual.get('itens_exclusivos', [])
