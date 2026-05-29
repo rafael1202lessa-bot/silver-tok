@@ -654,13 +654,11 @@ elif aba_ativa == "🧠 Silver IA":
     for chat in st.session_state.historico_ia:
         st.info(f"❓ **Você:** {chat['pergunta']}")
         st.success(f"🤖 **Silver:** {chat['resposta']}")
-
-# Certifique-se de que esta linha abaixo está grudada no canto esquerdo!
+        
 if 'abas' in locals() and abas == "🛒 Loja do Site":
     st.title("🛒 Loja Oficial Silver Tok")
-    st.write("Use suas moedas para adquirir vantagens, tags e cosméticos exclusivos!")
-    st.write("---")
-
+    st.write("A loja está viva! Se você está vendo isso, funcionou!")
+    
     try:
         resposta = supabase.table("loja_itens").select("*").eq("ativo", True).execute()
         itens = resposta.data
