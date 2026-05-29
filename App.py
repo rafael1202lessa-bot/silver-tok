@@ -434,7 +434,8 @@ if aba_ativa == "🎥 Gravar/Postar":
             else:
                 st.warning("Por favor, insira o link do vídeo.")
 
-            with aba_central: st.subheader("📹 Painel de Controle de Transmissão")
+            with aba_central: 
+st.subheader("📹 Painel de Controle de Transmissão")
         
         if not st.session_state.get('live_ativa', False):
             titulo_live = st.text_input("Título da sua Live:", placeholder="Ex: Programando o Silver Tok v2! 🔥")
