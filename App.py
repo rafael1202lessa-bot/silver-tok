@@ -429,7 +429,7 @@ if st.button("Publicar Vídeo por Link", use_container_width=True):
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro ao salvar: {str(e)}")
-                        if url_link:
+                if url_link:
             # Seu código que publica o vídeo fica aqui...
             pass
         else:
